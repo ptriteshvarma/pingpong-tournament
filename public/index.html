@@ -281,6 +281,7 @@
                   <div className="bg-slate-900 rounded-full p-1 inline-flex">
                     <button onClick={() => setView('availability')} className={`px-4 py-1.5 rounded-full text-sm transition ${view === 'availability' ? 'bg-slate-700 text-white' : 'text-slate-400'}`}>My Availability</button>
                     <button onClick={() => setView('matches')} className={`px-4 py-1.5 rounded-full text-sm transition ${view === 'matches' ? 'bg-slate-700 text-white' : 'text-slate-400'}`}>Matches</button>
+                    <button onClick={() => setView('table')} className={`px-4 py-1.5 rounded-full text-sm transition ${view === 'table' ? 'bg-slate-700 text-white' : 'text-slate-400'}`}>Table Schedule</button>
                   </div>
                 </div>
 
@@ -403,6 +404,84 @@
                       </div>
                     </div>
                   </>
+                )}
+
+                {view === 'table' && (
+                  <div className="bg-slate-900 rounded-2xl p-4">
+                    <div className="flex justify-between items-center mb-4">
+                      <p className="text-slate-500 text-xs uppercase tracking-wider">Table Schedule</p>
+                      <div className="flex gap-1">
+                        {dates.map(d => (
+                          <button key={d} onClick={() => setSelectedDate(d)}
+                            className={`px-3 py-1.5 rounded-lg text-sm transition ${selectedDate === d ? 'bg-violet-600 text-white' : 'bg-slate-800 text-slate-400'}`}>{d}</button>
+                        ))}
+                      </div>
+                    </div>
+
+                    <p className="text-slate-400 text-xs mb-3">Shows all scheduled matches - helps avoid table conflicts</p>
+
+                    <div className="space-y-1">
+                      {timeSlots.map(time => {
+                        const matchAtSlot = Object.values(matches).find(m =>
+                          m.lockedDate === selectedDate && m.lockedTime === time && !m.completed
+                        );
+                        const completedMatchAtSlot = Object.values(matches).find(m =>
+                          m.lockedDate === selectedDate && m.lockedTime === time && m.completed
+                        );
+                        const match = matchAtSlot || completedMatchAtSlot;
+
+                        return (
+                          <div key={time} className={`flex items-center gap-3 p-2 rounded-lg ${match ? (match.completed ? 'bg-slate-800/50' : 'bg-red-900/20 border border-red-800/30') : 'bg-slate-800/30'}`}>
+                            <span className={`text-sm font-mono w-20 ${match ? 'text-white' : 'text-slate-500'}`}>{formatTime(time)}</span>
+                            {match ? (
+                              <div className="flex-1 flex items-center justify-between">
+                                <div className="text-sm">
+                                  <span className={`px-1.5 py-0.5 rounded text-xs mr-2 ${
+                                    match.group === 'A' ? 'bg-blue-500/30 text-blue-300' :
+                                    match.group === 'B' ? 'bg-green-500/30 text-green-300' :
+                                    match.group === 'C' ? 'bg-yellow-500/30 text-yellow-300' :
+                                    match.group === 'D' ? 'bg-pink-500/30 text-pink-300' :
+                                    'bg-purple-500/30 text-purple-300'
+                                  }`}>Group {match.group}</span>
+                                  <span className={match.completed ? 'text-slate-400' : 'text-white'}>{match.player1.split(' ')[0]}</span>
+                                  <span className="text-slate-600 mx-1">vs</span>
+                                  <span className={match.completed ? 'text-slate-400' : 'text-white'}>{match.player2.split(' ')[0]}</span>
+                                </div>
+                                {match.completed ? (
+                                  <span className="text-xs text-slate-500">Done</span>
+                                ) : (
+                                  <span className="text-xs text-red-400 font-semibold">OCCUPIED</span>
+                                )}
+                              </div>
+                            ) : (
+                              <span className="text-slate-600 text-sm">Available</span>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    <div className="mt-4 pt-4 border-t border-slate-800">
+                      <p className="text-slate-500 text-xs mb-2">Summary for {selectedDate}:</p>
+                      <div className="flex gap-2 flex-wrap">
+                        {Object.keys(groups).map(g => {
+                          const groupScheduled = Object.values(matches).filter(m => m.group === g && m.lockedDate === selectedDate && !m.completed).length;
+                          const groupCompleted = Object.values(matches).filter(m => m.group === g && m.lockedDate === selectedDate && m.completed).length;
+                          return (
+                            <span key={g} className={`text-xs px-2 py-1 rounded-lg ${
+                              g === 'A' ? 'bg-blue-500/20 text-blue-300' :
+                              g === 'B' ? 'bg-green-500/20 text-green-300' :
+                              g === 'C' ? 'bg-yellow-500/20 text-yellow-300' :
+                              g === 'D' ? 'bg-pink-500/20 text-pink-300' :
+                              'bg-purple-500/20 text-purple-300'
+                            }`}>
+                              {g}: {groupScheduled} scheduled{groupCompleted > 0 ? `, ${groupCompleted} done` : ''}
+                            </span>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </div>
                 )}
               </div>
             </div>
