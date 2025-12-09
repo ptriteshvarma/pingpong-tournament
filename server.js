@@ -1,7 +1,7 @@
 const express = require('express');
-const Database = require('better-sqlite3');
 const cors = require('cors');
 const path = require('path');
+const fs = require('fs');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -11,43 +11,45 @@ app.use(cors());
 app.use(express.json({ limit: '10mb' }));
 app.use(express.static(path.join(__dirname, 'public')));
 
-// Initialize SQLite database
-const dbPath = process.env.DATABASE_PATH || './pingpong.db';
-const db = new Database(dbPath);
+// Data file paths
+const DATA_DIR = process.env.DATA_DIR || './data';
+const AVAILABILITY_FILE = path.join(DATA_DIR, 'availability.json');
+const MATCHES_FILE = path.join(DATA_DIR, 'matches.json');
 
-// Create tables for the new schema
-db.exec(`
-  CREATE TABLE IF NOT EXISTS availability (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    data TEXT NOT NULL,
-    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
-  );
-
-  CREATE TABLE IF NOT EXISTS matches (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    data TEXT NOT NULL,
-    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
-  );
-`);
-
-// Initialize with empty data if tables are empty
-const initAvail = db.prepare('SELECT COUNT(*) as count FROM availability').get();
-if (initAvail.count === 0) {
-  db.prepare('INSERT INTO availability (data) VALUES (?)').run('{}');
+// Ensure data directory exists
+if (!fs.existsSync(DATA_DIR)) {
+  fs.mkdirSync(DATA_DIR, { recursive: true });
 }
 
-const initMatches = db.prepare('SELECT COUNT(*) as count FROM matches').get();
-if (initMatches.count === 0) {
-  db.prepare('INSERT INTO matches (data) VALUES (?)').run('{}');
-}
+// Helper functions
+const readJSON = (filepath) => {
+  try {
+    if (fs.existsSync(filepath)) {
+      return JSON.parse(fs.readFileSync(filepath, 'utf8'));
+    }
+  } catch (e) {
+    console.error(`Error reading ${filepath}:`, e);
+  }
+  return {};
+};
+
+const writeJSON = (filepath, data) => {
+  try {
+    fs.writeFileSync(filepath, JSON.stringify(data, null, 2));
+    return true;
+  } catch (e) {
+    console.error(`Error writing ${filepath}:`, e);
+    return false;
+  }
+};
 
 // API Routes
 
 // Get availability
 app.get('/api/availability', (req, res) => {
   try {
-    const row = db.prepare('SELECT data FROM availability ORDER BY id DESC LIMIT 1').get();
-    res.json(row ? JSON.parse(row.data) : {});
+    const data = readJSON(AVAILABILITY_FILE);
+    res.json(data);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -56,8 +58,7 @@ app.get('/api/availability', (req, res) => {
 // Save availability
 app.post('/api/availability', (req, res) => {
   try {
-    const data = JSON.stringify(req.body);
-    db.prepare('UPDATE availability SET data = ?, updated_at = CURRENT_TIMESTAMP WHERE id = 1').run(data);
+    writeJSON(AVAILABILITY_FILE, req.body);
     res.json({ success: true });
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -67,8 +68,8 @@ app.post('/api/availability', (req, res) => {
 // Get matches
 app.get('/api/matches', (req, res) => {
   try {
-    const row = db.prepare('SELECT data FROM matches ORDER BY id DESC LIMIT 1').get();
-    res.json(row ? JSON.parse(row.data) : {});
+    const data = readJSON(MATCHES_FILE);
+    res.json(data);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -77,8 +78,7 @@ app.get('/api/matches', (req, res) => {
 // Save matches
 app.post('/api/matches', (req, res) => {
   try {
-    const data = JSON.stringify(req.body);
-    db.prepare('UPDATE matches SET data = ?, updated_at = CURRENT_TIMESTAMP WHERE id = 1').run(data);
+    writeJSON(MATCHES_FILE, req.body);
     res.json({ success: true });
   } catch (error) {
     res.status(500).json({ error: error.message });
