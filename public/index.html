@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Ping Pong Tournament Manager</title>
+    <title>Ping Pong Tournament Scheduler</title>
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -17,607 +17,399 @@
 
         const API_BASE = '/api';
 
-        // Lucide icons as inline SVG components
-        const Trophy = ({ size = 24, className = "" }) => (
-            <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
-                <path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"></path>
-                <path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"></path>
-                <path d="M4 22h16"></path>
-                <path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"></path>
-                <path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"></path>
-                <path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"></path>
-            </svg>
-        );
+        const groups = {
+          A: ['Michael Schmidt', 'Niketha Kailash', 'Brian Pleiman', 'Dylan Rasmussen', 'Extra 1'],
+          B: ['Ritesh Varma', 'Emma Gerken', 'Spencer Chamberlain', 'Michael Mpitsos', 'Michelle Caye'],
+          C: ['Jonathan Friend', 'Eric Miller', 'Sivakumar Ramamurthy', 'Dave Sanders', 'Adam Kelly'],
+          D: ['Laura Harrah', 'Alan Smith', 'Cameron McLain', 'Scott Treml', 'Extra 3'],
+          E: ['Karen Isaacs', 'Sarah Sunderhaus', 'Allie Shaw', 'Caterina Rizzoni', 'Neha']
+        };
 
-        const Users = ({ size = 24, className = "" }) => (
-            <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
-                <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path>
-                <circle cx="9" cy="7" r="4"></circle>
-                <path d="M22 21v-2a4 4 0 0 0-3-3.87"></path>
-                <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
-            </svg>
-        );
+        const allPlayers = Object.values(groups).flat();
+        const dates = ['12/9', '12/10', '12/11'];
 
-        const Plus = ({ size = 24 }) => (
-            <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <line x1="12" y1="5" x2="12" y2="19"></line>
-                <line x1="5" y1="12" x2="19" y2="12"></line>
-            </svg>
-        );
-
-        const X = ({ size = 24 }) => (
-            <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <line x1="18" y1="6" x2="6" y2="18"></line>
-                <line x1="6" y1="6" x2="18" y2="18"></line>
-            </svg>
-        );
-
-        const Edit2 = ({ size = 24 }) => (
-            <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path>
-            </svg>
-        );
-
-        const Trash2 = ({ size = 24 }) => (
-            <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <polyline points="3 6 5 6 21 6"></polyline>
-                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-                <line x1="10" y1="11" x2="10" y2="17"></line>
-                <line x1="14" y1="11" x2="14" y2="17"></line>
-            </svg>
-        );
-
-        const Medal = ({ size = 24 }) => (
-            <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M7.21 15 2.66 7.14a2 2 0 0 1 .13-2.2L4.4 2.8A2 2 0 0 1 6 2h12a2 2 0 0 1 1.6.8l1.6 2.14a2 2 0 0 1 .14 2.2L16.79 15"></path>
-                <path d="M11 12 5.12 2.2"></path>
-                <path d="m13 12 5.88-9.8"></path>
-                <path d="M8 7h8"></path>
-                <circle cx="12" cy="17" r="5"></circle>
-                <path d="M12 18v-2h-.5"></path>
-            </svg>
-        );
-
-        function PingPongTournament() {
-            const [players, setPlayers] = useState([]);
-            const [tournaments, setTournaments] = useState([]);
-            const [currentView, setCurrentView] = useState('home');
-            const [newPlayerName, setNewPlayerName] = useState('');
-            const [editingPlayer, setEditingPlayer] = useState(null);
-            const [activeTournament, setActiveTournament] = useState(null);
-            const [loading, setLoading] = useState(true);
-
-            useEffect(() => {
-                loadData();
-            }, []);
-
-            const loadData = async () => {
-                try {
-                    const [playersRes, tournamentsRes] = await Promise.all([
-                        fetch(`${API_BASE}/players`),
-                        fetch(`${API_BASE}/tournaments`)
-                    ]);
-
-                    const playersData = await playersRes.json();
-                    const tournamentsData = await tournamentsRes.json();
-
-                    setPlayers(playersData);
-                    setTournaments(tournamentsData);
-                } catch (error) {
-                    console.error('Error loading data:', error);
-                }
-                setLoading(false);
-            };
-
-            const addPlayer = async () => {
-                if (newPlayerName.trim()) {
-                    try {
-                        const res = await fetch(`${API_BASE}/players`, {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ name: newPlayerName.trim() })
-                        });
-                        const newPlayer = await res.json();
-                        setPlayers([...players, newPlayer]);
-                        setNewPlayerName('');
-                    } catch (error) {
-                        console.error('Error adding player:', error);
-                    }
-                }
-            };
-
-            const deletePlayer = async (id) => {
-                try {
-                    await fetch(`${API_BASE}/players/${id}`, { method: 'DELETE' });
-                    setPlayers(players.filter(p => p.id !== id));
-                } catch (error) {
-                    console.error('Error deleting player:', error);
-                }
-            };
-
-            const updatePlayer = async (id, newName) => {
-                try {
-                    const res = await fetch(`${API_BASE}/players/${id}`, {
-                        method: 'PUT',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ name: newName })
-                    });
-                    const updatedPlayer = await res.json();
-                    setPlayers(players.map(p => p.id === id ? updatedPlayer : p));
-                    setEditingPlayer(null);
-                } catch (error) {
-                    console.error('Error updating player:', error);
-                }
-            };
-
-            const updatePlayerStats = async (id, wins, losses) => {
-                try {
-                    const res = await fetch(`${API_BASE}/players/${id}`, {
-                        method: 'PUT',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ wins, losses })
-                    });
-                    const updatedPlayer = await res.json();
-                    setPlayers(prev => prev.map(p => p.id === id ? updatedPlayer : p));
-                } catch (error) {
-                    console.error('Error updating player stats:', error);
-                }
-            };
-
-            const createTournament = async () => {
-                if (players.length < 2) {
-                    alert('You need at least 2 players to start a tournament!');
-                    return;
-                }
-
-                const shuffled = [...players].sort(() => Math.random() - 0.5);
-                const rounds = Math.ceil(Math.log2(shuffled.length));
-                const bracket = [];
-
-                let currentRound = shuffled.map((player, idx) => ({
-                    id: `match-0-${idx}`,
-                    round: 0,
-                    player1: player,
-                    player2: null,
-                    winner: null,
-                    score1: 0,
-                    score2: 0
-                }));
-
-                for (let i = 0; i < currentRound.length; i += 2) {
-                    if (i + 1 < currentRound.length) {
-                        bracket.push({
-                            id: `match-0-${Math.floor(i / 2)}`,
-                            round: 0,
-                            player1: currentRound[i].player1,
-                            player2: currentRound[i + 1].player1,
-                            winner: null,
-                            score1: 0,
-                            score2: 0
-                        });
-                    } else {
-                        bracket.push({
-                            id: `match-0-${Math.floor(i / 2)}`,
-                            round: 0,
-                            player1: currentRound[i].player1,
-                            player2: null,
-                            winner: currentRound[i].player1,
-                            score1: 0,
-                            score2: 0
-                        });
-                    }
-                }
-
-                try {
-                    const res = await fetch(`${API_BASE}/tournaments`, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            date: new Date().toISOString(),
-                            bracket,
-                            totalRounds: rounds,
-                            currentRound: 0
-                        })
-                    });
-                    const tournament = await res.json();
-                    setTournaments([...tournaments, tournament]);
-                    setActiveTournament(tournament);
-                    setCurrentView('tournament');
-                } catch (error) {
-                    console.error('Error creating tournament:', error);
-                }
-            };
-
-            const updateMatch = async (matchId, score1, score2) => {
-                const match = activeTournament.bracket.find(m => m.id === matchId);
-                if (!match || match.winner) return;
-
-                match.score1 = parseInt(score1) || 0;
-                match.score2 = parseInt(score2) || 0;
-
-                if (match.score1 >= 11 || match.score2 >= 11) {
-                    if (Math.abs(match.score1 - match.score2) >= 2) {
-                        match.winner = match.score1 > match.score2 ? match.player1 : match.player2;
-
-                        // Update player stats
-                        const winnerId = match.winner.id;
-                        const loserId = match.player1.id === winnerId ? match.player2?.id : match.player1?.id;
-
-                        const winner = players.find(p => p.id === winnerId);
-                        const loser = players.find(p => p.id === loserId);
-
-                        if (winner) {
-                            await updatePlayerStats(winnerId, winner.wins + 1, winner.losses);
-                        }
-                        if (loser) {
-                            await updatePlayerStats(loserId, loser.wins, loser.losses + 1);
-                        }
-                    }
-                }
-
-                const updatedTournament = { ...activeTournament };
-                setActiveTournament(updatedTournament);
-
-                // Save to server
-                try {
-                    await fetch(`${API_BASE}/tournaments/${activeTournament.id}`, {
-                        method: 'PUT',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ bracket: updatedTournament.bracket })
-                    });
-
-                    setTournaments(tournaments.map(t =>
-                        t.id === activeTournament.id ? updatedTournament : t
-                    ));
-                } catch (error) {
-                    console.error('Error updating match:', error);
-                }
-            };
-
-            const advanceToNextRound = async () => {
-                const currentRoundMatches = activeTournament.bracket.filter(
-                    m => m.round === activeTournament.current_round
-                );
-
-                const allComplete = currentRoundMatches.every(m => m.winner);
-                if (!allComplete) {
-                    alert('Complete all matches before advancing!');
-                    return;
-                }
-
-                const winners = currentRoundMatches.map(m => m.winner);
-
-                if (winners.length === 1) {
-                    const updatedTournament = {
-                        ...activeTournament,
-                        completed: true,
-                        winner: winners[0]
-                    };
-                    setActiveTournament(updatedTournament);
-
-                    try {
-                        await fetch(`${API_BASE}/tournaments/${activeTournament.id}`, {
-                            method: 'PUT',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({
-                                completed: true,
-                                winner: winners[0]
-                            })
-                        });
-
-                        setTournaments(tournaments.map(t =>
-                            t.id === activeTournament.id ? updatedTournament : t
-                        ));
-                    } catch (error) {
-                        console.error('Error completing tournament:', error);
-                    }
-                    return;
-                }
-
-                const nextRound = activeTournament.current_round + 1;
-                const nextRoundMatches = [];
-
-                for (let i = 0; i < winners.length; i += 2) {
-                    nextRoundMatches.push({
-                        id: `match-${nextRound}-${Math.floor(i / 2)}`,
-                        round: nextRound,
-                        player1: winners[i],
-                        player2: winners[i + 1] || null,
-                        winner: winners[i + 1] ? null : winners[i],
-                        score1: 0,
-                        score2: 0
-                    });
-                }
-
-                const updatedTournament = {
-                    ...activeTournament,
-                    bracket: [...activeTournament.bracket, ...nextRoundMatches],
-                    current_round: nextRound
-                };
-
-                setActiveTournament(updatedTournament);
-
-                try {
-                    await fetch(`${API_BASE}/tournaments/${activeTournament.id}`, {
-                        method: 'PUT',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            bracket: updatedTournament.bracket,
-                            currentRound: nextRound
-                        })
-                    });
-
-                    setTournaments(tournaments.map(t =>
-                        t.id === activeTournament.id ? updatedTournament : t
-                    ));
-                } catch (error) {
-                    console.error('Error advancing round:', error);
-                }
-            };
-
-            const renderHome = () => (
-                <div className="max-w-4xl mx-auto">
-                    <div className="bg-gradient-to-r from-blue-500 to-purple-600 text-white p-8 rounded-lg shadow-lg mb-8">
-                        <div className="flex items-center justify-center mb-4">
-                            <Trophy size={48} />
-                        </div>
-                        <h1 className="text-4xl font-bold text-center mb-2">Ping Pong Tournament Manager</h1>
-                        <p className="text-center text-blue-100">Manage players, create tournaments, and track winners!</p>
-                    </div>
-
-                    <div className="grid md:grid-cols-3 gap-6 mb-8">
-                        <div className="bg-white p-6 rounded-lg shadow-md text-center">
-                            <Users size={32} className="mx-auto mb-3 text-blue-500" />
-                            <h3 className="text-2xl font-bold text-gray-800">{players.length}</h3>
-                            <p className="text-gray-600">Players</p>
-                        </div>
-                        <div className="bg-white p-6 rounded-lg shadow-md text-center">
-                            <Trophy size={32} className="mx-auto mb-3 text-purple-500" />
-                            <h3 className="text-2xl font-bold text-gray-800">{tournaments.length}</h3>
-                            <p className="text-gray-600">Tournaments</p>
-                        </div>
-                        <div className="bg-white p-6 rounded-lg shadow-md text-center">
-                            <Medal size={32} className="mx-auto mb-3 text-yellow-500" />
-                            <h3 className="text-2xl font-bold text-gray-800">
-                                {tournaments.filter(t => t.completed).length}
-                            </h3>
-                            <p className="text-gray-600">Completed</p>
-                        </div>
-                    </div>
-
-                    <div className="flex gap-4 justify-center">
-                        <button
-                            onClick={() => setCurrentView('players')}
-                            className="bg-blue-500 text-white px-8 py-3 rounded-lg font-semibold hover:bg-blue-600 transition flex items-center gap-2"
-                        >
-                            <Users size={20} />
-                            Manage Players
-                        </button>
-                        <button
-                            onClick={createTournament}
-                            className="bg-purple-500 text-white px-8 py-3 rounded-lg font-semibold hover:bg-purple-600 transition flex items-center gap-2"
-                        >
-                            <Trophy size={20} />
-                            New Tournament
-                        </button>
-                    </div>
-                </div>
-            );
-
-            const renderPlayers = () => (
-                <div className="max-w-4xl mx-auto">
-                    <div className="flex items-center justify-between mb-6">
-                        <h2 className="text-3xl font-bold text-gray-800 flex items-center gap-2">
-                            <Users size={32} />
-                            Players
-                        </h2>
-                        <button
-                            onClick={() => setCurrentView('home')}
-                            className="bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600"
-                        >
-                            Back
-                        </button>
-                    </div>
-
-                    <div className="bg-white p-6 rounded-lg shadow-md mb-6">
-                        <h3 className="text-xl font-semibold mb-4">Add New Player</h3>
-                        <div className="flex gap-2">
-                            <input
-                                type="text"
-                                value={newPlayerName}
-                                onChange={(e) => setNewPlayerName(e.target.value)}
-                                onKeyPress={(e) => e.key === 'Enter' && addPlayer()}
-                                placeholder="Player name"
-                                className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                            />
-                            <button
-                                onClick={addPlayer}
-                                className="bg-blue-500 text-white px-6 py-2 rounded-lg hover:bg-blue-600 flex items-center gap-2"
-                            >
-                                <Plus size={20} />
-                                Add
-                            </button>
-                        </div>
-                    </div>
-
-                    <div className="bg-white rounded-lg shadow-md overflow-hidden">
-                        <table className="w-full">
-                            <thead className="bg-gray-100">
-                                <tr>
-                                    <th className="px-6 py-3 text-left font-semibold text-gray-700">Name</th>
-                                    <th className="px-6 py-3 text-center font-semibold text-gray-700">Wins</th>
-                                    <th className="px-6 py-3 text-center font-semibold text-gray-700">Losses</th>
-                                    <th className="px-6 py-3 text-center font-semibold text-gray-700">Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {players.map((player, idx) => (
-                                    <tr key={player.id} className={idx % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
-                                        <td className="px-6 py-4">
-                                            {editingPlayer === player.id ? (
-                                                <input
-                                                    type="text"
-                                                    defaultValue={player.name}
-                                                    onKeyPress={(e) => {
-                                                        if (e.key === 'Enter') {
-                                                            updatePlayer(player.id, e.target.value);
-                                                        }
-                                                    }}
-                                                    className="px-2 py-1 border border-gray-300 rounded"
-                                                    autoFocus
-                                                />
-                                            ) : (
-                                                <span className="font-medium">{player.name}</span>
-                                            )}
-                                        </td>
-                                        <td className="px-6 py-4 text-center text-green-600 font-semibold">{player.wins}</td>
-                                        <td className="px-6 py-4 text-center text-red-600 font-semibold">{player.losses}</td>
-                                        <td className="px-6 py-4 text-center">
-                                            <div className="flex gap-2 justify-center">
-                                                {editingPlayer === player.id ? (
-                                                    <button
-                                                        onClick={() => setEditingPlayer(null)}
-                                                        className="text-gray-600 hover:text-gray-800"
-                                                    >
-                                                        <X size={18} />
-                                                    </button>
-                                                ) : (
-                                                    <button
-                                                        onClick={() => setEditingPlayer(player.id)}
-                                                        className="text-blue-600 hover:text-blue-800"
-                                                    >
-                                                        <Edit2 size={18} />
-                                                    </button>
-                                                )}
-                                                <button
-                                                    onClick={() => deletePlayer(player.id)}
-                                                    className="text-red-600 hover:text-red-800"
-                                                >
-                                                    <Trash2 size={18} />
-                                                </button>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                        {players.length === 0 && (
-                            <div className="text-center py-8 text-gray-500">
-                                No players yet. Add your first player above!
-                            </div>
-                        )}
-                    </div>
-                </div>
-            );
-
-            const renderTournament = () => {
-                if (!activeTournament) return null;
-
-                const currentRoundMatches = activeTournament.bracket.filter(
-                    m => m.round === activeTournament.current_round
-                );
-
-                return (
-                    <div className="max-w-6xl mx-auto">
-                        <div className="flex items-center justify-between mb-6">
-                            <h2 className="text-3xl font-bold text-gray-800 flex items-center gap-2">
-                                <Trophy size={32} className="text-purple-500" />
-                                {activeTournament.completed ? 'Tournament Complete!' : `Round ${activeTournament.current_round + 1}`}
-                            </h2>
-                            <button
-                                onClick={() => {
-                                    setActiveTournament(null);
-                                    setCurrentView('home');
-                                }}
-                                className="bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600"
-                            >
-                                Exit Tournament
-                            </button>
-                        </div>
-
-                        {activeTournament.completed && (
-                            <div className="bg-gradient-to-r from-yellow-400 to-orange-500 text-white p-8 rounded-lg shadow-lg mb-6 text-center">
-                                <Trophy size={64} className="mx-auto mb-4" />
-                                <h3 className="text-3xl font-bold mb-2">Champion</h3>
-                                <p className="text-4xl font-bold">{activeTournament.winner?.name}</p>
-                            </div>
-                        )}
-
-                        <div className="space-y-4">
-                            {currentRoundMatches.map((match) => (
-                                <div key={match.id} className="bg-white p-6 rounded-lg shadow-md">
-                                    <div className="grid grid-cols-3 gap-4 items-center">
-                                        <div className="text-right">
-                                            <p className="text-xl font-semibold text-gray-800">{match.player1?.name}</p>
-                                        </div>
-                                        <div className="text-center">
-                                            {match.winner ? (
-                                                <div className="text-green-600 font-bold text-xl">
-                                                    {match.score1} - {match.score2}
-                                                    <div className="text-sm text-gray-600 mt-1">Winner: {match.winner.name}</div>
-                                                </div>
-                                            ) : match.player2 ? (
-                                                <div className="flex gap-2 justify-center items-center">
-                                                    <input
-                                                        type="number"
-                                                        min="0"
-                                                        value={match.score1}
-                                                        onChange={(e) => updateMatch(match.id, e.target.value, match.score2)}
-                                                        className="w-16 px-2 py-2 text-center border border-gray-300 rounded-lg text-xl font-bold"
-                                                    />
-                                                    <span className="text-2xl font-bold text-gray-400">-</span>
-                                                    <input
-                                                        type="number"
-                                                        min="0"
-                                                        value={match.score2}
-                                                        onChange={(e) => updateMatch(match.id, match.score1, e.target.value)}
-                                                        className="w-16 px-2 py-2 text-center border border-gray-300 rounded-lg text-xl font-bold"
-                                                    />
-                                                </div>
-                                            ) : (
-                                                <div className="text-gray-500 font-semibold">BYE</div>
-                                            )}
-                                        </div>
-                                        <div className="text-left">
-                                            <p className="text-xl font-semibold text-gray-800">{match.player2?.name || 'BYE'}</p>
-                                        </div>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-
-                        {!activeTournament.completed && (
-                            <div className="mt-6 text-center">
-                                <button
-                                    onClick={advanceToNextRound}
-                                    className="bg-purple-500 text-white px-8 py-3 rounded-lg font-semibold hover:bg-purple-600 transition text-lg"
-                                >
-                                    {currentRoundMatches.length === 1 ? 'Finish Tournament' : 'Next Round'}
-                                </button>
-                            </div>
-                        )}
-                    </div>
-                );
-            };
-
-            if (loading) {
-                return (
-                    <div className="min-h-screen bg-gray-100 flex items-center justify-center">
-                        <div className="text-2xl text-gray-600">Loading...</div>
-                    </div>
-                );
+        const generateTimeSlots = () => {
+          const slots = [];
+          for (let hour = 8; hour < 17; hour++) {
+            for (let min = 0; min < 60; min += 20) {
+              if (hour === 16 && min > 40) break;
+              slots.push(`${hour.toString().padStart(2, '0')}:${min.toString().padStart(2, '0')}`);
             }
+          }
+          return slots;
+        };
 
-            return (
-                <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 p-8">
-                    {currentView === 'home' && renderHome()}
-                    {currentView === 'players' && renderPlayers()}
-                    {currentView === 'tournament' && renderTournament()}
-                </div>
-            );
+        const timeSlots = generateTimeSlots();
+        const formatTime = (time) => {
+          const [hour, min] = time.split(':');
+          const h = parseInt(hour);
+          return `${h > 12 ? h - 12 : h}:${min} ${h >= 12 ? 'PM' : 'AM'}`;
+        };
+
+        const getMatchId = (p1, p2) => [p1, p2].sort().join('|');
+        const getPlayerGroup = (player) => Object.entries(groups).find(([g, p]) => p.includes(player))?.[0];
+
+        function MatchResultForm({ match, onComplete }) {
+          const [winner, setWinner] = useState(null);
+          const [score1, setScore1] = useState('');
+          const [score2, setScore2] = useState('');
+
+          const handleSubmit = () => {
+            if (!winner || score1 === '' || score2 === '') return;
+            onComplete(match.id, winner, parseInt(score1), parseInt(score2));
+          };
+
+          return (
+            <div className="bg-slate-800/50 rounded-lg p-2 space-y-2">
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-slate-500">Winner:</span>
+                {[match.player1, match.player2].map(p => (
+                  <button key={p} onClick={() => setWinner(p)}
+                    className={`text-xs px-2 py-1 rounded-lg transition ${winner === p ? 'bg-emerald-500 text-white' : 'bg-slate-700 text-slate-400 hover:bg-slate-600'}`}>{p.split(' ')[0]}</button>
+                ))}
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-slate-500">Score:</span>
+                <input type="number" min="0" max="99" value={score1} onChange={e => setScore1(e.target.value)} placeholder="0" className="w-12 bg-slate-700 text-white text-center text-sm rounded px-2 py-1" />
+                <span className="text-slate-500">-</span>
+                <input type="number" min="0" max="99" value={score2} onChange={e => setScore2(e.target.value)} placeholder="0" className="w-12 bg-slate-700 text-white text-center text-sm rounded px-2 py-1" />
+                <button onClick={handleSubmit} disabled={!winner || score1 === '' || score2 === ''}
+                  className="text-xs bg-violet-600 hover:bg-violet-500 disabled:bg-slate-700 disabled:text-slate-500 text-white px-3 py-1 rounded-lg ml-auto transition">Save</button>
+              </div>
+            </div>
+          );
         }
 
-        ReactDOM.render(<PingPongTournament />, document.getElementById('root'));
+        const generateAllMatches = () => {
+          const matches = {};
+          Object.entries(groups).forEach(([group, players]) => {
+            for (let i = 0; i < players.length; i++) {
+              for (let j = i + 1; j < players.length; j++) {
+                const id = getMatchId(players[i], players[j]);
+                matches[id] = { id, group, player1: players[i], player2: players[j], lockedDate: null, lockedTime: null, winner: null, score1: null, score2: null, completed: false };
+              }
+            }
+          });
+          return matches;
+        };
+
+        function App() {
+          const [currentUser, setCurrentUser] = useState(null);
+          const [activeGroup, setActiveGroup] = useState('A');
+          const [selectedDate, setSelectedDate] = useState(dates[0]);
+          const [availability, setAvailability] = useState({});
+          const [matches, setMatches] = useState(generateAllMatches);
+          const [view, setView] = useState('availability');
+          const [loading, setLoading] = useState(true);
+
+          useEffect(() => {
+            loadData();
+          }, []);
+
+          const loadData = async () => {
+            try {
+              const [availRes, matchRes] = await Promise.all([
+                fetch(`${API_BASE}/availability`),
+                fetch(`${API_BASE}/matches`)
+              ]);
+              const availData = await availRes.json();
+              const matchData = await matchRes.json();
+              if (availData && Object.keys(availData).length > 0) setAvailability(availData);
+              if (matchData && Object.keys(matchData).length > 0) setMatches(matchData);
+            } catch (e) {
+              console.error('Error loading data:', e);
+            }
+            setLoading(false);
+          };
+
+          const saveAvailability = async (newAvail) => {
+            setAvailability(newAvail);
+            try {
+              await fetch(`${API_BASE}/availability`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(newAvail)
+              });
+            } catch (e) {
+              console.error('Error saving availability:', e);
+            }
+          };
+
+          const saveMatches = async (newMatches) => {
+            setMatches(newMatches);
+            try {
+              await fetch(`${API_BASE}/matches`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(newMatches)
+              });
+            } catch (e) {
+              console.error('Error saving matches:', e);
+            }
+          };
+
+          const refreshData = async () => {
+            await loadData();
+          };
+
+          // Auto-refresh every 30 seconds
+          useEffect(() => {
+            if (!currentUser) return;
+            const interval = setInterval(refreshData, 30000);
+            return () => clearInterval(interval);
+          }, [currentUser]);
+
+          const getPlayerAvailability = (player, date) => availability[player]?.[date] || [];
+
+          const toggleSlot = async (time) => {
+            if (!currentUser) return;
+            const playerData = availability[currentUser] || {};
+            const dateSlots = playerData[selectedDate] || [];
+            const newSlots = dateSlots.includes(time) ? dateSlots.filter(t => t !== time) : [...dateSlots, time];
+            const newAvail = { ...availability, [currentUser]: { ...playerData, [selectedDate]: newSlots } };
+            await saveAvailability(newAvail);
+          };
+
+          const selectAllSlots = async () => {
+            if (!currentUser) return;
+            const playerData = availability[currentUser] || {};
+            const newAvail = { ...availability, [currentUser]: { ...playerData, [selectedDate]: [...timeSlots] } };
+            await saveAvailability(newAvail);
+          };
+
+          const clearSlots = async () => {
+            if (!currentUser) return;
+            const playerData = availability[currentUser] || {};
+            const newAvail = { ...availability, [currentUser]: { ...playerData, [selectedDate]: [] } };
+            await saveAvailability(newAvail);
+          };
+
+          const isSlotConflict = (player, date, time, excludeMatchId) => {
+            return Object.values(matches).some(m =>
+              m.id !== excludeMatchId && m.lockedDate === date && m.lockedTime === time && (m.player1 === player || m.player2 === player)
+            );
+          };
+
+          const getCommonSlots = (match) => {
+            const common = [];
+            dates.forEach(date => {
+              const p1Slots = getPlayerAvailability(match.player1, date);
+              const p2Slots = getPlayerAvailability(match.player2, date);
+              p1Slots.forEach(time => {
+                if (p2Slots.includes(time)) {
+                  const conflict = isSlotConflict(match.player1, date, time, match.id) || isSlotConflict(match.player2, date, time, match.id);
+                  common.push({ date, time, conflict });
+                }
+              });
+            });
+            return common;
+          };
+
+          const lockTime = async (matchId, date, time) => {
+            const newMatches = { ...matches, [matchId]: { ...matches[matchId], lockedDate: date, lockedTime: time } };
+            await saveMatches(newMatches);
+          };
+
+          const unlockTime = async (matchId) => {
+            const newMatches = { ...matches, [matchId]: { ...matches[matchId], lockedDate: null, lockedTime: null } };
+            await saveMatches(newMatches);
+          };
+
+          const completeMatch = async (matchId, winner, score1, score2) => {
+            const newMatches = { ...matches, [matchId]: { ...matches[matchId], winner, score1, score2, completed: true } };
+            await saveMatches(newMatches);
+          };
+
+          const reopenMatch = async (matchId) => {
+            const newMatches = { ...matches, [matchId]: { ...matches[matchId], winner: null, score1: null, score2: null, completed: false } };
+            await saveMatches(newMatches);
+          };
+
+          const groupMatches = Object.values(matches).filter(m => m.group === activeGroup);
+          const completed = groupMatches.filter(m => m.completed).length;
+          const scheduled = groupMatches.filter(m => m.lockedTime).length;
+          const total = groupMatches.length;
+          const userGroup = currentUser ? getPlayerGroup(currentUser) : null;
+
+          if (loading) {
+            return <div className="min-h-screen bg-slate-950 text-slate-100 flex items-center justify-center">Loading...</div>;
+          }
+
+          if (!currentUser) {
+            return (
+              <div className="min-h-screen bg-slate-950 text-slate-100 p-4">
+                <div className="max-w-md mx-auto pt-12">
+                  <div className="text-center mb-8">
+                    <h1 className="text-2xl font-light tracking-wide mb-2">🏓 Tournament Scheduler</h1>
+                    <p className="text-slate-500 text-sm">Select your name to continue</p>
+                  </div>
+                  <div className="space-y-3">
+                    {Object.entries(groups).map(([group, players]) => (
+                      <div key={group} className="bg-slate-900 rounded-xl p-3">
+                        <p className="text-violet-400 text-xs font-semibold mb-2">Group {group}</p>
+                        <div className="grid grid-cols-2 gap-2">
+                          {players.map(player => (
+                            <button key={player} onClick={() => { setCurrentUser(player); setActiveGroup(group); }}
+                              className="p-2 bg-slate-800 hover:bg-violet-600 rounded-lg text-sm text-left truncate transition">
+                              {player}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            );
+          }
+
+          return (
+            <div className="min-h-screen bg-slate-950 text-slate-100 p-4">
+              <div className="max-w-2xl mx-auto">
+                <div className="flex items-center justify-between mb-4">
+                  <div>
+                    <h1 className="text-lg font-light">🏓 Tournament</h1>
+                    <p className="text-violet-400 text-sm">{currentUser} <span className="text-slate-600">• Group {userGroup}</span></p>
+                  </div>
+                  <div className="flex gap-2">
+                    <button onClick={refreshData} className="text-xs bg-slate-800 hover:bg-slate-700 px-3 py-1.5 rounded-lg">↻ Refresh</button>
+                    <button onClick={() => setCurrentUser(null)} className="text-xs bg-slate-800 hover:bg-slate-700 px-3 py-1.5 rounded-lg">Switch</button>
+                  </div>
+                </div>
+
+                <div className="flex justify-center mb-4">
+                  <div className="bg-slate-900 rounded-full p-1 inline-flex">
+                    <button onClick={() => setView('availability')} className={`px-4 py-1.5 rounded-full text-sm transition ${view === 'availability' ? 'bg-slate-700 text-white' : 'text-slate-400'}`}>My Availability</button>
+                    <button onClick={() => setView('matches')} className={`px-4 py-1.5 rounded-full text-sm transition ${view === 'matches' ? 'bg-slate-700 text-white' : 'text-slate-400'}`}>Matches</button>
+                  </div>
+                </div>
+
+                {view === 'availability' && (
+                  <div className="bg-slate-900 rounded-2xl p-4">
+                    <div className="flex justify-between items-center mb-4">
+                      <p className="text-slate-500 text-xs uppercase tracking-wider">Select Date</p>
+                      <div className="flex gap-1">
+                        {dates.map(d => (
+                          <button key={d} onClick={() => setSelectedDate(d)}
+                            className={`px-3 py-1.5 rounded-lg text-sm transition ${selectedDate === d ? 'bg-violet-600 text-white' : 'bg-slate-800 text-slate-400'}`}>{d}</button>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="flex justify-between items-center mb-2">
+                      <p className="text-slate-500 text-xs uppercase tracking-wider">Your Time Slots</p>
+                      <div className="flex gap-2">
+                        <button onClick={selectAllSlots} className="text-xs text-violet-400 hover:text-violet-300">Select All</button>
+                        <button onClick={clearSlots} className="text-xs text-slate-500 hover:text-slate-400">Clear</button>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-6 gap-1.5">
+                      {timeSlots.map(time => {
+                        const isSelected = getPlayerAvailability(currentUser, selectedDate).includes(time);
+                        return (
+                          <button key={time} onClick={() => toggleSlot(time)}
+                            className={`py-2 text-xs rounded-lg transition ${isSelected ? 'bg-emerald-500 text-white' : 'bg-slate-800 text-slate-400 hover:bg-slate-700'}`}>{formatTime(time)}</button>
+                        );
+                      })}
+                    </div>
+
+                    <div className="mt-4 pt-4 border-t border-slate-800">
+                      <p className="text-slate-500 text-xs mb-2">Your availability summary:</p>
+                      <div className="flex gap-2 flex-wrap">
+                        {dates.map(d => {
+                          const count = getPlayerAvailability(currentUser, d).length;
+                          return (
+                            <span key={d} className={`text-xs px-2 py-1 rounded-lg ${count > 0 ? 'bg-emerald-500/20 text-emerald-400' : 'bg-slate-800 text-slate-500'}`}>
+                              {d}: {count} slots
+                            </span>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {view === 'matches' && (
+                  <>
+                    <div className="flex justify-center gap-2 mb-4">
+                      {Object.keys(groups).map(g => (
+                        <button key={g} onClick={() => setActiveGroup(g)}
+                          className={`w-10 h-10 rounded-xl text-sm font-semibold transition ${activeGroup === g ? 'bg-violet-600 text-white' : 'bg-slate-800 text-slate-400 hover:bg-slate-700'}`}>{g}</button>
+                      ))}
+                    </div>
+
+                    <div className="bg-slate-900 rounded-2xl p-4">
+                      <div className="flex justify-between items-center mb-4">
+                        <p className="text-slate-500 text-xs uppercase tracking-wider">Group {activeGroup} Matches</p>
+                        <div className="flex gap-2">
+                          <span className="text-xs px-2 py-1 rounded-full bg-emerald-500/20 text-emerald-400">{completed}/{total} done</span>
+                          <span className={`text-xs px-2 py-1 rounded-full ${scheduled === total ? 'bg-violet-500/20 text-violet-400' : 'bg-amber-500/20 text-amber-400'}`}>{scheduled}/{total} scheduled</span>
+                        </div>
+                      </div>
+
+                      <div className="space-y-3">
+                        {groupMatches.map(match => {
+                          const commonSlots = getCommonSlots(match);
+                          const isLocked = match.lockedTime;
+                          const isMyMatch = match.player1 === currentUser || match.player2 === currentUser;
+                          return (
+                            <div key={match.id} className={`p-3 rounded-xl ${match.completed ? 'bg-slate-800/50 border border-slate-700' : isLocked ? 'bg-emerald-900/20 border border-emerald-800/50' : isMyMatch ? 'bg-violet-900/20 border border-violet-800/50' : 'bg-slate-800'}`}>
+                              <div className="flex items-center justify-between mb-2">
+                                <div className="text-sm">
+                                  <span className={`${match.completed && match.winner === match.player1 ? 'text-emerald-400 font-semibold' : 'text-slate-300'} ${match.player1 === currentUser ? 'underline' : ''}`}>{match.player1}</span>
+                                  <span className="text-slate-600 mx-2">vs</span>
+                                  <span className={`${match.completed && match.winner === match.player2 ? 'text-emerald-400 font-semibold' : 'text-slate-300'} ${match.player2 === currentUser ? 'underline' : ''}`}>{match.player2}</span>
+                                </div>
+                                {isLocked && <button onClick={() => unlockTime(match.id)} className="text-xs text-slate-500 hover:text-red-400">✕</button>}
+                              </div>
+
+                              {isLocked ? (
+                                <div className="space-y-2">
+                                  <div className="flex items-center justify-between">
+                                    <span className="text-xs bg-emerald-500/30 text-emerald-300 px-2 py-1 rounded-lg inline-block">🔒 {match.lockedDate} @ {formatTime(match.lockedTime)}</span>
+                                    {match.completed && <span className="text-xs bg-violet-500/30 text-violet-300 px-2 py-1 rounded-lg">✓ Complete</span>}
+                                  </div>
+
+                                  {match.completed ? (
+                                    <div className="flex items-center justify-between bg-slate-800/50 rounded-lg p-2">
+                                      <div className="text-sm">
+                                        <span className={match.winner === match.player1 ? 'text-emerald-400 font-semibold' : 'text-slate-400'}>{match.player1.split(' ')[0]}</span>
+                                        <span className="text-slate-500 mx-2">{match.score1} - {match.score2}</span>
+                                        <span className={match.winner === match.player2 ? 'text-emerald-400 font-semibold' : 'text-slate-400'}>{match.player2.split(' ')[0]}</span>
+                                      </div>
+                                      <button onClick={() => reopenMatch(match.id)} className="text-xs text-slate-500 hover:text-amber-400">Edit</button>
+                                    </div>
+                                  ) : (
+                                    <MatchResultForm match={match} onComplete={completeMatch} />
+                                  )}
+                                </div>
+                              ) : (
+                                <div className="flex flex-wrap gap-1">
+                                  {commonSlots.length === 0 ? (
+                                    <span className="text-red-400 text-xs">No common availability</span>
+                                  ) : (
+                                    commonSlots.map((slot, i) => (
+                                      <button key={i} onClick={() => !slot.conflict && lockTime(match.id, slot.date, slot.time)}
+                                        className={`text-xs px-2 py-1 rounded-lg transition ${slot.conflict ? 'bg-red-900/30 text-red-400 cursor-not-allowed line-through' : 'bg-slate-700 text-slate-300 hover:bg-violet-600 hover:text-white'}`}
+                                        title={slot.conflict ? 'Conflict' : 'Click to lock'}>{slot.date} {formatTime(slot.time)}</button>
+                                    ))
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
+          );
+        }
+
+        ReactDOM.render(<App />, document.getElementById('root'));
     </script>
 </body>
 </html>
