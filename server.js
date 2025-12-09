@@ -155,7 +155,10 @@ app.get('/api/availability', (req, res) => {
 // Save availability
 app.post('/api/availability', (req, res) => {
   try {
-    writeJSON(AVAILABILITY_FILE, req.body);
+    const success = writeJSON(AVAILABILITY_FILE, req.body);
+    if (!success) {
+      return res.status(500).json({ error: 'Failed to write data' });
+    }
     res.json({ success: true });
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -175,7 +178,10 @@ app.get('/api/matches', (req, res) => {
 // Save matches
 app.post('/api/matches', (req, res) => {
   try {
-    writeJSON(MATCHES_FILE, req.body);
+    const success = writeJSON(MATCHES_FILE, req.body);
+    if (!success) {
+      return res.status(500).json({ error: 'Failed to write data' });
+    }
     res.json({ success: true });
   } catch (error) {
     res.status(500).json({ error: error.message });
