@@ -58,3 +58,8 @@ temp/
 # Backup files
 *.bak
 *.backup
+
+# Database
+*.db
+*.sqlite
+*.sqlite3

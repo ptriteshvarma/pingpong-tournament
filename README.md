@@ -1,4 +1,4 @@
-# 🏓 Ping Pong Tournament Manager
+# Ping Pong Tournament Manager
 
 A web-based application for managing ping pong tournaments with automatic bracket generation, live scoring, and player statistics tracking.
 
@@ -8,20 +8,40 @@ A web-based application for managing ping pong tournaments with automatic bracke
 - **Tournament Brackets**: Automatic single-elimination bracket generation
 - **Live Scoring**: Real-time match score tracking with validation
 - **Statistics**: Track wins and losses for each player
-- **Persistent Storage**: All data saved in browser localStorage
+- **Persistent Storage**: SQLite database for reliable data storage
 - **Responsive Design**: Works on desktop and mobile devices
 
 ## Quick Start
 
+### Local Development
+
 1. Clone this repository:
 ```bash
-git clone https://github.com/yourusername/pingpong-tournament.git
+git clone https://github.com/ptriteshvarma/pingpong-tournament.git
 cd pingpong-tournament
 ```
 
-2. Open `index.html` in your web browser
+2. Install dependencies:
+```bash
+npm install
+```
 
-That's it! No build process or dependencies required.
+3. Start the server:
+```bash
+npm start
+```
+
+4. Open http://localhost:3000 in your browser
+
+### Deploy to Railway
+
+1. Push this repo to GitHub
+2. Go to [Railway](https://railway.app)
+3. Click "New Project" > "Deploy from GitHub repo"
+4. Select this repository
+5. Railway will auto-detect and deploy
+
+The app uses SQLite which persists data on Railway's volume storage.
 
 ## How to Use
 
@@ -48,31 +68,21 @@ That's it! No build process or dependencies required.
 
 ## Technical Details
 
-- Pure HTML/CSS/JavaScript
-- React 18 (loaded via CDN)
+- Node.js + Express backend
+- SQLite database (better-sqlite3)
+- React 18 frontend (loaded via CDN)
 - Tailwind CSS for styling
-- LocalStorage for data persistence
-- No backend or server required
 
-## Browser Compatibility
+## API Endpoints
 
-Works on all modern browsers that support:
-- ES6 JavaScript
-- LocalStorage API
-- React 18
-
-## Data Storage
-
-All tournament and player data is stored in your browser's localStorage. Data persists between sessions but is local to your device.
+- `GET /api/players` - Get all players
+- `POST /api/players` - Add a player
+- `PUT /api/players/:id` - Update a player
+- `DELETE /api/players/:id` - Delete a player
+- `GET /api/tournaments` - Get all tournaments
+- `POST /api/tournaments` - Create a tournament
+- `PUT /api/tournaments/:id` - Update a tournament
 
 ## License
 
 MIT License - feel free to use and modify as needed!
-
-## Contributing
-
-Pull requests are welcome! For major changes, please open an issue first.
-
----
-
-Built with ❤️ for ping pong enthusiasts

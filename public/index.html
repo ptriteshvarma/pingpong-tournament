@@ -11,10 +11,12 @@
 </head>
 <body>
     <div id="root"></div>
-    
+
     <script type="text/babel">
         const { useState, useEffect } = React;
-        
+
+        const API_BASE = '/api';
+
         // Lucide icons as inline SVG components
         const Trophy = ({ size = 24, className = "" }) => (
             <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
@@ -89,61 +91,80 @@
                 loadData();
             }, []);
 
-            const loadData = () => {
+            const loadData = async () => {
                 try {
-                    const playersData = localStorage.getItem('pingpong_players');
-                    const tournamentsData = localStorage.getItem('pingpong_tournaments');
-                    
-                    if (playersData) {
-                        setPlayers(JSON.parse(playersData));
-                    }
-                    if (tournamentsData) {
-                        setTournaments(JSON.parse(tournamentsData));
-                    }
+                    const [playersRes, tournamentsRes] = await Promise.all([
+                        fetch(`${API_BASE}/players`),
+                        fetch(`${API_BASE}/tournaments`)
+                    ]);
+
+                    const playersData = await playersRes.json();
+                    const tournamentsData = await tournamentsRes.json();
+
+                    setPlayers(playersData);
+                    setTournaments(tournamentsData);
                 } catch (error) {
-                    console.log('No existing data found');
+                    console.error('Error loading data:', error);
                 }
                 setLoading(false);
             };
 
-            const saveData = (updatedPlayers, updatedTournaments) => {
-                try {
-                    localStorage.setItem('pingpong_players', JSON.stringify(updatedPlayers || players));
-                    localStorage.setItem('pingpong_tournaments', JSON.stringify(updatedTournaments || tournaments));
-                } catch (error) {
-                    console.error('Error saving data:', error);
-                }
-            };
-
-            const addPlayer = () => {
+            const addPlayer = async () => {
                 if (newPlayerName.trim()) {
-                    const newPlayer = {
-                        id: Date.now(),
-                        name: newPlayerName.trim(),
-                        wins: 0,
-                        losses: 0
-                    };
-                    const updated = [...players, newPlayer];
-                    setPlayers(updated);
-                    saveData(updated, tournaments);
-                    setNewPlayerName('');
+                    try {
+                        const res = await fetch(`${API_BASE}/players`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ name: newPlayerName.trim() })
+                        });
+                        const newPlayer = await res.json();
+                        setPlayers([...players, newPlayer]);
+                        setNewPlayerName('');
+                    } catch (error) {
+                        console.error('Error adding player:', error);
+                    }
                 }
             };
 
-            const deletePlayer = (id) => {
-                const updated = players.filter(p => p.id !== id);
-                setPlayers(updated);
-                saveData(updated, tournaments);
+            const deletePlayer = async (id) => {
+                try {
+                    await fetch(`${API_BASE}/players/${id}`, { method: 'DELETE' });
+                    setPlayers(players.filter(p => p.id !== id));
+                } catch (error) {
+                    console.error('Error deleting player:', error);
+                }
             };
 
-            const updatePlayer = (id, newName) => {
-                const updated = players.map(p => p.id === id ? { ...p, name: newName } : p);
-                setPlayers(updated);
-                saveData(updated, tournaments);
-                setEditingPlayer(null);
+            const updatePlayer = async (id, newName) => {
+                try {
+                    const res = await fetch(`${API_BASE}/players/${id}`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ name: newName })
+                    });
+                    const updatedPlayer = await res.json();
+                    setPlayers(players.map(p => p.id === id ? updatedPlayer : p));
+                    setEditingPlayer(null);
+                } catch (error) {
+                    console.error('Error updating player:', error);
+                }
             };
 
-            const createTournament = () => {
+            const updatePlayerStats = async (id, wins, losses) => {
+                try {
+                    const res = await fetch(`${API_BASE}/players/${id}`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ wins, losses })
+                    });
+                    const updatedPlayer = await res.json();
+                    setPlayers(prev => prev.map(p => p.id === id ? updatedPlayer : p));
+                } catch (error) {
+                    console.error('Error updating player stats:', error);
+                }
+            };
+
+            const createTournament = async () => {
                 if (players.length < 2) {
                     alert('You need at least 2 players to start a tournament!');
                     return;
@@ -187,24 +208,27 @@
                     }
                 }
 
-                const tournament = {
-                    id: Date.now(),
-                    date: new Date().toISOString(),
-                    bracket,
-                    totalRounds: rounds,
-                    currentRound: 0,
-                    completed: false,
-                    winner: null
-                };
-
-                const updated = [...tournaments, tournament];
-                setTournaments(updated);
-                saveData(players, updated);
-                setActiveTournament(tournament);
-                setCurrentView('tournament');
+                try {
+                    const res = await fetch(`${API_BASE}/tournaments`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            date: new Date().toISOString(),
+                            bracket,
+                            totalRounds: rounds,
+                            currentRound: 0
+                        })
+                    });
+                    const tournament = await res.json();
+                    setTournaments([...tournaments, tournament]);
+                    setActiveTournament(tournament);
+                    setCurrentView('tournament');
+                } catch (error) {
+                    console.error('Error creating tournament:', error);
+                }
             };
 
-            const updateMatch = (matchId, score1, score2) => {
+            const updateMatch = async (matchId, score1, score2) => {
                 const match = activeTournament.bracket.find(m => m.id === matchId);
                 if (!match || match.winner) return;
 
@@ -214,34 +238,45 @@
                 if (match.score1 >= 11 || match.score2 >= 11) {
                     if (Math.abs(match.score1 - match.score2) >= 2) {
                         match.winner = match.score1 > match.score2 ? match.player1 : match.player2;
-                        
-                        const updatedPlayers = players.map(p => {
-                            if (p.id === match.winner.id) {
-                                return { ...p, wins: p.wins + 1 };
-                            }
-                            if (p.id === (match.player1?.id === match.winner.id ? match.player2?.id : match.player1?.id)) {
-                                return { ...p, losses: p.losses + 1 };
-                            }
-                            return p;
-                        });
-                        setPlayers(updatedPlayers);
-                        saveData(updatedPlayers, tournaments);
+
+                        // Update player stats
+                        const winnerId = match.winner.id;
+                        const loserId = match.player1.id === winnerId ? match.player2?.id : match.player1?.id;
+
+                        const winner = players.find(p => p.id === winnerId);
+                        const loser = players.find(p => p.id === loserId);
+
+                        if (winner) {
+                            await updatePlayerStats(winnerId, winner.wins + 1, winner.losses);
+                        }
+                        if (loser) {
+                            await updatePlayerStats(loserId, loser.wins, loser.losses + 1);
+                        }
                     }
                 }
 
                 const updatedTournament = { ...activeTournament };
                 setActiveTournament(updatedTournament);
-                
-                const updatedTournaments = tournaments.map(t => 
-                    t.id === activeTournament.id ? updatedTournament : t
-                );
-                setTournaments(updatedTournaments);
-                saveData(players, updatedTournaments);
+
+                // Save to server
+                try {
+                    await fetch(`${API_BASE}/tournaments/${activeTournament.id}`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ bracket: updatedTournament.bracket })
+                    });
+
+                    setTournaments(tournaments.map(t =>
+                        t.id === activeTournament.id ? updatedTournament : t
+                    ));
+                } catch (error) {
+                    console.error('Error updating match:', error);
+                }
             };
 
-            const advanceToNextRound = () => {
+            const advanceToNextRound = async () => {
                 const currentRoundMatches = activeTournament.bracket.filter(
-                    m => m.round === activeTournament.currentRound
+                    m => m.round === activeTournament.current_round
                 );
 
                 const allComplete = currentRoundMatches.every(m => m.winner);
@@ -251,7 +286,7 @@
                 }
 
                 const winners = currentRoundMatches.map(m => m.winner);
-                
+
                 if (winners.length === 1) {
                     const updatedTournament = {
                         ...activeTournament,
@@ -259,15 +294,27 @@
                         winner: winners[0]
                     };
                     setActiveTournament(updatedTournament);
-                    const updatedTournaments = tournaments.map(t => 
-                        t.id === activeTournament.id ? updatedTournament : t
-                    );
-                    setTournaments(updatedTournaments);
-                    saveData(players, updatedTournaments);
+
+                    try {
+                        await fetch(`${API_BASE}/tournaments/${activeTournament.id}`, {
+                            method: 'PUT',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                completed: true,
+                                winner: winners[0]
+                            })
+                        });
+
+                        setTournaments(tournaments.map(t =>
+                            t.id === activeTournament.id ? updatedTournament : t
+                        ));
+                    } catch (error) {
+                        console.error('Error completing tournament:', error);
+                    }
                     return;
                 }
 
-                const nextRound = activeTournament.currentRound + 1;
+                const nextRound = activeTournament.current_round + 1;
                 const nextRoundMatches = [];
 
                 for (let i = 0; i < winners.length; i += 2) {
@@ -285,15 +332,27 @@
                 const updatedTournament = {
                     ...activeTournament,
                     bracket: [...activeTournament.bracket, ...nextRoundMatches],
-                    currentRound: nextRound
+                    current_round: nextRound
                 };
 
                 setActiveTournament(updatedTournament);
-                const updatedTournaments = tournaments.map(t => 
-                    t.id === activeTournament.id ? updatedTournament : t
-                );
-                setTournaments(updatedTournaments);
-                saveData(players, updatedTournaments);
+
+                try {
+                    await fetch(`${API_BASE}/tournaments/${activeTournament.id}`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            bracket: updatedTournament.bracket,
+                            currentRound: nextRound
+                        })
+                    });
+
+                    setTournaments(tournaments.map(t =>
+                        t.id === activeTournament.id ? updatedTournament : t
+                    ));
+                } catch (error) {
+                    console.error('Error advancing round:', error);
+                }
             };
 
             const renderHome = () => (
@@ -455,7 +514,7 @@
                 if (!activeTournament) return null;
 
                 const currentRoundMatches = activeTournament.bracket.filter(
-                    m => m.round === activeTournament.currentRound
+                    m => m.round === activeTournament.current_round
                 );
 
                 return (
@@ -463,7 +522,7 @@
                         <div className="flex items-center justify-between mb-6">
                             <h2 className="text-3xl font-bold text-gray-800 flex items-center gap-2">
                                 <Trophy size={32} className="text-purple-500" />
-                                {activeTournament.completed ? 'Tournament Complete!' : `Round ${activeTournament.currentRound + 1}`}
+                                {activeTournament.completed ? 'Tournament Complete!' : `Round ${activeTournament.current_round + 1}`}
                             </h2>
                             <button
                                 onClick={() => {
@@ -479,7 +538,7 @@
                         {activeTournament.completed && (
                             <div className="bg-gradient-to-r from-yellow-400 to-orange-500 text-white p-8 rounded-lg shadow-lg mb-6 text-center">
                                 <Trophy size={64} className="mx-auto mb-4" />
-                                <h3 className="text-3xl font-bold mb-2">🎉 Champion 🎉</h3>
+                                <h3 className="text-3xl font-bold mb-2">Champion</h3>
                                 <p className="text-4xl font-bold">{activeTournament.winner?.name}</p>
                             </div>
                         )}
