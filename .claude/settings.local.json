@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git config:*)",
+      "Bash(git remote set-url:*)",
+      "Bash(git push:*)",
+      "Bash(git add:*)",
+      "Bash(git rm:*)",
+      "Bash(git commit -m \"$(cat <<''EOF''\nConvert to full-stack app with Express backend and SQLite database\n\n- Add Express server with REST API endpoints for players and tournaments\n- Add SQLite database (better-sqlite3) for persistent data storage\n- Move frontend to public/ directory\n- Update frontend to use API instead of localStorage\n- Add railway.json for Railway deployment\n- Update README with deployment instructions\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n)\")",
+      "Bash(git commit:*)"
+    ]
+  }
+}
