@@ -653,6 +653,444 @@ const loadBracketFromDB = async () => {
   }
 };
 
+// ============== LEAGUE SEASON SYSTEM ==============
+
+// Generate round robin schedule for a group
+const generateRoundRobinSchedule = (players, doubleRoundRobin = true) => {
+  const n = players.length;
+  const matches = [];
+
+  const playerList = [...players];
+  if (n % 2 === 1) {
+    playerList.push({ name: 'BYE', isBye: true });
+  }
+
+  const numPlayers = playerList.length;
+  const numRounds = numPlayers - 1;
+  const halfSize = numPlayers / 2;
+
+  const playerIndices = playerList.map((_, i) => i);
+  const fixedPlayer = playerIndices.shift();
+
+  for (let round = 0; round < numRounds; round++) {
+    const roundMatches = [];
+    const p1Index = fixedPlayer;
+    const p2Index = playerIndices[0];
+
+    // Add first match (fixed player vs first rotating player)
+    if (!playerList[p1Index].isBye && !playerList[p2Index].isBye &&
+        playerList[p1Index].name !== playerList[p2Index].name) {
+      roundMatches.push({
+        player1: playerList[p1Index].name,
+        player2: playerList[p2Index].name
+      });
+    }
+
+    for (let i = 1; i < halfSize; i++) {
+      const p1 = playerIndices[i];
+      const p2 = playerIndices[numPlayers - 2 - i];
+
+      // Prevent self-matches and bye matches
+      if (!playerList[p1].isBye && !playerList[p2].isBye &&
+          playerList[p1].name !== playerList[p2].name) {
+        roundMatches.push({
+          player1: playerList[p1].name,
+          player2: playerList[p2].name
+        });
+      }
+    }
+
+    matches.push(...roundMatches);
+    playerIndices.push(playerIndices.shift());
+  }
+
+  if (doubleRoundRobin) {
+    const reverseMatches = matches.map(m => ({
+      player1: m.player2,
+      player2: m.player1
+    }));
+    matches.push(...reverseMatches);
+  }
+
+  return matches;
+};
+
+// Distribute matches across weeks (2 games per player per week)
+const distributeMatchesToWeeks = (matches, players, numWeeks) => {
+  const weeks = Array.from({ length: numWeeks }, () => []);
+  const playerGamesPerWeek = {};
+
+  players.forEach(p => {
+    playerGamesPerWeek[p.name] = Array(numWeeks).fill(0);
+  });
+
+  const unassigned = [...matches];
+
+  for (let week = 0; week < numWeeks && unassigned.length > 0; week++) {
+    const toRemove = [];
+
+    for (let i = 0; i < unassigned.length; i++) {
+      const match = unassigned[i];
+      const p1Games = playerGamesPerWeek[match.player1][week];
+      const p2Games = playerGamesPerWeek[match.player2][week];
+
+      if (p1Games < 2 && p2Games < 2) {
+        weeks[week].push({
+          ...match,
+          id: `W${week + 1}-M${weeks[week].length + 1}`,
+          week: week + 1,
+          completed: false,
+          winner: null,
+          loser: null,
+          score1: null,
+          score2: null
+        });
+
+        playerGamesPerWeek[match.player1][week]++;
+        playerGamesPerWeek[match.player2][week]++;
+        toRemove.push(i);
+      }
+    }
+
+    for (let i = toRemove.length - 1; i >= 0; i--) {
+      unassigned.splice(toRemove[i], 1);
+    }
+  }
+
+  while (unassigned.length > 0) {
+    const match = unassigned.shift();
+    let bestWeek = numWeeks - 1;
+    for (let w = 0; w < numWeeks; w++) {
+      if (playerGamesPerWeek[match.player1][w] < 2 && playerGamesPerWeek[match.player2][w] < 2) {
+        bestWeek = w;
+        break;
+      }
+    }
+    weeks[bestWeek].push({
+      ...match,
+      id: `W${bestWeek + 1}-M${weeks[bestWeek].length + 1}`,
+      week: bestWeek + 1,
+      completed: false,
+      winner: null,
+      loser: null,
+      score1: null,
+      score2: null
+    });
+  }
+
+  return weeks;
+};
+
+// Generate complete season
+const generateSeason = (groupA, groupB, numWeeks = 10) => {
+  const groupAMatches = generateRoundRobinSchedule(groupA, true);
+  const groupBMatches = generateRoundRobinSchedule(groupB, true);
+
+  const groupAWeeks = distributeMatchesToWeeks(groupAMatches, groupA, numWeeks);
+  const groupBWeeks = distributeMatchesToWeeks(groupBMatches, groupB, numWeeks);
+
+  groupAWeeks.forEach((week, wi) => {
+    week.forEach((match, mi) => {
+      match.id = `A-W${wi + 1}-M${mi + 1}`;
+      match.group = 'A';
+    });
+  });
+
+  groupBWeeks.forEach((week, wi) => {
+    week.forEach((match, mi) => {
+      match.id = `B-W${wi + 1}-M${mi + 1}`;
+      match.group = 'B';
+    });
+  });
+
+  const standings = { A: {}, B: {} };
+
+  groupA.forEach(p => {
+    standings.A[p.name] = {
+      wins: 0, losses: 0, points: 0,
+      pointsFor: 0, pointsAgainst: 0,
+      streak: 0, lastResults: []
+    };
+  });
+
+  groupB.forEach(p => {
+    standings.B[p.name] = {
+      wins: 0, losses: 0, points: 0,
+      pointsFor: 0, pointsAgainst: 0,
+      streak: 0, lastResults: []
+    };
+  });
+
+  return {
+    name: 'Season 1',
+    status: 'regular',
+    currentWeek: 1,
+    totalWeeks: numWeeks,
+    groups: {
+      A: { name: 'Seeded', players: groupA },
+      B: { name: 'Unseeded', players: groupB }
+    },
+    schedule: { A: groupAWeeks, B: groupBWeeks },
+    standings,
+    playoffs: null,
+    superBowl: null,
+    champion: null,
+    createdAt: new Date().toISOString()
+  };
+};
+
+// Sort standings by tiebreaker rules
+const sortStandings = (standings) => {
+  return Object.entries(standings)
+    .map(([name, stats]) => ({ name, ...stats }))
+    .sort((a, b) => {
+      // 1. Most match wins
+      if (b.wins !== a.wins) return b.wins - a.wins;
+      // 2. Point differential (games won minus games lost)
+      const diffA = a.pointsFor - a.pointsAgainst;
+      const diffB = b.pointsFor - b.pointsAgainst;
+      if (diffB !== diffA) return diffB - diffA;
+      // 3. Most total games won
+      if (b.pointsFor !== a.pointsFor) return b.pointsFor - a.pointsFor;
+      // 4. Fewest games lost
+      return a.pointsAgainst - b.pointsAgainst;
+    });
+};
+
+// Generate wildcard round: Group A #5-6 vs Group B #5-6
+// Middle-ranked players from each group compete for wildcard playoff spots
+const generateWildcardRound = (standingsA, standingsB) => {
+  const sortedA = sortStandings(standingsA);
+  const sortedB = sortStandings(standingsB);
+
+  // Position 5 and 6 from each group (index 4 and 5)
+  const midA = sortedA.slice(4, 6);
+  const midB = sortedB.slice(4, 6);
+
+  const matches = [];
+
+  // WC-1: Group A #5 vs Group B #5
+  if (midA[0] && midB[0] && midA[0].name !== midB[0].name) {
+    matches.push({
+      id: 'WC-1',
+      round: 'wildcard',
+      description: `Group A #5 (${midA[0].name}) vs Group B #5 (${midB[0].name})`,
+      player1: midA[0].name,
+      player1Group: 'A',
+      player1Rank: 5,
+      player2: midB[0].name,
+      player2Group: 'B',
+      player2Rank: 5,
+      winner: null, loser: null, score1: null, score2: null, completed: false,
+      stakes: 'Winner earns wildcard to their own group playoffs as 5th seed'
+    });
+  }
+
+  // WC-2: Group A #6 vs Group B #6
+  if (midA[1] && midB[1] && midA[1].name !== midB[1].name) {
+    matches.push({
+      id: 'WC-2',
+      round: 'wildcard',
+      description: `Group A #6 (${midA[1].name}) vs Group B #6 (${midB[1].name})`,
+      player1: midA[1].name,
+      player1Group: 'A',
+      player1Rank: 6,
+      player2: midB[1].name,
+      player2Group: 'B',
+      player2Rank: 6,
+      winner: null, loser: null, score1: null, score2: null, completed: false,
+      stakes: 'Winner earns wildcard to their own group playoffs as 5th seed'
+    });
+  }
+
+  return {
+    matches,
+    wildcardWinners: [], // Will hold winners who advance to their own group playoffs
+    rules: [
+      'Group A #5 vs Group B #5, Group A #6 vs Group B #6',
+      'Winner earns wildcard spot in their OWN group playoffs',
+      'Wildcards enter as 5th seed (face #4 in play-in, winner faces #1)',
+      'Cross-group matches test true skill level'
+    ]
+  };
+};
+
+// Generate combined championship bracket - Top 4 from each group (8 players total)
+// Format: Standard 8-player bracket with cross-group seeding
+// QF1: A#1 vs B#4, QF2: B#2 vs A#3, QF3: A#2 vs B#3, QF4: B#1 vs A#4
+// SF1: QF1 winner vs QF2 winner, SF2: QF3 winner vs QF4 winner
+// Final: SF1 winner vs SF2 winner
+const generateChampionshipBracket = (standingsA, standingsB, wildcardWinnerA = null, wildcardWinnerB = null) => {
+  const sortedA = sortStandings(standingsA);
+  const sortedB = sortStandings(standingsB);
+
+  // Top 4 from each group
+  const a1 = { name: sortedA[0]?.name, group: 'A', seed: 1 };
+  const a2 = { name: sortedA[1]?.name, group: 'A', seed: 2 };
+  const a3 = { name: sortedA[2]?.name, group: 'A', seed: 3 };
+  const a4 = { name: sortedA[3]?.name, group: 'A', seed: 4 };
+  const b1 = { name: sortedB[0]?.name, group: 'B', seed: 1 };
+  const b2 = { name: sortedB[1]?.name, group: 'B', seed: 2 };
+  const b3 = { name: sortedB[2]?.name, group: 'B', seed: 3 };
+  const b4 = { name: sortedB[3]?.name, group: 'B', seed: 4 };
+
+  // Wildcard winners can replace #4 seed
+  let finalA4 = a4, finalB4 = b4;
+  if (wildcardWinnerA) {
+    finalA4 = { name: wildcardWinnerA, group: 'A', seed: 'WC', isWildcard: true };
+  }
+  if (wildcardWinnerB) {
+    finalB4 = { name: wildcardWinnerB, group: 'B', seed: 'WC', isWildcard: true };
+  }
+
+  return {
+    format: 'combined',
+    description: 'Top 4 from each group compete for championship',
+    seeds: { a1, a2, a3, a4: finalA4, b1, b2, b3, b4: finalB4 },
+    // Quarterfinals: Cross-group matchups with traditional seeding
+    // #1 seeds face #4 from other group, #2 seeds face #3 from other group
+    quarterfinals: [
+      {
+        id: 'CHAMP-QF1',
+        round: 'quarterfinal',
+        matchNum: 1,
+        matchName: 'Quarterfinal 1',
+        player1: a1.name,
+        player2: finalB4.name,
+        player1Group: 'A',
+        player2Group: 'B',
+        seed1: 'A#1',
+        seed2: finalB4.isWildcard ? 'B#WC' : 'B#4',
+        advancesTo: 'SF1',
+        winner: null, loser: null, score1: null, score2: null, completed: false
+      },
+      {
+        id: 'CHAMP-QF2',
+        round: 'quarterfinal',
+        matchNum: 2,
+        matchName: 'Quarterfinal 2',
+        player1: b2.name,
+        player2: a3.name,
+        player1Group: 'B',
+        player2Group: 'A',
+        seed1: 'B#2',
+        seed2: 'A#3',
+        advancesTo: 'SF1',
+        winner: null, loser: null, score1: null, score2: null, completed: false
+      },
+      {
+        id: 'CHAMP-QF3',
+        round: 'quarterfinal',
+        matchNum: 3,
+        matchName: 'Quarterfinal 3',
+        player1: a2.name,
+        player2: b3.name,
+        player1Group: 'A',
+        player2Group: 'B',
+        seed1: 'A#2',
+        seed2: 'B#3',
+        advancesTo: 'SF2',
+        winner: null, loser: null, score1: null, score2: null, completed: false
+      },
+      {
+        id: 'CHAMP-QF4',
+        round: 'quarterfinal',
+        matchNum: 4,
+        matchName: 'Quarterfinal 4',
+        player1: b1.name,
+        player2: finalA4.name,
+        player1Group: 'B',
+        player2Group: 'A',
+        seed1: 'B#1',
+        seed2: finalA4.isWildcard ? 'A#WC' : 'A#4',
+        advancesTo: 'SF2',
+        winner: null, loser: null, score1: null, score2: null, completed: false
+      }
+    ],
+    // Semifinals: QF winners face off
+    semifinals: [
+      {
+        id: 'CHAMP-SF1',
+        round: 'semifinal',
+        matchNum: 1,
+        matchName: 'Semifinal 1',
+        player1: null, // QF1 winner
+        player2: null, // QF2 winner
+        player1Group: null,
+        player2Group: null,
+        seed1: 'QF1 Winner',
+        seed2: 'QF2 Winner',
+        feedsFrom: ['CHAMP-QF1', 'CHAMP-QF2'],
+        winner: null, loser: null, score1: null, score2: null, completed: false
+      },
+      {
+        id: 'CHAMP-SF2',
+        round: 'semifinal',
+        matchNum: 2,
+        matchName: 'Semifinal 2',
+        player1: null, // QF3 winner
+        player2: null, // QF4 winner
+        player1Group: null,
+        player2Group: null,
+        seed1: 'QF3 Winner',
+        seed2: 'QF4 Winner',
+        feedsFrom: ['CHAMP-QF3', 'CHAMP-QF4'],
+        winner: null, loser: null, score1: null, score2: null, completed: false
+      }
+    ],
+    final: {
+      id: 'CHAMP-FINAL',
+      round: 'final',
+      matchName: 'Championship Final',
+      player1: null,
+      player2: null,
+      feedsFrom: ['CHAMP-SF1', 'CHAMP-SF2'],
+      winner: null, loser: null, score1: null, score2: null, completed: false
+    },
+    champion: null
+  };
+};
+
+// Alias for backward compatibility - generatePlayoffBracket now uses combined championship format
+const generatePlayoffBracket = (standings, group, wildcardWinner = null) => {
+  // This function is deprecated - we now use generateChampionshipBracket for combined playoffs
+  // But keep for compatibility with old code paths
+  const sorted = sortStandings(standings);
+
+  // Return a simplified group playoff bracket
+  return {
+    group,
+    semifinals: [
+      {
+        id: `${group}-SF1`,
+        round: 'semifinal',
+        player1: sorted[0]?.name,
+        player2: wildcardWinner || sorted[3]?.name,
+        seed1: 1,
+        seed2: wildcardWinner ? 'WC' : 4,
+        winner: null, loser: null, score1: null, score2: null, completed: false
+      },
+      {
+        id: `${group}-SF2`,
+        round: 'semifinal',
+        player1: sorted[1]?.name,
+        player2: sorted[2]?.name,
+        seed1: 2,
+        seed2: 3,
+        winner: null, loser: null, score1: null, score2: null, completed: false
+      }
+    ],
+    final: {
+      id: `${group}-FINAL`,
+      round: 'final',
+      player1: null,
+      player2: null,
+      winner: null, loser: null, score1: null, score2: null, completed: false
+    },
+    champion: null
+  };
+};
+
 const updateLeaderboard = async (winner, loser) => {
   const client = await pool.connect();
   try {
@@ -742,6 +1180,49 @@ app.get('/api/players', async (req, res) => {
   try {
     const result = await pool.query('SELECT name, seed FROM players ORDER BY seed NULLS LAST, name');
     res.json(result.rows);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Self-registration for new players (no admin required)
+app.post('/api/players/register', async (req, res) => {
+  try {
+    const { name, email } = req.body;
+
+    if (!name || name.trim().length < 2) {
+      return res.status(400).json({ error: 'Name must be at least 2 characters' });
+    }
+
+    const cleanName = name.trim();
+
+    // Check if player already exists
+    const existing = await pool.query(
+      'SELECT id FROM players WHERE LOWER(name) = LOWER($1)',
+      [cleanName]
+    );
+
+    if (existing.rows.length > 0) {
+      return res.status(409).json({ error: 'A player with this name already exists' });
+    }
+
+    // Add new player (no seed - they'll be in Group B)
+    const result = await pool.query(
+      'INSERT INTO players (name) VALUES ($1) RETURNING *',
+      [cleanName]
+    );
+
+    // Log the registration
+    await pool.query(
+      `INSERT INTO activity_log (event_type, player_name, details) VALUES ($1, $2, $3)`,
+      ['player_registered', cleanName, JSON.stringify({ email: email || null, registeredAt: new Date().toISOString() })]
+    );
+
+    res.json({
+      success: true,
+      player: result.rows[0],
+      message: `Welcome ${cleanName}! You've been registered. You'll be added to Group B (Unseeded) when the next season starts.`
+    });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -1118,6 +1599,1316 @@ app.post('/api/availability', async (req, res) => {
     res.status(500).json({ error: error.message });
   } finally {
     client.release();
+  }
+});
+
+// ============== TABLE BOOKING SYSTEM ==============
+
+// Ensure table_bookings table exists
+const ensureBookingsTable = async () => {
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS table_bookings (
+      id SERIAL PRIMARY KEY,
+      match_id VARCHAR(100),
+      player1 VARCHAR(255) NOT NULL,
+      player2 VARCHAR(255) NOT NULL,
+      booking_date DATE NOT NULL,
+      start_time TIME NOT NULL,
+      end_time TIME NOT NULL,
+      group_name VARCHAR(10),
+      status VARCHAR(20) DEFAULT 'booked',
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      created_by VARCHAR(255),
+      UNIQUE(booking_date, start_time)
+    )
+  `);
+};
+
+// Get bookings for a date range
+app.get('/api/bookings', async (req, res) => {
+  try {
+    await ensureBookingsTable();
+    const { start_date, end_date } = req.query;
+
+    let query = 'SELECT * FROM table_bookings WHERE status != $1';
+    let params = ['cancelled'];
+
+    if (start_date && end_date) {
+      query += ' AND booking_date BETWEEN $2 AND $3';
+      params.push(start_date, end_date);
+    } else if (start_date) {
+      query += ' AND booking_date >= $2';
+      params.push(start_date);
+    }
+
+    query += ' ORDER BY booking_date, start_time';
+
+    const result = await pool.query(query, params);
+    res.json(result.rows);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Get available time slots for a date
+app.get('/api/bookings/available', async (req, res) => {
+  try {
+    await ensureBookingsTable();
+    const { date } = req.query;
+    if (!date) {
+      return res.status(400).json({ error: 'Date required' });
+    }
+
+    // Get existing bookings for the date
+    const bookings = await pool.query(
+      'SELECT start_time, end_time FROM table_bookings WHERE booking_date = $1 AND status != $2',
+      [date, 'cancelled']
+    );
+
+    // Generate all possible slots (9 AM to 5 PM, 30 min slots)
+    const allSlots = [];
+    for (let hour = 9; hour < 17; hour++) {
+      allSlots.push(`${hour.toString().padStart(2, '0')}:00`);
+      allSlots.push(`${hour.toString().padStart(2, '0')}:30`);
+    }
+
+    // Filter out booked slots
+    const bookedTimes = bookings.rows.map(b => b.start_time.substring(0, 5));
+    const available = allSlots.filter(slot => !bookedTimes.includes(slot));
+
+    res.json({ date, available, booked: bookedTimes });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Helper: Check if player is in swap zone
+const getPlayerSwapZoneStatus = async (playerName) => {
+  try {
+    const result = await pool.query('SELECT data FROM season WHERE id = 1');
+    if (result.rows.length === 0) return null;
+
+    const season = result.rows[0].data;
+    const midPoint = Math.floor(season.totalWeeks / 2);
+
+    // Only check during first half of regular season
+    if (season.status !== 'regular' || season.currentWeek >= midPoint || season.midSeasonReview?.completed) {
+      return null;
+    }
+
+    const sortedA = sortStandings(season.standings.A);
+    const sortedB = sortStandings(season.standings.B);
+
+    // Check if player is in relegation zone (bottom 3 of A)
+    const relegationNames = sortedA.slice(-3).map(p => p.name);
+    if (relegationNames.includes(playerName)) {
+      const rank = sortedA.findIndex(p => p.name === playerName) + 1;
+      return {
+        zone: 'RELEGATION',
+        group: 'A',
+        rank,
+        message: `In relegation zone (#${rank} in Group A) - may swap to Group B at mid-season!`,
+        weeksRemaining: midPoint - season.currentWeek
+      };
+    }
+
+    // Check if player is in promotion zone (top 3 of B)
+    const promotionNames = sortedB.slice(0, 3).map(p => p.name);
+    if (promotionNames.includes(playerName)) {
+      const rank = sortedB.findIndex(p => p.name === playerName) + 1;
+      return {
+        zone: 'PROMOTION',
+        group: 'B',
+        rank,
+        message: `In promotion zone (#${rank} in Group B) - may move to Group A at mid-season!`,
+        weeksRemaining: midPoint - season.currentWeek
+      };
+    }
+
+    return null;
+  } catch (e) {
+    return null;
+  }
+};
+
+// Create a booking
+app.post('/api/bookings', async (req, res) => {
+  try {
+    await ensureBookingsTable();
+    const { match_id, player1, player2, booking_date, start_time, group_name, created_by } = req.body;
+
+    if (!player1 || !player2 || !booking_date || !start_time) {
+      return res.status(400).json({ error: 'Missing required fields' });
+    }
+
+    // Check if either player is in swap zone
+    const p1SwapStatus = await getPlayerSwapZoneStatus(player1);
+    const p2SwapStatus = await getPlayerSwapZoneStatus(player2);
+    const swapZoneWarning = p1SwapStatus || p2SwapStatus;
+
+    // Calculate end time (30 min match)
+    const [hours, mins] = start_time.split(':').map(Number);
+    const endHours = mins >= 30 ? hours + 1 : hours;
+    const endMins = mins >= 30 ? '00' : '30';
+    const end_time = `${endHours.toString().padStart(2, '0')}:${endMins}`;
+
+    // Check if slot is available
+    const existing = await pool.query(
+      'SELECT id FROM table_bookings WHERE booking_date = $1 AND start_time = $2 AND status != $3',
+      [booking_date, start_time, 'cancelled']
+    );
+
+    if (existing.rows.length > 0) {
+      return res.status(409).json({ error: 'Time slot already booked' });
+    }
+
+    // If players are in swap zone and booking is after mid-season, mark as tentative
+    const seasonResult = await pool.query('SELECT data FROM season WHERE id = 1');
+    const season = seasonResult.rows[0]?.data;
+    const midPoint = season ? Math.floor(season.totalWeeks / 2) : 5;
+    const bookingWeek = getWeekNumber(booking_date);
+    const isTentative = swapZoneWarning && bookingWeek >= midPoint;
+
+    const result = await pool.query(
+      `INSERT INTO table_bookings (match_id, player1, player2, booking_date, start_time, end_time, group_name, created_by, status)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *`,
+      [match_id || null, player1, player2, booking_date, start_time, end_time, group_name || null, created_by || null,
+       isTentative ? 'tentative' : 'booked']
+    );
+
+    const response = { success: true, booking: result.rows[0] };
+    if (swapZoneWarning) {
+      response.swapZoneWarning = {
+        active: true,
+        players: [p1SwapStatus, p2SwapStatus].filter(Boolean),
+        message: isTentative ?
+          'Booking marked TENTATIVE - one or both players may change groups at mid-season swap!' :
+          'Note: One or both players are in the swap zone and may change groups.'
+      };
+    }
+
+    res.json(response);
+  } catch (error) {
+    if (error.code === '23505') { // Unique violation
+      return res.status(409).json({ error: 'Time slot already booked' });
+    }
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Helper to get week number from date
+function getWeekNumber(dateString) {
+  // Simple week calculation - you might want to adjust based on season start date
+  const date = new Date(dateString);
+  const startOfYear = new Date(date.getFullYear(), 0, 1);
+  const days = Math.floor((date - startOfYear) / (24 * 60 * 60 * 1000));
+  return Math.ceil((days + startOfYear.getDay() + 1) / 7);
+}
+
+// Cancel a booking
+app.delete('/api/bookings/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    await pool.query(
+      'UPDATE table_bookings SET status = $1 WHERE id = $2',
+      ['cancelled', id]
+    );
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Move/reschedule a booking to a new time slot
+app.put('/api/bookings/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { booking_date, start_time } = req.body;
+
+    if (!booking_date || !start_time) {
+      return res.status(400).json({ error: 'New date and time are required' });
+    }
+
+    // Check if new slot is available
+    const existing = await pool.query(
+      'SELECT id FROM table_bookings WHERE booking_date = $1 AND start_time = $2 AND status != $3 AND id != $4',
+      [booking_date, start_time, 'cancelled', id]
+    );
+
+    if (existing.rows.length > 0) {
+      return res.status(409).json({ error: 'New time slot is already booked' });
+    }
+
+    // Calculate end time (30 min after start)
+    const [hours, mins] = start_time.split(':').map(Number);
+    const endHours = mins >= 30 ? hours + 1 : hours;
+    const endMins = mins >= 30 ? '00' : '30';
+    const end_time = `${String(endHours).padStart(2, '0')}:${endMins}`;
+
+    // Update the booking
+    const result = await pool.query(
+      'UPDATE table_bookings SET booking_date = $1, start_time = $2, end_time = $3 WHERE id = $4 AND status = $5 RETURNING *',
+      [booking_date, start_time, end_time, id, 'booked']
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Booking not found or already completed/cancelled' });
+    }
+
+    res.json({ success: true, booking: result.rows[0] });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Mark booking as completed (after recording match result)
+app.post('/api/bookings/:id/complete', async (req, res) => {
+  try {
+    const { id } = req.params;
+    await pool.query(
+      'UPDATE table_bookings SET status = $1 WHERE id = $2',
+      ['completed', id]
+    );
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ============== SEASON API ROUTES ==============
+
+// Get current season
+app.get('/api/season', async (req, res) => {
+  try {
+    const result = await pool.query('SELECT data FROM season WHERE id = 1');
+    if (result.rows.length === 0) {
+      return res.json(null);
+    }
+    res.json(result.rows[0].data);
+  } catch (error) {
+    // Table might not exist yet
+    if (error.code === '42P01') {
+      return res.json(null);
+    }
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Create new season (admin only)
+app.post('/api/season/create', requireAdmin, async (req, res) => {
+  try {
+    const { groupA, groupB, numWeeks = 10, seasonName = 'Season 1' } = req.body;
+
+    if (!groupA || !groupB || groupA.length < 2 || groupB.length < 2) {
+      return res.status(400).json({ error: 'Need at least 2 players in each group' });
+    }
+
+    const season = generateSeason(groupA, groupB, numWeeks);
+    season.name = seasonName;
+
+    // Ensure season table exists
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS season (
+        id INTEGER PRIMARY KEY DEFAULT 1,
+        name VARCHAR(255) NOT NULL DEFAULT 'Season 1',
+        status VARCHAR(20) DEFAULT 'regular',
+        current_week INTEGER DEFAULT 1,
+        total_weeks INTEGER DEFAULT 10,
+        data JSONB NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        CONSTRAINT single_season CHECK (id = 1)
+      )
+    `);
+
+    // Upsert season data
+    await pool.query(`
+      INSERT INTO season (id, name, status, current_week, total_weeks, data)
+      VALUES (1, $1, $2, $3, $4, $5)
+      ON CONFLICT (id) DO UPDATE SET
+        name = EXCLUDED.name,
+        status = EXCLUDED.status,
+        current_week = EXCLUDED.current_week,
+        total_weeks = EXCLUDED.total_weeks,
+        data = EXCLUDED.data,
+        updated_at = CURRENT_TIMESTAMP
+    `, [season.name, season.status, season.currentWeek, season.totalWeeks, JSON.stringify(season)]);
+
+    res.json({ success: true, season });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Record a league match result
+app.post('/api/season/match', async (req, res) => {
+  try {
+    const { matchId, winner, loser, score1, score2 } = req.body;
+
+    const result = await pool.query('SELECT data FROM season WHERE id = 1');
+    if (result.rows.length === 0) {
+      return res.status(400).json({ error: 'No active season' });
+    }
+
+    const season = result.rows[0].data;
+
+    // Find the match
+    let match = null;
+    let group = null;
+
+    // Check regular season matches
+    for (const g of ['A', 'B']) {
+      for (const week of season.schedule[g]) {
+        for (const m of week) {
+          if (m.id === matchId) {
+            match = m;
+            group = g;
+            break;
+          }
+        }
+        if (match) break;
+      }
+      if (match) break;
+    }
+
+    // Check wildcard matches
+    if (!match && season.wildcard) {
+      for (const wc of season.wildcard.matches) {
+        if (wc.id === matchId) {
+          match = wc;
+          group = 'wildcard';
+          break;
+        }
+      }
+    }
+
+    // Check playoff matches
+    if (!match && season.playoffs) {
+      for (const g of ['A', 'B']) {
+        if (season.playoffs[g]) {
+          for (const sf of season.playoffs[g].semifinals) {
+            if (sf.id === matchId) {
+              match = sf;
+              group = g;
+              break;
+            }
+          }
+          if (season.playoffs[g].final.id === matchId) {
+            match = season.playoffs[g].final;
+            group = g;
+          }
+        }
+      }
+    }
+
+    // Check super bowl
+    if (!match && season.superBowl && season.superBowl.id === matchId) {
+      match = season.superBowl;
+      group = 'superBowl';
+    }
+
+    // Check combined championship bracket matches
+    if (!match && season.championship) {
+      // Quarterfinals
+      for (const qf of season.championship.quarterfinals) {
+        if (qf.id === matchId) {
+          match = qf;
+          group = 'championship';
+          break;
+        }
+      }
+      // Semifinals
+      if (!match) {
+        for (const sf of season.championship.semifinals) {
+          if (sf.id === matchId) {
+            match = sf;
+            group = 'championship';
+            break;
+          }
+        }
+      }
+      // Final
+      if (!match && season.championship.final.id === matchId) {
+        match = season.championship.final;
+        group = 'championship';
+      }
+    }
+
+    if (!match) {
+      return res.status(404).json({ error: 'Match not found' });
+    }
+
+    // Update match
+    match.winner = winner;
+    match.loser = loser;
+    match.score1 = score1;
+    match.score2 = score2;
+    match.completed = true;
+
+    // Update standings for regular season matches
+    if (group === 'A' || group === 'B') {
+      const standings = season.standings[group];
+      if (standings[winner] && standings[loser]) {
+        standings[winner].wins++;
+        standings[winner].points += 3;
+        standings[winner].pointsFor += score1 > score2 ? score1 : score2;
+        standings[winner].pointsAgainst += score1 > score2 ? score2 : score1;
+        standings[winner].streak = standings[winner].streak >= 0 ? standings[winner].streak + 1 : 1;
+        standings[winner].lastResults.push('W');
+        if (standings[winner].lastResults.length > 5) standings[winner].lastResults.shift();
+
+        standings[loser].losses++;
+        standings[loser].pointsFor += score1 < score2 ? score1 : score2;
+        standings[loser].pointsAgainst += score1 < score2 ? score2 : score1;
+        standings[loser].streak = standings[loser].streak <= 0 ? standings[loser].streak - 1 : -1;
+        standings[loser].lastResults.push('L');
+        if (standings[loser].lastResults.length > 5) standings[loser].lastResults.shift();
+      }
+    }
+
+    // Handle wildcard completion - auto-start combined championship bracket
+    if (group === 'wildcard' && season.wildcard) {
+      const allWildcardComplete = season.wildcard.matches.every(m => m.completed);
+      if (allWildcardComplete && !season.championship) {
+        // Determine wildcard winners for each group
+        let wildcardWinnerForA = null;
+        let wildcardWinnerForB = null;
+
+        season.wildcard.matches.forEach(wcMatch => {
+          if (wcMatch.completed && wcMatch.winner) {
+            if (wcMatch.winner === wcMatch.player1) {
+              if (wcMatch.player1Group === 'A') wildcardWinnerForA = wcMatch.winner;
+              else wildcardWinnerForB = wcMatch.winner;
+            } else {
+              if (wcMatch.player2Group === 'A') wildcardWinnerForA = wcMatch.winner;
+              else wildcardWinnerForB = wcMatch.winner;
+            }
+          }
+        });
+
+        // Generate combined championship bracket (top 4 from each group)
+        season.championship = generateChampionshipBracket(
+          season.standings.A,
+          season.standings.B,
+          wildcardWinnerForA,
+          wildcardWinnerForB
+        );
+        season.status = 'playoffs';
+        console.log('Auto-started combined championship bracket after wildcard complete');
+      }
+    }
+
+    // Handle championship bracket advancement
+    if (season.championship && group === 'championship') {
+      // Handle quarterfinal completion - advance winners to semifinals
+      if (match.round === 'quarterfinal') {
+        const qfMatch = season.championship.quarterfinals.find(qf => qf.id === matchId);
+        if (qfMatch) {
+          // Determine which semifinal this feeds into
+          if (qfMatch.matchNum === 1 || qfMatch.matchNum === 2) {
+            // QF1 and QF2 feed into SF1
+            const sf1 = season.championship.semifinals[0];
+            if (qfMatch.matchNum === 1) sf1.player1 = winner;
+            else sf1.player2 = winner;
+          } else {
+            // QF3 and QF4 feed into SF2
+            const sf2 = season.championship.semifinals[1];
+            if (qfMatch.matchNum === 3) sf2.player1 = winner;
+            else sf2.player2 = winner;
+          }
+        }
+      }
+
+      // Handle semifinal completion - advance winners to final
+      if (match.round === 'semifinal') {
+        const sfMatch = season.championship.semifinals.find(sf => sf.id === matchId);
+        if (sfMatch) {
+          if (sfMatch.matchNum === 1) season.championship.final.player1 = winner;
+          else season.championship.final.player2 = winner;
+        }
+      }
+
+      // Handle final completion
+      if (match.round === 'final' && matchId === 'CHAMP-FINAL') {
+        season.championship.champion = winner;
+        season.champion = winner;
+        season.status = 'complete';
+      }
+    }
+
+    // Legacy support for old playoff structure (separate group brackets)
+    if (season.playoffs && !season.championship) {
+      // Handle playoff advancement
+      if (match.round === 'semifinal' && season.playoffs[group]) {
+        const playoff = season.playoffs[group];
+        const bothSemisComplete = playoff.semifinals.every(sf => sf.completed);
+
+        if (bothSemisComplete) {
+          playoff.final.player1 = playoff.semifinals[0].winner;
+          playoff.final.player2 = playoff.semifinals[1].winner;
+        }
+      }
+
+      // Handle group final winner
+      if (match.round === 'final' && season.playoffs[group]) {
+        season.playoffs[group].champion = winner;
+
+        const bothFinalsComplete =
+          season.playoffs.A?.final?.completed &&
+          season.playoffs.B?.final?.completed;
+
+        if (bothFinalsComplete && !season.superBowl) {
+          season.superBowl = {
+            id: 'SUPER-BOWL',
+            round: 'superBowl',
+            player1: season.playoffs.A.champion,
+            player2: season.playoffs.B.champion,
+            winner: null, loser: null, score1: null, score2: null, completed: false
+          };
+        }
+      }
+
+      // Handle Super Bowl winner
+      if (group === 'superBowl') {
+        season.champion = winner;
+        season.status = 'complete';
+      }
+    }
+
+    // Update leaderboard too
+    await updateLeaderboard(winner, loser);
+
+    // Auto-advance week if all matches in current week are completed (for regular season only)
+    let weekAdvanced = false;
+    let midSeasonTriggered = false;
+    if (season.status === 'regular' && (group === 'A' || group === 'B')) {
+      const currentWeekMatches = [];
+      ['A', 'B'].forEach(g => {
+        const weekSchedule = season.schedule[g][season.currentWeek - 1];
+        if (weekSchedule) {
+          weekSchedule.forEach(m => {
+            // Only count non-cancelled matches
+            if (!m.cancelled) {
+              currentWeekMatches.push(m);
+            }
+          });
+        }
+      });
+
+      const allCompleted = currentWeekMatches.length > 0 && currentWeekMatches.every(m => m.completed);
+
+      if (allCompleted && season.currentWeek < season.totalWeeks) {
+        season.currentWeek++;
+        weekAdvanced = true;
+
+        // Check if we just hit mid-season (week 5 for 10-week season)
+        const midPoint = Math.floor(season.totalWeeks / 2);
+        if (season.currentWeek === midPoint && !season.midSeasonReview?.completed) {
+          // Flag that mid-season review is now available
+          season.midSeasonPending = true;
+          midSeasonTriggered = true;
+        }
+      }
+
+      // Check if regular season is complete (all weeks done) - auto-start wildcard
+      if (allCompleted && season.currentWeek === season.totalWeeks && season.status === 'regular') {
+        // Check if ALL matches across ALL weeks are completed
+        let allRegularSeasonComplete = true;
+        ['A', 'B'].forEach(g => {
+          season.schedule[g].forEach(week => {
+            week.forEach(m => {
+              if (!m.completed && !m.cancelled) allRegularSeasonComplete = false;
+            });
+          });
+        });
+
+        if (allRegularSeasonComplete) {
+          // Auto-start wildcard round
+          season.wildcard = generateWildcardRound(season.standings.A, season.standings.B);
+          season.status = 'wildcard';
+          console.log('Auto-started wildcard round after regular season complete');
+        }
+      }
+    }
+
+    // Save updated season
+    await pool.query(`
+      UPDATE season SET data = $1, current_week = $2, status = $3, updated_at = CURRENT_TIMESTAMP WHERE id = 1
+    `, [JSON.stringify(season), season.currentWeek, season.status]);
+
+    res.json({ success: true, weekAdvanced, newWeek: season.currentWeek, midSeasonTriggered, wildcardStarted: season.status === 'wildcard' });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Start playoffs (admin only)
+// Start wildcard round (admin only) - before playoffs
+app.post('/api/season/wildcard', requireAdmin, async (req, res) => {
+  try {
+    const result = await pool.query('SELECT data FROM season WHERE id = 1');
+    if (result.rows.length === 0) {
+      return res.status(400).json({ error: 'No active season' });
+    }
+
+    const season = result.rows[0].data;
+
+    // Generate wildcard round
+    season.wildcard = generateWildcardRound(season.standings.A, season.standings.B);
+    season.status = 'wildcard';
+
+    await pool.query(`
+      UPDATE season SET data = $1, status = 'wildcard', updated_at = CURRENT_TIMESTAMP WHERE id = 1
+    `, [JSON.stringify(season)]);
+
+    res.json({ success: true, wildcard: season.wildcard });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.post('/api/season/playoffs', requireAdmin, async (req, res) => {
+  try {
+    const result = await pool.query('SELECT data FROM season WHERE id = 1');
+    if (result.rows.length === 0) {
+      return res.status(400).json({ error: 'No active season' });
+    }
+
+    const season = result.rows[0].data;
+
+    // Check if wildcard round exists and determine winners
+    // New logic: Winners go to their OWN group playoffs
+    let wildcardWinnerForA = null;
+    let wildcardWinnerForB = null;
+
+    if (season.wildcard) {
+      season.wildcard.matches.forEach(match => {
+        if (match.completed && match.winner) {
+          // Winner goes to their OWN group playoffs
+          if (match.winner === match.player1) {
+            // Player 1 won - they go to their own group (player1Group)
+            if (match.player1Group === 'A') {
+              wildcardWinnerForA = match.winner;
+            } else {
+              wildcardWinnerForB = match.winner;
+            }
+          } else {
+            // Player 2 won - they go to their own group (player2Group)
+            if (match.player2Group === 'A') {
+              wildcardWinnerForA = match.winner;
+            } else {
+              wildcardWinnerForB = match.winner;
+            }
+          }
+        }
+      });
+    }
+
+    // Generate combined championship bracket (top 4 from each group)
+    season.championship = generateChampionshipBracket(
+      season.standings.A,
+      season.standings.B,
+      wildcardWinnerForA,
+      wildcardWinnerForB
+    );
+    season.status = 'playoffs';
+
+    await pool.query(`
+      UPDATE season SET data = $1, status = 'playoffs', updated_at = CURRENT_TIMESTAMP WHERE id = 1
+    `, [JSON.stringify(season)]);
+
+    res.json({ success: true, championship: season.championship });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Mid-season review - swap bottom 3 from Group A with top 3 from Group B
+app.post('/api/season/mid-review', requireAdmin, async (req, res) => {
+  try {
+    const result = await pool.query('SELECT data FROM season WHERE id = 1');
+    if (result.rows.length === 0) {
+      return res.status(400).json({ error: 'No active season' });
+    }
+
+    const season = result.rows[0].data;
+
+    // Check if mid-season review already happened
+    if (season.midSeasonReview?.completed) {
+      return res.status(400).json({ error: 'Mid-season review already completed' });
+    }
+
+    // Check if we're at mid-season (week 5 or later for 10-week season)
+    const midPoint = Math.floor(season.totalWeeks / 2);
+    if (season.currentWeek < midPoint) {
+      return res.status(400).json({ error: `Mid-season review available from week ${midPoint}` });
+    }
+
+    // Sort standings to find bottom 3 from A and top 3 from B
+    const sortedA = sortStandings(season.standings.A);
+    const sortedB = sortStandings(season.standings.B);
+
+    // Bottom 3 from Group A (worst performers)
+    const bottomA = sortedA.slice(-3);
+    // Top 3 from Group B (best performers)
+    const topB = sortedB.slice(0, 3);
+
+    // Record the swaps
+    const swaps = {
+      fromAtoB: bottomA.map(p => p.name),
+      fromBtoA: topB.map(p => p.name)
+    };
+
+    // Update groups
+    const newGroupAPlayers = season.groups.A.players.filter(p => !swaps.fromAtoB.includes(p.name));
+    const newGroupBPlayers = season.groups.B.players.filter(p => !swaps.fromBtoA.includes(p.name));
+
+    // Add swapped players
+    swaps.fromBtoA.forEach(name => {
+      const player = season.groups.B.players.find(p => p.name === name);
+      if (player) newGroupAPlayers.push({ ...player, promotedMidSeason: true });
+    });
+    swaps.fromAtoB.forEach(name => {
+      const player = season.groups.A.players.find(p => p.name === name);
+      if (player) newGroupBPlayers.push({ ...player, relegatedMidSeason: true });
+    });
+
+    season.groups.A.players = newGroupAPlayers;
+    season.groups.B.players = newGroupBPlayers;
+
+    // Move standings data
+    swaps.fromAtoB.forEach(name => {
+      season.standings.B[name] = {
+        ...season.standings.A[name],
+        promotedFrom: 'A',
+        preSwapStats: { ...season.standings.A[name] }
+      };
+      delete season.standings.A[name];
+    });
+    swaps.fromBtoA.forEach(name => {
+      season.standings.A[name] = {
+        ...season.standings.B[name],
+        promotedFrom: 'B',
+        preSwapStats: { ...season.standings.B[name] }
+      };
+      delete season.standings.B[name];
+    });
+
+    // Cancel remaining matches for swapped players in their old groups
+    const cancelledMatches = [];
+    ['A', 'B'].forEach(group => {
+      const swappedPlayers = group === 'A' ? swaps.fromAtoB : swaps.fromBtoA;
+      season.schedule[group].forEach((week, weekIdx) => {
+        if (weekIdx + 1 > season.currentWeek) {
+          week.forEach(match => {
+            if (!match.completed && (swappedPlayers.includes(match.player1) || swappedPlayers.includes(match.player2))) {
+              match.cancelled = true;
+              match.cancelReason = 'Mid-season group swap';
+              cancelledMatches.push(match.id);
+            }
+          });
+        }
+      });
+    });
+
+    // Generate new matches for swapped players in their new groups
+    const remainingWeeks = season.totalWeeks - season.currentWeek;
+    const newMatches = { A: [], B: [] };
+
+    // For each swapped player, create matches against their new group members
+    swaps.fromBtoA.forEach(playerName => {
+      const opponents = season.groups.A.players.filter(p => p.name !== playerName && !swaps.fromBtoA.includes(p.name));
+      opponents.forEach((opp, idx) => {
+        if (idx < remainingWeeks) {
+          const weekNum = season.currentWeek + 1 + idx;
+          const matchId = `A-W${weekNum}-SWAP-${playerName.replace(/\s/g, '')}-${opp.name.replace(/\s/g, '')}`;
+          newMatches.A.push({
+            id: matchId,
+            week: weekNum,
+            player1: playerName,
+            player2: opp.name,
+            group: 'A',
+            completed: false,
+            winner: null,
+            loser: null,
+            score1: null,
+            score2: null,
+            isSwapMatch: true
+          });
+        }
+      });
+    });
+
+    swaps.fromAtoB.forEach(playerName => {
+      const opponents = season.groups.B.players.filter(p => p.name !== playerName && !swaps.fromAtoB.includes(p.name));
+      opponents.forEach((opp, idx) => {
+        if (idx < remainingWeeks) {
+          const weekNum = season.currentWeek + 1 + idx;
+          const matchId = `B-W${weekNum}-SWAP-${playerName.replace(/\s/g, '')}-${opp.name.replace(/\s/g, '')}`;
+          newMatches.B.push({
+            id: matchId,
+            week: weekNum,
+            player1: playerName,
+            player2: opp.name,
+            group: 'B',
+            completed: false,
+            winner: null,
+            loser: null,
+            score1: null,
+            score2: null,
+            isSwapMatch: true
+          });
+        }
+      });
+    });
+
+    // Add new matches to schedule
+    newMatches.A.forEach(match => {
+      const weekIdx = match.week - 1;
+      if (season.schedule.A[weekIdx]) {
+        season.schedule.A[weekIdx].push(match);
+      }
+    });
+    newMatches.B.forEach(match => {
+      const weekIdx = match.week - 1;
+      if (season.schedule.B[weekIdx]) {
+        season.schedule.B[weekIdx].push(match);
+      }
+    });
+
+    // Record the mid-season review
+    season.midSeasonReview = {
+      completed: true,
+      completedAt: new Date().toISOString(),
+      week: season.currentWeek,
+      swaps: swaps,
+      cancelledMatches: cancelledMatches,
+      newMatchesCreated: newMatches.A.length + newMatches.B.length
+    };
+
+    await pool.query(`
+      UPDATE season SET data = $1, updated_at = CURRENT_TIMESTAMP WHERE id = 1
+    `, [JSON.stringify(season)]);
+
+    res.json({
+      success: true,
+      swaps,
+      message: `Swapped ${swaps.fromAtoB.length} players from A→B and ${swaps.fromBtoA.length} players from B→A`,
+      cancelledMatches: cancelledMatches.length,
+      newMatchesCreated: newMatches.A.length + newMatches.B.length
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Get swap zone status (F1-style elimination zone indicators)
+app.get('/api/season/swap-zone', async (req, res) => {
+  try {
+    const result = await pool.query('SELECT data FROM season WHERE id = 1');
+    if (result.rows.length === 0) {
+      return res.json({ active: false });
+    }
+
+    const season = result.rows[0].data;
+    const midPoint = Math.floor(season.totalWeeks / 2);
+
+    // Swap zone only active during first half of regular season
+    if (season.status !== 'regular' || season.currentWeek >= midPoint || season.midSeasonReview?.completed) {
+      return res.json({
+        active: false,
+        reason: season.midSeasonReview?.completed ? 'Mid-season swap already completed' :
+                season.status !== 'regular' ? 'Not in regular season' : 'Past mid-season point'
+      });
+    }
+
+    const sortedA = sortStandings(season.standings.A);
+    const sortedB = sortStandings(season.standings.B);
+
+    // Bottom 3 of Group A = RELEGATION ZONE (danger)
+    // Top 3 of Group B = PROMOTION ZONE (opportunity)
+    const relegationZone = sortedA.slice(-3).map((p, i) => ({
+      name: p.name,
+      rank: sortedA.length - 2 + i,
+      group: 'A',
+      wins: p.wins,
+      losses: p.losses,
+      diff: p.pointsFor - p.pointsAgainst,
+      status: 'RELEGATION',
+      message: `Currently #${sortedA.length - 2 + i} in Group A - Bottom 3 swap to Group B at mid-season!`
+    }));
+
+    const promotionZone = sortedB.slice(0, 3).map((p, i) => ({
+      name: p.name,
+      rank: i + 1,
+      group: 'B',
+      wins: p.wins,
+      losses: p.losses,
+      diff: p.pointsFor - p.pointsAgainst,
+      status: 'PROMOTION',
+      message: `Currently #${i + 1} in Group B - Top 3 promote to Group A at mid-season!`
+    }));
+
+    // Players just outside the zones (on the bubble)
+    const bubbleA = sortedA.length > 3 ? [{
+      name: sortedA[sortedA.length - 4].name,
+      rank: sortedA.length - 3,
+      group: 'A',
+      wins: sortedA[sortedA.length - 4].wins,
+      losses: sortedA[sortedA.length - 4].losses,
+      diff: sortedA[sortedA.length - 4].pointsFor - sortedA[sortedA.length - 4].pointsAgainst,
+      status: 'BUBBLE',
+      message: `#${sortedA.length - 3} in Group A - One loss away from relegation zone!`
+    }] : [];
+
+    const bubbleB = sortedB.length > 3 ? [{
+      name: sortedB[3].name,
+      rank: 4,
+      group: 'B',
+      wins: sortedB[3].wins,
+      losses: sortedB[3].losses,
+      diff: sortedB[3].pointsFor - sortedB[3].pointsAgainst,
+      status: 'BUBBLE',
+      message: `#4 in Group B - One win away from promotion zone!`
+    }] : [];
+
+    const weeksRemaining = midPoint - season.currentWeek;
+
+    res.json({
+      active: true,
+      currentWeek: season.currentWeek,
+      midSeasonWeek: midPoint,
+      weeksRemaining,
+      urgencyMessage: weeksRemaining <= 2 ?
+        `⚠️ SWAP ZONE CRITICAL: Only ${weeksRemaining} week(s) until mid-season review!` :
+        `${weeksRemaining} weeks until mid-season swap`,
+      relegationZone,
+      promotionZone,
+      bubble: [...bubbleA, ...bubbleB],
+      swapRules: [
+        'At Week 5 mid-season review:',
+        '• Bottom 3 from Group A (Seeded) move DOWN to Group B',
+        '• Top 3 from Group B (Unseeded) move UP to Group A',
+        'Win now to secure your position!'
+      ]
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Get mid-season review preview (shows who would be swapped without executing)
+app.get('/api/season/mid-review/preview', async (req, res) => {
+  try {
+    const result = await pool.query('SELECT data FROM season WHERE id = 1');
+    if (result.rows.length === 0) {
+      return res.status(400).json({ error: 'No active season' });
+    }
+
+    const season = result.rows[0].data;
+
+    if (season.midSeasonReview?.completed) {
+      return res.json({
+        alreadyCompleted: true,
+        review: season.midSeasonReview
+      });
+    }
+
+    const midPoint = Math.floor(season.totalWeeks / 2);
+    const sortedA = sortStandings(season.standings.A);
+    const sortedB = sortStandings(season.standings.B);
+
+    const bottomA = sortedA.slice(-3);
+    const topB = sortedB.slice(0, 3);
+
+    res.json({
+      available: season.currentWeek >= midPoint,
+      currentWeek: season.currentWeek,
+      midPoint,
+      preview: {
+        relegateFromA: bottomA.map(p => ({
+          name: p.name,
+          rank: sortedA.findIndex(s => s.name === p.name) + 1,
+          wins: p.wins,
+          losses: p.losses,
+          diff: p.pointsFor - p.pointsAgainst
+        })),
+        promoteFromB: topB.map(p => ({
+          name: p.name,
+          rank: sortedB.findIndex(s => s.name === p.name) + 1,
+          wins: p.wins,
+          losses: p.losses,
+          diff: p.pointsFor - p.pointsAgainst
+        }))
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Advance to next week (admin only)
+app.post('/api/season/next-week', requireAdmin, async (req, res) => {
+  try {
+    const result = await pool.query('SELECT data FROM season WHERE id = 1');
+    if (result.rows.length === 0) {
+      return res.status(400).json({ error: 'No active season' });
+    }
+
+    const season = result.rows[0].data;
+
+    if (season.currentWeek < season.totalWeeks) {
+      season.currentWeek++;
+      await pool.query(`
+        UPDATE season SET data = $1, current_week = $2, updated_at = CURRENT_TIMESTAMP WHERE id = 1
+      `, [JSON.stringify(season), season.currentWeek]);
+    }
+
+    res.json({ success: true, currentWeek: season.currentWeek });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Delete season (admin only) - use with caution
+app.delete('/api/season', requireAdmin, async (req, res) => {
+  try {
+    await pool.query('DELETE FROM season WHERE id = 1');
+    res.json({ success: true, message: 'Season deleted' });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ============ HISTORICAL SEASONS ============
+
+// Ensure season_archive table exists
+const ensureArchiveTable = async () => {
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS season_archive (
+      id SERIAL PRIMARY KEY,
+      season_number INTEGER NOT NULL,
+      name VARCHAR(255) NOT NULL,
+      champion VARCHAR(255),
+      runner_up VARCHAR(255),
+      group_a_champion VARCHAR(255),
+      group_b_champion VARCHAR(255),
+      total_matches INTEGER,
+      start_date DATE,
+      end_date DATE,
+      data JSONB NOT NULL,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+};
+
+// Archive current season (admin only) - call this before starting new season
+app.post('/api/season/archive', requireAdmin, async (req, res) => {
+  try {
+    await ensureArchiveTable();
+
+    const result = await pool.query('SELECT data FROM season WHERE id = 1');
+    if (result.rows.length === 0) {
+      return res.status(400).json({ error: 'No active season to archive' });
+    }
+
+    const season = result.rows[0].data;
+
+    if (season.status !== 'complete') {
+      return res.status(400).json({ error: 'Can only archive completed seasons' });
+    }
+
+    // Get next season number
+    const countResult = await pool.query('SELECT COUNT(*) as count FROM season_archive');
+    const seasonNumber = parseInt(countResult.rows[0].count) + 1;
+
+    // Count total matches
+    const totalMatches = ['A', 'B'].reduce((sum, g) => {
+      return sum + (season.schedule[g] || []).flat().filter(m => m.completed).length;
+    }, 0);
+
+    // Archive the season
+    await pool.query(`
+      INSERT INTO season_archive (season_number, name, champion, runner_up, group_a_champion, group_b_champion, total_matches, data)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+    `, [
+      seasonNumber,
+      season.name || `Season ${seasonNumber}`,
+      season.champion,
+      season.superBowl?.player1 === season.champion ? season.superBowl?.player2 : season.superBowl?.player1,
+      season.playoffs?.A?.champion,
+      season.playoffs?.B?.champion,
+      totalMatches,
+      JSON.stringify(season)
+    ]);
+
+    // Log the archive
+    await pool.query(
+      `INSERT INTO activity_log (event_type, player_name, details) VALUES ($1, $2, $3)`,
+      ['season_archived', season.champion, JSON.stringify({
+        seasonNumber,
+        champion: season.champion,
+        archivedAt: new Date().toISOString()
+      })]
+    );
+
+    res.json({
+      success: true,
+      seasonNumber,
+      champion: season.champion,
+      message: `Season ${seasonNumber} archived successfully!`
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Get all archived seasons
+app.get('/api/seasons/history', async (req, res) => {
+  try {
+    await ensureArchiveTable();
+
+    const result = await pool.query(`
+      SELECT id, season_number, name, champion, runner_up, group_a_champion, group_b_champion, total_matches, created_at
+      FROM season_archive
+      ORDER BY season_number DESC
+    `);
+
+    res.json(result.rows);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Get specific archived season details
+app.get('/api/seasons/history/:seasonNumber', async (req, res) => {
+  try {
+    await ensureArchiveTable();
+
+    const { seasonNumber } = req.params;
+    const result = await pool.query(
+      'SELECT * FROM season_archive WHERE season_number = $1',
+      [seasonNumber]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Season not found' });
+    }
+
+    res.json(result.rows[0]);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ============ NOTIFICATIONS ============
+
+// Ensure notifications table exists
+const ensureNotificationsTable = async () => {
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS notifications (
+      id SERIAL PRIMARY KEY,
+      player_name VARCHAR(255),
+      type VARCHAR(50) NOT NULL,
+      title VARCHAR(255) NOT NULL,
+      message TEXT NOT NULL,
+      link VARCHAR(255),
+      is_read BOOLEAN DEFAULT FALSE,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+  await pool.query('CREATE INDEX IF NOT EXISTS idx_notifications_player ON notifications(player_name)');
+  await pool.query('CREATE INDEX IF NOT EXISTS idx_notifications_read ON notifications(is_read)');
+};
+
+// Get notifications for a player
+app.get('/api/notifications/:playerName', async (req, res) => {
+  try {
+    await ensureNotificationsTable();
+
+    const { playerName } = req.params;
+    const result = await pool.query(`
+      SELECT * FROM notifications
+      WHERE player_name = $1 OR player_name IS NULL
+      ORDER BY created_at DESC
+      LIMIT 50
+    `, [playerName]);
+
+    const unreadCount = result.rows.filter(n => !n.is_read).length;
+
+    res.json({
+      notifications: result.rows,
+      unreadCount
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Mark notification as read
+app.put('/api/notifications/:id/read', async (req, res) => {
+  try {
+    await ensureNotificationsTable();
+
+    const { id } = req.params;
+    await pool.query('UPDATE notifications SET is_read = TRUE WHERE id = $1', [id]);
+
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Mark all notifications as read for a player
+app.put('/api/notifications/:playerName/read-all', async (req, res) => {
+  try {
+    await ensureNotificationsTable();
+
+    const { playerName } = req.params;
+    await pool.query(
+      'UPDATE notifications SET is_read = TRUE WHERE player_name = $1 OR player_name IS NULL',
+      [playerName]
+    );
+
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Create notification (internal helper)
+const createNotification = async (playerName, type, title, message, link = null) => {
+  try {
+    await ensureNotificationsTable();
+    await pool.query(
+      `INSERT INTO notifications (player_name, type, title, message, link) VALUES ($1, $2, $3, $4, $5)`,
+      [playerName, type, title, message, link]
+    );
+  } catch (e) {
+    console.error('Failed to create notification:', e.message);
+  }
+};
+
+// Broadcast notification to all players (admin)
+app.post('/api/notifications/broadcast', requireAdmin, async (req, res) => {
+  try {
+    await ensureNotificationsTable();
+
+    const { title, message, type = 'announcement' } = req.body;
+
+    if (!title || !message) {
+      return res.status(400).json({ error: 'Title and message required' });
+    }
+
+    // null player_name means it's for everyone
+    await pool.query(
+      `INSERT INTO notifications (player_name, type, title, message) VALUES ($1, $2, $3, $4)`,
+      [null, type, title, message]
+    );
+
+    res.json({ success: true, message: 'Broadcast sent to all players' });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
   }
 });
 
