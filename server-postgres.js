@@ -45,7 +45,87 @@ async function initDatabase() {
   }
 }
 
-initDatabase();
+// Daily backup system
+async function createBackup() {
+  const fs = require('fs');
+  try {
+    console.log('Creating database backup...');
+
+    // Get all data from all tables
+    const players = await pool.query('SELECT * FROM players ORDER BY id');
+    const matches = await pool.query('SELECT * FROM matches ORDER BY id');
+    const bracketMeta = await pool.query('SELECT * FROM bracket_meta');
+    const availability = await pool.query('SELECT * FROM availability ORDER BY id');
+    const leaderboard = await pool.query('SELECT * FROM leaderboard ORDER BY id');
+
+    const backup = {
+      timestamp: new Date().toISOString(),
+      tables: {
+        players: players.rows,
+        matches: matches.rows,
+        bracket_meta: bracketMeta.rows,
+        availability: availability.rows,
+        leaderboard: leaderboard.rows
+      }
+    };
+
+    // Create backups directory if it doesn't exist
+    const backupDir = path.join(__dirname, 'data', 'backups');
+    if (!fs.existsSync(backupDir)) {
+      fs.mkdirSync(backupDir, { recursive: true });
+    }
+
+    // Save backup with timestamp
+    const filename = `backup-${new Date().toISOString().replace(/:/g, '-')}.json`;
+    const filepath = path.join(backupDir, filename);
+    fs.writeFileSync(filepath, JSON.stringify(backup, null, 2));
+
+    console.log(`✓ Backup created: ${filepath}`);
+
+    // Keep only last 30 days of backups
+    const files = fs.readdirSync(backupDir).filter(f => f.startsWith('backup-') && f.endsWith('.json'));
+    if (files.length > 30) {
+      files.sort();
+      const toDelete = files.slice(0, files.length - 30);
+      toDelete.forEach(f => {
+        fs.unlinkSync(path.join(backupDir, f));
+        console.log(`Removed old backup: ${f}`);
+      });
+    }
+
+    return filepath;
+  } catch (err) {
+    console.error('❌ Backup error:', err);
+  }
+}
+
+// Schedule daily backups at midnight
+function scheduleDailyBackups() {
+  const now = new Date();
+  const night = new Date(
+    now.getFullYear(),
+    now.getMonth(),
+    now.getDate() + 1, // next day
+    0, 0, 0 // midnight
+  );
+  const msToMidnight = night.getTime() - now.getTime();
+
+  // Schedule first backup at next midnight
+  setTimeout(() => {
+    createBackup();
+    // Then run every 24 hours
+    setInterval(createBackup, 24 * 60 * 60 * 1000);
+  }, msToMidnight);
+
+  console.log(`✓ Daily backups scheduled (next backup at midnight)`);
+}
+
+initDatabase().then(() => {
+  // Create initial backup on startup
+  createBackup();
+  // Schedule daily backups
+  scheduleDailyBackups();
+});
 
 // Middleware
 app.use(cors());
@@ -837,6 +917,136 @@ app.post('/api/leaderboard/reset-weekly', requireAdmin, async (req, res) => {
     res.json({ success: true });
   } catch (error) {
     res.status(500).json({ error: error.message });
+  }
+});
+
+// Create manual backup (admin only)
+app.post('/api/backup/create', requireAdmin, async (req, res) => {
+  try {
+    const filepath = await createBackup();
+    res.json({ success: true, filepath });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// List available backups (admin only)
+app.get('/api/backup/list', requireAdmin, async (req, res) => {
+  const fs = require('fs');
+  try {
+    const backupDir = path.join(__dirname, 'data', 'backups');
+    if (!fs.existsSync(backupDir)) {
+      return res.json({ backups: [] });
+    }
+
+    const files = fs.readdirSync(backupDir)
+      .filter(f => f.startsWith('backup-') && f.endsWith('.json'))
+      .map(f => {
+        const stats = fs.statSync(path.join(backupDir, f));
+        return {
+          filename: f,
+          created: stats.mtime,
+          size: stats.size
+        };
+      })
+      .sort((a, b) => b.created - a.created);
+
+    res.json({ backups: files });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Restore from backup (admin only)
+app.post('/api/backup/restore', requireAdmin, async (req, res) => {
+  const fs = require('fs');
+  const client = await pool.connect();
+  try {
+    const { filename } = req.body;
+    if (!filename) {
+      return res.status(400).json({ error: 'Filename required' });
+    }
+
+    const backupPath = path.join(__dirname, 'data', 'backups', filename);
+    if (!fs.existsSync(backupPath)) {
+      return res.status(404).json({ error: 'Backup not found' });
+    }
+
+    const backup = JSON.parse(fs.readFileSync(backupPath, 'utf8'));
+
+    await client.query('BEGIN');
+
+    // Clear all tables
+    await client.query('DELETE FROM matches');
+    await client.query('DELETE FROM bracket_meta');
+    await client.query('DELETE FROM availability');
+    await client.query('DELETE FROM leaderboard');
+    await client.query('DELETE FROM players');
+
+    // Restore players
+    for (const player of backup.tables.players) {
+      await client.query(
+        'INSERT INTO players (id, name, seed, created_at) VALUES ($1, $2, $3, $4)',
+        [player.id, player.name, player.seed, player.created_at]
+      );
+    }
+
+    // Restore matches
+    for (const match of backup.tables.matches) {
+      await client.query(
+        `INSERT INTO matches (id, round_type, round_number, match_number, player1, player2,
+         winner, loser, score1, score2, is_bye, status, scheduled_time, created_at, completed_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)`,
+        [
+          match.id, match.round_type, match.round_number, match.match_number,
+          match.player1, match.player2, match.winner, match.loser,
+          match.score1, match.score2, match.is_bye, match.status,
+          match.scheduled_time, match.created_at, match.completed_at
+        ]
+      );
+    }
+
+    // Restore bracket metadata
+    for (const meta of backup.tables.bracket_meta) {
+      await client.query(
+        `INSERT INTO bracket_meta (id, bracket_size, player_count, num_rounds, status, created_at, updated_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+        [meta.id, meta.bracket_size, meta.player_count, meta.num_rounds,
+         meta.status, meta.created_at, meta.updated_at]
+      );
+    }
+
+    // Restore availability
+    for (const avail of backup.tables.availability) {
+      await client.query(
+        'INSERT INTO availability (id, player_name, date, time_slot, created_at) VALUES ($1, $2, $3, $4, $5)',
+        [avail.id, avail.player_name, avail.date, avail.time_slot, avail.created_at]
+      );
+    }
+
+    // Restore leaderboard
+    for (const leader of backup.tables.leaderboard) {
+      await client.query(
+        `INSERT INTO leaderboard (id, player_name, weekly_wins, weekly_losses, weekly_points,
+         weekly_matches_played, alltime_wins, alltime_losses, alltime_points, alltime_matches_played,
+         week_start, updated_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)`,
+        [
+          leader.id, leader.player_name, leader.weekly_wins, leader.weekly_losses,
+          leader.weekly_points, leader.weekly_matches_played, leader.alltime_wins,
+          leader.alltime_losses, leader.alltime_points, leader.alltime_matches_played,
+          leader.week_start, leader.updated_at
+        ]
+      );
+    }
+
+    await client.query('COMMIT');
+    res.json({ success: true, restored: backup.timestamp });
+  } catch (error) {
+    await client.query('ROLLBACK');
+    res.status(500).json({ error: error.message });
+  } finally {
+    client.release();
   }
 });
 
