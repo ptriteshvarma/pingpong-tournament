@@ -1,7 +1,7 @@
 {
   "name": "pingpong-tournament",
-  "version": "1.0.0",
-  "description": "Ping Pong Tournament Scheduler",
+  "version": "1.0.1",
+  "description": "Ping Pong Tournament Scheduler with PostgreSQL",
   "main": "server.js",
   "scripts": {
     "start": "node server-postgres.js",
