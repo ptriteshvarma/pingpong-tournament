@@ -385,6 +385,7 @@
             const [newPlayerSeed, setNewPlayerSeed] = useState('');
             const [selectedDate, setSelectedDate] = useState(getWeekDates()[0]);
             const [leaderboardTab, setLeaderboardTab] = useState('weekly');
+            const [scenarioPlayer, setScenarioPlayer] = useState(null);
 
             const dates = useMemo(() => getWeekDates(), []);
 
@@ -666,6 +667,119 @@
                     total,
                     percentage: total > 0 ? Math.round((completed / total) * 100) : 0
                 };
+            }, [bracket]);
+
+            // Calculate tournament scenarios for a player
+            const getPlayerScenarios = useCallback((playerName) => {
+                if (!bracket) return [];
+
+                const scenarios = [];
+
+                // Find player's current match
+                let currentMatch = null;
+                let bracketType = null; // 'upper' or 'lower'
+                let isEliminated = false;
+
+                // Check upper bracket
+                for (const round of bracket.upperBracket || []) {
+                    for (const match of round) {
+                        if (!match.completed && (match.player1 === playerName || match.player2 === playerName)) {
+                            currentMatch = match;
+                            bracketType = 'upper';
+                            break;
+                        }
+                    }
+                    if (currentMatch) break;
+                }
+
+                // Check lower bracket
+                if (!currentMatch) {
+                    for (const round of bracket.lowerBracket || []) {
+                        for (const match of round) {
+                            if (!match.completed && (match.player1 === playerName || match.player2 === playerName)) {
+                                currentMatch = match;
+                                bracketType = 'lower';
+                                break;
+                            }
+                        }
+                        if (currentMatch) break;
+                    }
+                }
+
+                // Check if eliminated (lost in lower bracket)
+                for (const round of bracket.lowerBracket || []) {
+                    for (const match of round) {
+                        if (match.completed && match.loser === playerName) {
+                            isEliminated = true;
+                            break;
+                        }
+                    }
+                    if (isEliminated) break;
+                }
+
+                if (isEliminated) {
+                    scenarios.push({
+                        icon: '❌',
+                        text: 'You have been eliminated from the tournament',
+                        type: 'eliminated'
+                    });
+                    return scenarios;
+                }
+
+                if (!currentMatch) {
+                    // Check if champion
+                    if (bracket.champion === playerName) {
+                        scenarios.push({
+                            icon: '🏆',
+                            text: 'Congratulations! You are the tournament champion!',
+                            type: 'champion'
+                        });
+                    } else {
+                        scenarios.push({
+                            icon: '⏳',
+                            text: 'Waiting for your next match to be scheduled',
+                            type: 'waiting'
+                        });
+                    }
+                    return scenarios;
+                }
+
+                // Generate scenarios based on current position
+                if (bracketType === 'upper') {
+                    scenarios.push({
+                        icon: '✅',
+                        text: `Win this match → Advance to next Upper Bracket round`,
+                        type: 'success'
+                    });
+                    scenarios.push({
+                        icon: '⚠️',
+                        text: `Lose this match → Drop to Lower Bracket (second chance)`,
+                        type: 'warning'
+                    });
+                } else if (bracketType === 'lower') {
+                    scenarios.push({
+                        icon: '🔥',
+                        text: `Win this match → Stay alive in Lower Bracket`,
+                        type: 'success'
+                    });
+                    scenarios.push({
+                        icon: '❌',
+                        text: `Lose this match → ELIMINATED from tournament`,
+                        type: 'danger'
+                    });
+                }
+
+                // Calculate matches to grand final
+                const matchesToGF = bracket.upperBracket?.length - (currentMatch.round || 1);
+                if (matchesToGF > 0 && bracketType === 'upper') {
+                    scenarios.push({
+                        icon: '🎯',
+                        text: `${matchesToGF} more win${matchesToGF > 1 ? 's' : ''} needed to reach Grand Final`,
+                        type: 'info'
+                    });
+                }
+
+                return scenarios;
             }, [bracket]);
 
             if (loading) {
@@ -1044,8 +1158,17 @@
                                                             <span className="text-xs text-slate-400">{winRate}%</span>
                                                         </div>
                                                     </div>
-                                                    <div className="col-span-2 text-center font-bold text-violet-400">
+                                                    <div className="col-span-2 text-center font-bold text-violet-400 flex items-center justify-center gap-2">
                                                         {player.points}
+                                                        <button
+                                                            onClick={() => setScenarioPlayer(player.name)}
+                                                            className="text-slate-500 hover:text-violet-400 transition"
+                                                            title="View tournament scenarios"
+                                                        >
+                                                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-4 h-4">
+                                                                <path strokeLinecap="round" strokeLinejoin="round" d="m11.25 11.25.041-.02a.75.75 0 0 1 1.063.852l-.708 2.836a.75.75 0 0 0 1.063.853l.041-.021M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9-3.75h.008v.008H12V8.25Z" />
+                                                            </svg>
+                                                        </button>
                                                     </div>
                                                 </div>
                                             );
@@ -1321,6 +1444,65 @@
                             </div>
                         )}
                     </main>
+
+                    {/* Tournament Scenarios Modal */}
+                    {scenarioPlayer && (
+                        <div
+                            className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
+                            onClick={() => setScenarioPlayer(null)}
+                        >
+                            <div
+                                className="bg-slate-900 rounded-2xl p-6 max-w-lg w-full shadow-2xl"
+                                onClick={(e) => e.stopPropagation()}
+                            >
+                                <div className="flex justify-between items-center mb-4">
+                                    <h3 className="text-xl font-bold flex items-center gap-2">
+                                        <span>🎯</span> Tournament Scenarios
+                                    </h3>
+                                    <button
+                                        onClick={() => setScenarioPlayer(null)}
+                                        className="text-slate-500 hover:text-slate-300"
+                                    >
+                                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-6 h-6">
+                                            <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
+                                        </svg>
+                                    </button>
+                                </div>
+
+                                <div className="mb-4 flex items-center gap-2">
+                                    <PlayerAvatar name={scenarioPlayer} size="md" />
+                                    <span className="text-lg font-semibold">{scenarioPlayer}</span>
+                                </div>
+
+                                <div className="space-y-3">
+                                    {getPlayerScenarios(scenarioPlayer).map((scenario, idx) => (
+                                        <div
+                                            key={idx}
+                                            className={`p-4 rounded-xl border-2 ${
+                                                scenario.type === 'success' ? 'bg-emerald-900/20 border-emerald-700' :
+                                                scenario.type === 'danger' ? 'bg-rose-900/20 border-rose-700' :
+                                                scenario.type === 'warning' ? 'bg-amber-900/20 border-amber-700' :
+                                                scenario.type === 'eliminated' ? 'bg-slate-800 border-slate-700' :
+                                                scenario.type === 'champion' ? 'bg-violet-900/20 border-violet-700' :
+                                                'bg-blue-900/20 border-blue-700'
+                                            }`}
+                                        >
+                                            <div className="flex items-start gap-3">
+                                                <span className="text-2xl flex-shrink-0">{scenario.icon}</span>
+                                                <p className="text-sm leading-relaxed">{scenario.text}</p>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+
+                                <div className="mt-6 p-4 bg-slate-800 rounded-xl">
+                                    <p className="text-xs text-slate-400 text-center">
+                                        💡 This is a double elimination tournament. You get a second chance in the Lower Bracket if you lose in the Upper Bracket!
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    )}
 
                     {/* Saving indicator */}
                     {saving && (
