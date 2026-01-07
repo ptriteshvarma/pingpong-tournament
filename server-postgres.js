@@ -14,14 +14,38 @@ const pool = new Pool({
   ssl: process.env.DATABASE_URL ? { rejectUnauthorized: false } : false
 });
 
-// Test database connection
-pool.query('SELECT NOW()', (err, res) => {
-  if (err) {
-    console.error('Database connection error:', err);
-  } else {
-    console.log('Database connected successfully:', res.rows[0]);
+// Auto-initialize database tables on startup
+async function initDatabase() {
+  const fs = require('fs');
+  try {
+    // Check if tables exist
+    const result = await pool.query(`
+      SELECT EXISTS (
+        SELECT FROM information_schema.tables
+        WHERE table_schema = 'public'
+        AND table_name = 'players'
+      );
+    `);
+
+    if (!result.rows[0].exists) {
+      console.log('Initializing database tables...');
+      const schema = fs.readFileSync(path.join(__dirname, 'schema.sql'), 'utf8');
+      await pool.query(schema);
+      console.log('✓ Database tables created successfully!');
+    } else {
+      console.log('✓ Database tables already exist');
+    }
+
+    // Test connection
+    const timeResult = await pool.query('SELECT NOW()');
+    console.log('✓ Database connected:', timeResult.rows[0].now);
+  } catch (err) {
+    console.error('❌ Database initialization error:', err);
+    throw err;
   }
-});
+}
+
+initDatabase();
 
 // Middleware
 app.use(cors());
