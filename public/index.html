@@ -9,6 +9,12 @@
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class'
+        }
+    </script>
     <style>
         @keyframes slideIn {
             from { opacity: 0; transform: translateY(-10px); }
@@ -32,9 +38,13 @@
         .scrollbar-thin::-webkit-scrollbar { width: 6px; height: 6px; }
         .scrollbar-thin::-webkit-scrollbar-track { background: #1e293b; }
         .scrollbar-thin::-webkit-scrollbar-thumb { background: #475569; border-radius: 3px; }
+        .dark .scrollbar-thin::-webkit-scrollbar-track { background: #1e293b; }
+        .dark .scrollbar-thin::-webkit-scrollbar-thumb { background: #475569; }
+        .light .scrollbar-thin::-webkit-scrollbar-track { background: #e2e8f0; }
+        .light .scrollbar-thin::-webkit-scrollbar-thumb { background: #cbd5e1; }
     </style>
 </head>
-<body class="bg-slate-950">
+<body class="bg-slate-950 dark">
     <div id="root"></div>
 
     <script type="text/babel">
@@ -56,7 +66,10 @@
             ArrowLeft: function() { return React.createElement('svg', {xmlns:"http://www.w3.org/2000/svg", fill:"none", viewBox:"0 0 24 24", strokeWidth:"1.5", stroke:"currentColor", className:"w-5 h-5"}, React.createElement('path', {strokeLinecap:"round", strokeLinejoin:"round", d:"M10.5 19.5 3 12m0 0 7.5-7.5M3 12h18"})); },
             Check: function() { return React.createElement('svg', {xmlns:"http://www.w3.org/2000/svg", fill:"none", viewBox:"0 0 24 24", strokeWidth:"2", stroke:"currentColor", className:"w-4 h-4"}, React.createElement('path', {strokeLinecap:"round", strokeLinejoin:"round", d:"m4.5 12.75 6 6 9-13.5"})); },
             Lock: function() { return React.createElement('svg', {xmlns:"http://www.w3.org/2000/svg", fill:"none", viewBox:"0 0 24 24", strokeWidth:"1.5", stroke:"currentColor", className:"w-4 h-4"}, React.createElement('path', {strokeLinecap:"round", strokeLinejoin:"round", d:"M16.5 10.5V6.75a4.5 4.5 0 1 0-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 0 0 2.25-2.25v-6.75a2.25 2.25 0 0 0-2.25-2.25H6.75a2.25 2.25 0 0 0-2.25 2.25v6.75a2.25 2.25 0 0 0 2.25 2.25Z"})); },
-            Refresh: function() { return React.createElement('svg', {xmlns:"http://www.w3.org/2000/svg", fill:"none", viewBox:"0 0 24 24", strokeWidth:"1.5", stroke:"currentColor", className:"w-4 h-4"}, React.createElement('path', {strokeLinecap:"round", strokeLinejoin:"round", d:"M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99"})); }
+            Refresh: function() { return React.createElement('svg', {xmlns:"http://www.w3.org/2000/svg", fill:"none", viewBox:"0 0 24 24", strokeWidth:"1.5", stroke:"currentColor", className:"w-4 h-4"}, React.createElement('path', {strokeLinecap:"round", strokeLinejoin:"round", d:"M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99"})); },
+            Sun: function() { return React.createElement('svg', {xmlns:"http://www.w3.org/2000/svg", fill:"none", viewBox:"0 0 24 24", strokeWidth:"1.5", stroke:"currentColor", className:"w-5 h-5"}, React.createElement('path', {strokeLinecap:"round", strokeLinejoin:"round", d:"M12 3v2.25m6.364.386-1.591 1.591M21 12h-2.25m-.386 6.364-1.591-1.591M12 18.75V21m-4.773-4.227-1.591 1.591M5.25 12H3m4.227-4.773L5.636 5.636M15.75 12a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0Z"})); },
+            Moon: function() { return React.createElement('svg', {xmlns:"http://www.w3.org/2000/svg", fill:"none", viewBox:"0 0 24 24", strokeWidth:"1.5", stroke:"currentColor", className:"w-5 h-5"}, React.createElement('path', {strokeLinecap:"round", strokeLinejoin:"round", d:"M21.752 15.002A9.72 9.72 0 0 1 18 15.75c-5.385 0-9.75-4.365-9.75-9.75 0-1.33.266-2.597.748-3.752A9.753 9.753 0 0 0 3 11.25C3 16.635 7.365 21 12.75 21a9.753 9.753 0 0 0 9.002-5.998Z"})); },
+            Info: function() { return React.createElement('svg', {xmlns:"http://www.w3.org/2000/svg", fill:"none", viewBox:"0 0 24 24", strokeWidth:"1.5", stroke:"currentColor", className:"w-4 h-4"}, React.createElement('path', {strokeLinecap:"round", strokeLinejoin:"round", d:"m11.25 11.25.041-.02a.75.75 0 0 1 1.063.852l-.708 2.836a.75.75 0 0 0 1.063.853l.041-.021M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9-3.75h.008v.008H12V8.25Z"})); }
         };
 
         // Generate weekly dates (Mon-Fri)
@@ -165,6 +178,159 @@
                             </span>
                         </div>
                     ))}
+                </div>
+            );
+        }
+
+        // Advanced Chart component using Chart.js
+        function ChartJsBar({ data, title, darkMode }) {
+            const canvasRef = React.useRef(null);
+            const chartRef = React.useRef(null);
+
+            useEffect(() => {
+                if (!canvasRef.current || !data || data.length === 0) return;
+
+                const ctx = canvasRef.current.getContext('2d');
+
+                // Destroy existing chart
+                if (chartRef.current) {
+                    chartRef.current.destroy();
+                }
+
+                // Create new chart
+                chartRef.current = new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: data.map(d => d.label),
+                        datasets: [{
+                            label: title || 'Points',
+                            data: data.map(d => d.value),
+                            backgroundColor: 'rgba(139, 92, 246, 0.8)',
+                            borderColor: 'rgba(139, 92, 246, 1)',
+                            borderWidth: 1,
+                            borderRadius: 4,
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                display: false
+                            },
+                            tooltip: {
+                                backgroundColor: darkMode ? 'rgba(15, 23, 42, 0.9)' : 'rgba(255, 255, 255, 0.9)',
+                                titleColor: darkMode ? '#f1f5f9' : '#0f172a',
+                                bodyColor: darkMode ? '#cbd5e1' : '#475569',
+                                borderColor: darkMode ? '#475569' : '#cbd5e1',
+                                borderWidth: 1,
+                                padding: 12,
+                                displayColors: false
+                            }
+                        },
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                grid: {
+                                    color: darkMode ? 'rgba(71, 85, 105, 0.3)' : 'rgba(203, 213, 225, 0.5)'
+                                },
+                                ticks: {
+                                    color: darkMode ? '#94a3b8' : '#64748b'
+                                }
+                            },
+                            x: {
+                                grid: {
+                                    display: false
+                                },
+                                ticks: {
+                                    color: darkMode ? '#94a3b8' : '#64748b'
+                                }
+                            }
+                        }
+                    }
+                });
+
+                return () => {
+                    if (chartRef.current) {
+                        chartRef.current.destroy();
+                    }
+                };
+            }, [data, title, darkMode]);
+
+            return (
+                <div style={{ position: 'relative', height: '250px' }}>
+                    <canvas ref={canvasRef}></canvas>
+                </div>
+            );
+        }
+
+        // Pie Chart for Win/Loss distribution
+        function ChartJsPie({ data, darkMode }) {
+            const canvasRef = React.useRef(null);
+            const chartRef = React.useRef(null);
+
+            useEffect(() => {
+                if (!canvasRef.current || !data) return;
+
+                const ctx = canvasRef.current.getContext('2d');
+
+                if (chartRef.current) {
+                    chartRef.current.destroy();
+                }
+
+                chartRef.current = new Chart(ctx, {
+                    type: 'pie',
+                    data: {
+                        labels: ['Wins', 'Losses'],
+                        datasets: [{
+                            data: [data.wins, data.losses],
+                            backgroundColor: [
+                                'rgba(16, 185, 129, 0.8)',
+                                'rgba(244, 63, 94, 0.8)'
+                            ],
+                            borderColor: [
+                                'rgba(16, 185, 129, 1)',
+                                'rgba(244, 63, 94, 1)'
+                            ],
+                            borderWidth: 2
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                position: 'bottom',
+                                labels: {
+                                    color: darkMode ? '#cbd5e1' : '#475569',
+                                    padding: 15,
+                                    font: {
+                                        size: 12
+                                    }
+                                }
+                            },
+                            tooltip: {
+                                backgroundColor: darkMode ? 'rgba(15, 23, 42, 0.9)' : 'rgba(255, 255, 255, 0.9)',
+                                titleColor: darkMode ? '#f1f5f9' : '#0f172a',
+                                bodyColor: darkMode ? '#cbd5e1' : '#475569',
+                                borderColor: darkMode ? '#475569' : '#cbd5e1',
+                                borderWidth: 1,
+                                padding: 12
+                            }
+                        }
+                    }
+                });
+
+                return () => {
+                    if (chartRef.current) {
+                        chartRef.current.destroy();
+                    }
+                };
+            }, [data, darkMode]);
+
+            return (
+                <div style={{ position: 'relative', height: '200px' }}>
+                    <canvas ref={canvasRef}></canvas>
                 </div>
             );
         }
@@ -386,6 +552,33 @@
             const [selectedDate, setSelectedDate] = useState(getWeekDates()[0]);
             const [leaderboardTab, setLeaderboardTab] = useState('weekly');
             const [scenarioPlayer, setScenarioPlayer] = useState(null);
+
+            // Dark mode state
+            const [darkMode, setDarkMode] = useState(() => {
+                const saved = localStorage.getItem('pingpong_darkMode');
+                return saved !== null ? saved === 'true' : true; // default to dark
+            });
+
+            // Toggle dark mode
+            const toggleDarkMode = useCallback(() => {
+                setDarkMode(prev => {
+                    const newMode = !prev;
+                    localStorage.setItem('pingpong_darkMode', newMode);
+                    document.documentElement.classList.toggle('dark', newMode);
+                    document.body.classList.toggle('dark', newMode);
+                    document.body.classList.toggle('bg-slate-950', newMode);
+                    document.body.classList.toggle('bg-gray-50', !newMode);
+                    return newMode;
+                });
+            }, []);
+
+            // Initialize dark mode on mount
+            useEffect(() => {
+                document.documentElement.classList.toggle('dark', darkMode);
+                document.body.classList.toggle('dark', darkMode);
+                document.body.classList.toggle('bg-slate-950', darkMode);
+                document.body.classList.toggle('bg-gray-50', !darkMode);
+            }, [darkMode]);
 
             const dates = useMemo(() => getWeekDates(), []);
 
@@ -864,15 +1057,15 @@
             }
 
             return (
-                <div className="min-h-screen bg-slate-950 text-slate-100">
+                <div className="min-h-screen dark:bg-slate-950 bg-gray-50 dark:text-slate-100 text-gray-900">
                     {/* Header */}
-                    <header className="bg-slate-900 border-b border-slate-800 sticky top-0 z-40">
+                    <header className="dark:bg-slate-900 bg-white border-b dark:border-slate-800 border-gray-200 sticky top-0 z-40 shadow-sm">
                         <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
                             <div className="flex items-center gap-3">
                                 <span className="text-2xl">🏓</span>
                                 <div>
-                                    <h1 className="font-bold">Tournament</h1>
-                                    <p className="text-xs text-slate-400">
+                                    <h1 className="font-bold dark:text-white text-gray-900">Tournament</h1>
+                                    <p className="text-xs dark:text-slate-400 text-gray-600">
                                         {isAdmin ? (
                                             <span className="text-amber-400 flex items-center gap-1"><Icons.Cog /> Admin Mode</span>
                                         ) : (
@@ -896,10 +1089,13 @@
                                     </div>
                                 </div>
 
-                                <button onClick={loadData} className="p-2 bg-slate-800 hover:bg-slate-700 rounded-lg transition">
+                                <button onClick={toggleDarkMode} className="p-2 bg-slate-800 dark:bg-slate-800 bg-white dark:hover:bg-slate-700 hover:bg-gray-100 rounded-lg transition text-slate-400 dark:text-slate-400 text-gray-700" title={darkMode ? 'Switch to Light Mode' : 'Switch to Dark Mode'}>
+                                    {darkMode ? <Icons.Sun /> : <Icons.Moon />}
+                                </button>
+                                <button onClick={loadData} className="p-2 bg-slate-800 dark:bg-slate-800 bg-white dark:hover:bg-slate-700 hover:bg-gray-100 rounded-lg transition text-slate-400 dark:text-slate-400 text-gray-700">
                                     <Icons.Refresh />
                                 </button>
-                                <button onClick={handleLogout} className="px-3 py-2 bg-slate-800 hover:bg-slate-700 rounded-lg text-sm transition">
+                                <button onClick={handleLogout} className="px-3 py-2 bg-slate-800 dark:bg-slate-800 bg-white dark:hover:bg-slate-700 hover:bg-gray-100 rounded-lg text-sm transition text-slate-400 dark:text-slate-400 text-gray-700">
                                     {isAdmin ? 'Exit Admin' : 'Switch'}
                                 </button>
                             </div>
@@ -921,7 +1117,7 @@
                                         className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm whitespace-nowrap transition ${
                                             view === tab.id
                                                 ? 'bg-violet-600 text-white'
-                                                : 'bg-slate-800 text-slate-400 hover:bg-slate-700'
+                                                : 'dark:bg-slate-800 bg-white dark:text-slate-400 text-gray-700 dark:hover:bg-slate-700 hover:bg-gray-100'
                                         }`}
                                     >
                                         <tab.icon />
@@ -1056,31 +1252,45 @@
                             <div className="space-y-4">
                                 {/* Stats Overview */}
                                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                                    <div className="bg-slate-900 rounded-xl p-4">
-                                        <div className="text-slate-400 text-sm mb-1">Total Players</div>
-                                        <div className="text-2xl font-bold">{players.length}</div>
+                                    <div className="dark:bg-slate-900 bg-white rounded-xl p-4 shadow-sm">
+                                        <div className="dark:text-slate-400 text-gray-600 text-sm mb-1">Total Players</div>
+                                        <div className="text-2xl font-bold dark:text-white text-gray-900">{players.length}</div>
                                     </div>
-                                    <div className="bg-slate-900 rounded-xl p-4">
-                                        <div className="text-slate-400 text-sm mb-1">Matches Played</div>
-                                        <div className="text-2xl font-bold">{tournamentProgress.completed}</div>
+                                    <div className="dark:bg-slate-900 bg-white rounded-xl p-4 shadow-sm">
+                                        <div className="dark:text-slate-400 text-gray-600 text-sm mb-1">Matches Played</div>
+                                        <div className="text-2xl font-bold dark:text-white text-gray-900">{tournamentProgress.completed}</div>
                                     </div>
-                                    <div className="bg-slate-900 rounded-xl p-4">
-                                        <div className="text-slate-400 text-sm mb-1">Remaining</div>
-                                        <div className="text-2xl font-bold">{tournamentProgress.total - tournamentProgress.completed}</div>
+                                    <div className="dark:bg-slate-900 bg-white rounded-xl p-4 shadow-sm">
+                                        <div className="dark:text-slate-400 text-gray-600 text-sm mb-1">Remaining</div>
+                                        <div className="text-2xl font-bold dark:text-white text-gray-900">{tournamentProgress.total - tournamentProgress.completed}</div>
                                     </div>
-                                    <div className="bg-slate-900 rounded-xl p-4">
-                                        <div className="text-slate-400 text-sm mb-1">Progress</div>
-                                        <div className="text-2xl font-bold">{tournamentProgress.percentage}%</div>
+                                    <div className="dark:bg-slate-900 bg-white rounded-xl p-4 shadow-sm">
+                                        <div className="dark:text-slate-400 text-gray-600 text-sm mb-1">Progress</div>
+                                        <div className="text-2xl font-bold dark:text-white text-gray-900">{tournamentProgress.percentage}%</div>
                                     </div>
                                 </div>
 
-                                {/* Chart */}
+                                {/* Charts */}
                                 {leaderboardData.length > 0 && (
-                                    <div className="bg-slate-900 rounded-xl p-4">
-                                        <h3 className="text-sm text-slate-400 mb-4">Points Distribution</h3>
-                                        <BarChart
-                                            data={leaderboardData.map(p => ({ label: p.name, value: p.points }))}
-                                        />
+                                    <div className="grid md:grid-cols-2 gap-4">
+                                        <div className="dark:bg-slate-900 bg-white rounded-xl p-4 shadow-sm">
+                                            <h3 className="text-sm dark:text-slate-400 text-gray-600 mb-4 font-semibold">Points Distribution</h3>
+                                            <ChartJsBar
+                                                data={leaderboardData.slice(0, 8).map(p => ({ label: p.name, value: p.points }))}
+                                                title="Points"
+                                                darkMode={darkMode}
+                                            />
+                                        </div>
+                                        <div className="dark:bg-slate-900 bg-white rounded-xl p-4 shadow-sm">
+                                            <h3 className="text-sm dark:text-slate-400 text-gray-600 mb-4 font-semibold">Overall Win/Loss</h3>
+                                            <ChartJsPie
+                                                data={{
+                                                    wins: leaderboardData.reduce((sum, p) => sum + p.wins, 0),
+                                                    losses: leaderboardData.reduce((sum, p) => sum + p.losses, 0)
+                                                }}
+                                                darkMode={darkMode}
+                                            />
+                                        </div>
                                     </div>
                                 )}
 
