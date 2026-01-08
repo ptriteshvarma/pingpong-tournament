@@ -26,12 +26,12 @@
         .snowflake {
             position: fixed;
             top: -10vh;
-            color: white;
+            color: #9333ea;
             font-size: 1rem;
             pointer-events: none;
             z-index: 1000;
             animation: snowfall linear infinite;
-            text-shadow: 0 0 5px rgba(255,255,255,0.5);
+            text-shadow: 0 0 5px rgba(147,51,234,0.3);
         }
         .winter-gradient {
             background: linear-gradient(135deg, #4a1c6b 0%, #6b2d8a 25%, #8b3fa8 50%, #6b2d8a 75%, #4a1c6b 100%);
@@ -41,7 +41,7 @@
         }
     </style>
 </head>
-<body class="bg-slate-950 text-slate-100">
+<body class="bg-gray-100 text-gray-900">
     <div id="root"></div>
 
     <script type="text/babel">
@@ -137,9 +137,9 @@
 
             return (
                 <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50" onClick={onClose}>
-                    <div className="bg-slate-800 rounded-xl p-6 max-w-md w-full mx-4" onClick={e => e.stopPropagation()}>
+                    <div className="bg-gray-100 rounded-xl p-6 max-w-md w-full mx-4" onClick={e => e.stopPropagation()}>
                         <h3 className="text-lg font-bold mb-2 text-center">Choose Avatar</h3>
-                        <p className="text-sm text-slate-400 text-center mb-4">{playerName}</p>
+                        <p className="text-sm text-gray-500 text-center mb-4">{playerName}</p>
 
                         <div className="grid grid-cols-6 gap-3 mb-4">
                             {avatarIconList.map(iconName => {
@@ -159,10 +159,10 @@
                         </div>
 
                         <div className="flex gap-2">
-                            <button onClick={handleClear} className="flex-1 py-2 bg-slate-700 hover:bg-slate-600 rounded-lg text-sm">
+                            <button onClick={handleClear} className="flex-1 py-2 bg-gray-200 hover:bg-gray-300 rounded-lg text-sm">
                                 Use Initials
                             </button>
-                            <button onClick={onClose} className="flex-1 py-2 bg-violet-600 hover:bg-violet-500 rounded-lg text-sm">
+                            <button onClick={onClose} className="flex-1 py-2 bg-purple-600 hover:bg-purple-700 rounded-lg text-sm">
                                 Done
                             </button>
                         </div>
@@ -185,16 +185,16 @@
             if (!swapZone?.active) return null;
 
             return (
-                <div className="bg-gradient-to-r from-rose-900/40 via-slate-900 to-emerald-900/40 border border-slate-700 rounded-xl p-4 mb-6 animate-slideIn">
+                <div className="bg-gradient-to-r from-red-100 via-gray-100 to-green-100 border border-gray-300 rounded-xl p-4 mb-6 animate-slideIn">
                     <div className="flex items-center justify-between mb-3">
                         <div className="flex items-center gap-3">
-                            <div className="text-amber-400"><SwapIcons.ArrowsUpDown /></div>
+                            <div className="text-amber-600"><SwapIcons.ArrowsUpDown /></div>
                             <h3 className="text-lg font-bold text-white">MID-SEASON SWAP ZONE</h3>
-                            <div className="text-amber-400"><SwapIcons.Warning /></div>
+                            <div className="text-amber-600"><SwapIcons.Warning /></div>
                         </div>
                         <div className="text-right">
-                            <div className="text-sm text-slate-400">Week {swapZone.currentWeek} of {swapZone.midSeasonWeek * 2}</div>
-                            <div className={`font-bold ${swapZone.weeksRemaining <= 2 ? 'text-rose-400 animate-pulse' : 'text-amber-400'}`}>
+                            <div className="text-sm text-gray-500">Week {swapZone.currentWeek} of {swapZone.midSeasonWeek * 2}</div>
+                            <div className={`font-bold ${swapZone.weeksRemaining <= 2 ? 'text-red-500 animate-pulse' : 'text-amber-600'}`}>
                                 {swapZone.weeksRemaining} week(s) until swap!
                             </div>
                         </div>
@@ -204,15 +204,15 @@
                         {/* Relegation Zone */}
                         <div className="bg-rose-900/30 border border-rose-600/50 rounded-lg p-3">
                             <div className="flex items-center gap-2 mb-2">
-                                <div className="text-rose-400"><SwapIcons.ArrowDown /></div>
-                                <span className="font-bold text-rose-400 uppercase tracking-wide text-sm">RELEGATION ZONE</span>
+                                <div className="text-red-500"><SwapIcons.ArrowDown /></div>
+                                <span className="font-bold text-red-500 uppercase tracking-wide text-sm">RELEGATION ZONE</span>
                             </div>
                             <p className="text-xs text-rose-300/70 mb-2">Bottom 3 of Group A move DOWN to Group B</p>
                             <div className="space-y-1">
                                 {swapZone.relegationZone?.map(player => (
                                     <div key={player.name} className="flex items-center justify-between bg-rose-900/40 rounded px-2 py-1">
                                         <div className="flex items-center gap-2">
-                                            <span className="text-rose-400 font-bold">#{player.rank}</span>
+                                            <span className="text-red-500 font-bold">#{player.rank}</span>
                                             <PlayerAvatar name={player.name} size="sm" />
                                             <span className="text-sm text-white">{player.name}</span>
                                         </div>
@@ -225,15 +225,15 @@
                         {/* Promotion Zone */}
                         <div className="bg-emerald-900/30 border border-emerald-600/50 rounded-lg p-3">
                             <div className="flex items-center gap-2 mb-2">
-                                <div className="text-emerald-400"><SwapIcons.ArrowUp /></div>
-                                <span className="font-bold text-emerald-400 uppercase tracking-wide text-sm">PROMOTION ZONE</span>
+                                <div className="text-green-600"><SwapIcons.ArrowUp /></div>
+                                <span className="font-bold text-green-600 uppercase tracking-wide text-sm">PROMOTION ZONE</span>
                             </div>
                             <p className="text-xs text-emerald-300/70 mb-2">Top 3 of Group B move UP to Group A</p>
                             <div className="space-y-1">
                                 {swapZone.promotionZone?.map(player => (
                                     <div key={player.name} className="flex items-center justify-between bg-emerald-900/40 rounded px-2 py-1">
                                         <div className="flex items-center gap-2">
-                                            <span className="text-emerald-400 font-bold">#{player.rank}</span>
+                                            <span className="text-green-600 font-bold">#{player.rank}</span>
                                             <PlayerAvatar name={player.name} size="sm" />
                                             <span className="text-sm text-white">{player.name}</span>
                                         </div>
@@ -246,15 +246,15 @@
 
                     {/* Bubble Players */}
                     {swapZone.bubble?.length > 0 && (
-                        <div className="mt-3 pt-3 border-t border-slate-700">
+                        <div className="mt-3 pt-3 border-t border-gray-300">
                             <div className="flex items-center gap-2 mb-2">
-                                <div className="text-amber-400"><SwapIcons.Bolt /></div>
-                                <span className="text-sm font-semibold text-amber-400">ON THE BUBBLE</span>
+                                <div className="text-amber-600"><SwapIcons.Bolt /></div>
+                                <span className="text-sm font-semibold text-amber-600">ON THE BUBBLE</span>
                             </div>
                             <div className="flex flex-wrap gap-2">
                                 {swapZone.bubble.map(player => (
                                     <div key={player.name} className="flex items-center gap-2 bg-amber-900/30 border border-amber-600/50 rounded px-2 py-1 text-sm">
-                                        <span className="text-amber-400">#{player.rank} G{player.group}</span>
+                                        <span className="text-amber-600">#{player.rank} G{player.group}</span>
                                         <span className="text-white">{player.name}</span>
                                         <span className="text-xs text-amber-300">- {player.message}</span>
                                     </div>
@@ -287,15 +287,15 @@
             }, [standings]);
 
             return (
-                <div className="bg-slate-900 rounded-xl p-4">
-                    <h3 className="text-lg font-bold mb-3 flex items-center gap-2">
-                        <span className={groupName === 'A' ? 'text-emerald-400' : 'text-amber-400'}>●</span>
+                <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-200">
+                    <h3 className="text-lg font-bold mb-3 flex items-center gap-2 text-gray-900">
+                        <span className={groupName === 'A' ? 'text-purple-600' : 'text-amber-500'}>●</span>
                         Group {groupName}: {groupLabel}
                     </h3>
                     <div className="overflow-x-auto">
                         <table className="w-full text-sm">
                             <thead>
-                                <tr className="text-slate-400 border-b border-slate-800">
+                                <tr className="text-gray-500 border-b border-gray-200 bg-gray-50">
                                     <th className="text-left py-2 px-2">#</th>
                                     <th className="text-left py-2 px-2">Player</th>
                                     <th className="text-center py-2 px-2">W</th>
@@ -308,38 +308,38 @@
                             </thead>
                             <tbody>
                                 {sorted.map((player, idx) => (
-                                    <tr key={player.name} className={`border-b border-slate-800/50 ${idx < 4 ? 'bg-slate-800/30' : ''}`}>
+                                    <tr key={player.name} className={`border-b border-gray-100 ${idx < 4 ? 'bg-purple-50' : ''}`}>
                                         <td className="py-2 px-2">
-                                            <span className={idx < 4 ? 'text-emerald-400 font-bold' : 'text-slate-500'}>{idx + 1}</span>
+                                            <span className={idx < 4 ? 'text-purple-600 font-bold' : 'text-gray-400'}>{idx + 1}</span>
                                         </td>
                                         <td className="py-2 px-2">
                                             <div className="flex items-center gap-2">
                                                 <PlayerAvatar name={player.name} size="sm" />
-                                                <span className="font-medium">{player.name}</span>
-                                                {player.promotedFrom === 'B' && <span className="text-xs bg-emerald-900/50 text-emerald-400 px-1 rounded" title="Promoted from Group B">⬆️</span>}
-                                                {player.promotedFrom === 'A' && <span className="text-xs bg-rose-900/50 text-rose-400 px-1 rounded" title="Moved from Group A">⬇️</span>}
+                                                <span className="font-medium text-gray-900">{player.name}</span>
+                                                {player.promotedFrom === 'B' && <span className="text-xs bg-green-100 text-green-700 px-1 rounded" title="Promoted from Group B">⬆️</span>}
+                                                {player.promotedFrom === 'A' && <span className="text-xs bg-red-100 text-red-700 px-1 rounded" title="Moved from Group A">⬇️</span>}
                                             </div>
                                         </td>
-                                        <td className="text-center py-2 px-2 text-emerald-400 font-semibold">{player.wins}</td>
-                                        <td className="text-center py-2 px-2 text-rose-400">{player.losses}</td>
-                                        <td className="text-center py-2 px-2">{player.pointsFor}</td>
-                                        <td className="text-center py-2 px-2">{player.pointsAgainst}</td>
+                                        <td className="text-center py-2 px-2 text-green-600 font-semibold">{player.wins}</td>
+                                        <td className="text-center py-2 px-2 text-red-500">{player.losses}</td>
+                                        <td className="text-center py-2 px-2 text-gray-700">{player.pointsFor}</td>
+                                        <td className="text-center py-2 px-2 text-gray-700">{player.pointsAgainst}</td>
                                         <td className="text-center py-2 px-2">
-                                            <span className={player.pointsFor - player.pointsAgainst >= 0 ? 'text-emerald-400' : 'text-rose-400'}>
+                                            <span className={player.pointsFor - player.pointsAgainst >= 0 ? 'text-green-600' : 'text-red-500'}>
                                                 {player.pointsFor - player.pointsAgainst >= 0 ? '+' : ''}{player.pointsFor - player.pointsAgainst}
                                             </span>
                                         </td>
                                         <td className="text-center py-2 px-2">
-                                            {player.streak > 0 && <span className="text-emerald-400">W{player.streak}</span>}
-                                            {player.streak < 0 && <span className="text-rose-400">L{Math.abs(player.streak)}</span>}
-                                            {player.streak === 0 && <span className="text-slate-500">-</span>}
+                                            {player.streak > 0 && <span className="text-green-600">W{player.streak}</span>}
+                                            {player.streak < 0 && <span className="text-red-500">L{Math.abs(player.streak)}</span>}
+                                            {player.streak === 0 && <span className="text-gray-400">-</span>}
                                         </td>
                                     </tr>
                                 ))}
                             </tbody>
                         </table>
                     </div>
-                    <p className="text-xs text-slate-500 mt-2">Top 4 advance to playoffs</p>
+                    <p className="text-xs text-gray-500 mt-2">Top 4 advance to playoffs</p>
                 </div>
             );
         }
@@ -371,23 +371,23 @@
             return (
                 <div className="space-y-2">
                     {matches.map(match => (
-                        <div key={match.id} className={`flex items-center justify-between p-3 rounded-lg ${match.completed ? 'bg-slate-800/50' : 'bg-slate-800'}`}>
+                        <div key={match.id} className={`flex items-center justify-between p-3 rounded-lg ${match.completed ? 'bg-gray-100/50' : 'bg-gray-100'}`}>
                             <div className="flex items-center gap-3 flex-1">
                                 <div className="flex items-center gap-2 flex-1">
                                     <PlayerAvatar name={match.player1} size="sm" />
-                                    <span className={match.winner === match.player1 ? 'text-emerald-400 font-semibold' : ''}>{match.player1}</span>
+                                    <span className={match.winner === match.player1 ? 'text-green-600 font-semibold' : ''}>{match.player1}</span>
                                 </div>
-                                <div className="text-slate-500 text-sm">vs</div>
+                                <div className="text-gray-500 text-sm">vs</div>
                                 <div className="flex items-center gap-2 flex-1 justify-end">
-                                    <span className={match.winner === match.player2 ? 'text-emerald-400 font-semibold' : ''}>{match.player2}</span>
+                                    <span className={match.winner === match.player2 ? 'text-green-600 font-semibold' : ''}>{match.player2}</span>
                                     <PlayerAvatar name={match.player2} size="sm" />
                                 </div>
                             </div>
                             <div className="ml-4 w-24 text-right">
                                 {match.completed ? (
-                                    <span className="text-emerald-400 font-semibold">{match.score1} - {match.score2}</span>
+                                    <span className="text-green-600 font-semibold">{match.score1} - {match.score2}</span>
                                 ) : (
-                                    <button onClick={() => setSelectedMatch(match)} className="text-xs bg-violet-600 hover:bg-violet-500 px-3 py-1 rounded-lg">
+                                    <button onClick={() => setSelectedMatch(match)} className="text-xs bg-purple-600 hover:bg-purple-700 px-3 py-1 rounded-lg">
                                         Record
                                     </button>
                                 )}
@@ -398,15 +398,15 @@
                     {/* Record Result Modal */}
                     {selectedMatch && (
                         <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4" onClick={() => setSelectedMatch(null)}>
-                            <div className="bg-slate-800 rounded-xl p-6 max-w-sm w-full animate-slideIn" onClick={e => e.stopPropagation()}>
+                            <div className="bg-gray-100 rounded-xl p-6 max-w-sm w-full animate-slideIn" onClick={e => e.stopPropagation()}>
                                 <h3 className="text-lg font-bold mb-4 text-center">Record Result</h3>
-                                <p className="text-center text-slate-400 mb-4">{selectedMatch.player1} vs {selectedMatch.player2}</p>
+                                <p className="text-center text-gray-500 mb-4">{selectedMatch.player1} vs {selectedMatch.player2}</p>
 
                                 <div className="mb-4">
-                                    <p className="text-sm text-slate-400 mb-2">Who won?</p>
+                                    <p className="text-sm text-gray-500 mb-2">Who won?</p>
                                     <div className="grid grid-cols-2 gap-2">
                                         {[selectedMatch.player1, selectedMatch.player2].map(p => (
-                                            <button key={p} onClick={() => setWinner(p)} className={`p-3 rounded-lg transition ${winner === p ? 'bg-emerald-600' : 'bg-slate-700 hover:bg-slate-600'}`}>
+                                            <button key={p} onClick={() => setWinner(p)} className={`p-3 rounded-lg transition ${winner === p ? 'bg-emerald-600' : 'bg-gray-200 hover:bg-gray-300'}`}>
                                                 <PlayerAvatar name={p} size="sm" />
                                                 <div className="mt-1 text-sm font-medium">{p}</div>
                                             </button>
@@ -415,15 +415,15 @@
                                 </div>
 
                                 <div className="mb-4">
-                                    <p className="text-sm text-slate-400 mb-2">Score (Best of 3: 2-0 or 2-1)</p>
+                                    <p className="text-sm text-gray-500 mb-2">Score (Best of 3: 2-0 or 2-1)</p>
                                     <div className="flex items-center justify-center gap-4">
-                                        <input type="number" min="0" max="2" value={score1} onChange={e => setScore1(e.target.value)} className="w-16 bg-slate-700 text-center text-xl rounded-lg p-2" placeholder="0" />
-                                        <span className="text-slate-500">-</span>
-                                        <input type="number" min="0" max="2" value={score2} onChange={e => setScore2(e.target.value)} className="w-16 bg-slate-700 text-center text-xl rounded-lg p-2" placeholder="0" />
+                                        <input type="number" min="0" max="2" value={score1} onChange={e => setScore1(e.target.value)} className="w-16 bg-gray-200 text-center text-xl rounded-lg p-2" placeholder="0" />
+                                        <span className="text-gray-500">-</span>
+                                        <input type="number" min="0" max="2" value={score2} onChange={e => setScore2(e.target.value)} className="w-16 bg-gray-200 text-center text-xl rounded-lg p-2" placeholder="0" />
                                     </div>
                                 </div>
 
-                                <button onClick={handleSubmit} disabled={!winner} className="w-full py-3 bg-emerald-600 hover:bg-emerald-500 disabled:bg-slate-700 disabled:text-slate-500 rounded-lg font-semibold">
+                                <button onClick={handleSubmit} disabled={!winner} className="w-full py-3 bg-emerald-600 hover:bg-emerald-500 disabled:bg-gray-200 disabled:text-gray-500 rounded-lg font-semibold">
                                     Save Result
                                 </button>
                             </div>
@@ -460,40 +460,40 @@
                 const canPlay = match.player1 && match.player2 && !match.completed;
 
                 return (
-                    <div className="bg-slate-800 rounded-lg p-3 w-48">
-                        <div className="text-xs text-slate-500 mb-2">{label}</div>
-                        <div className={`flex items-center gap-2 mb-1 ${match.winner === match.player1 ? 'text-emerald-400' : ''}`}>
-                            {match.player1 ? <><PlayerAvatar name={match.player1} size="sm" /><span className="text-sm truncate">{match.player1}</span></> : <span className="text-slate-500 italic text-sm">TBD</span>}
-                            {match.seed1 && <span className="text-xs text-slate-500">#{match.seed1}</span>}
+                    <div className="bg-gray-100 rounded-lg p-3 w-48">
+                        <div className="text-xs text-gray-500 mb-2">{label}</div>
+                        <div className={`flex items-center gap-2 mb-1 ${match.winner === match.player1 ? 'text-green-600' : ''}`}>
+                            {match.player1 ? <><PlayerAvatar name={match.player1} size="sm" /><span className="text-sm truncate">{match.player1}</span></> : <span className="text-gray-500 italic text-sm">TBD</span>}
+                            {match.seed1 && <span className="text-xs text-gray-500">#{match.seed1}</span>}
                         </div>
-                        <div className={`flex items-center gap-2 ${match.winner === match.player2 ? 'text-emerald-400' : ''}`}>
-                            {match.player2 ? <><PlayerAvatar name={match.player2} size="sm" /><span className="text-sm truncate">{match.player2}</span></> : <span className="text-slate-500 italic text-sm">TBD</span>}
-                            {match.seed2 && <span className="text-xs text-slate-500">#{match.seed2}</span>}
+                        <div className={`flex items-center gap-2 ${match.winner === match.player2 ? 'text-green-600' : ''}`}>
+                            {match.player2 ? <><PlayerAvatar name={match.player2} size="sm" /><span className="text-sm truncate">{match.player2}</span></> : <span className="text-gray-500 italic text-sm">TBD</span>}
+                            {match.seed2 && <span className="text-xs text-gray-500">#{match.seed2}</span>}
                         </div>
                         {match.completed ? (
-                            <div className="mt-2 text-center text-emerald-400 font-semibold text-sm">{match.score1} - {match.score2}</div>
+                            <div className="mt-2 text-center text-green-600 font-semibold text-sm">{match.score1} - {match.score2}</div>
                         ) : canPlay ? (
-                            <button onClick={() => setShowModal(true)} className="mt-2 w-full text-xs bg-violet-600 hover:bg-violet-500 py-1 rounded">Record</button>
+                            <button onClick={() => setShowModal(true)} className="mt-2 w-full text-xs bg-purple-600 hover:bg-purple-700 py-1 rounded">Record</button>
                         ) : null}
 
                         {showModal && (
                             <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50" onClick={() => setShowModal(false)}>
-                                <div className="bg-slate-800 rounded-xl p-6 max-w-sm w-full" onClick={e => e.stopPropagation()}>
+                                <div className="bg-gray-100 rounded-xl p-6 max-w-sm w-full" onClick={e => e.stopPropagation()}>
                                     <h3 className="text-lg font-bold mb-4 text-center">{label}</h3>
                                     <div className="grid grid-cols-2 gap-2 mb-4">
                                         {[match.player1, match.player2].map(p => (
-                                            <button key={p} onClick={() => setWinner(p)} className={`p-3 rounded-lg ${winner === p ? 'bg-emerald-600' : 'bg-slate-700'}`}>
+                                            <button key={p} onClick={() => setWinner(p)} className={`p-3 rounded-lg ${winner === p ? 'bg-emerald-600' : 'bg-gray-200'}`}>
                                                 <PlayerAvatar name={p} size="sm" /><div className="mt-1 text-sm">{p}</div>
                                             </button>
                                         ))}
                                     </div>
-                                    <p className="text-sm text-slate-400 mb-2 text-center">Score (Best of 3: 2-0 or 2-1)</p>
+                                    <p className="text-sm text-gray-500 mb-2 text-center">Score (Best of 3: 2-0 or 2-1)</p>
                                     <div className="flex items-center justify-center gap-4 mb-4">
-                                        <input type="number" min="0" max="2" value={score1} onChange={e => setScore1(e.target.value)} className="w-16 bg-slate-700 text-center text-xl rounded-lg p-2" placeholder="0" />
+                                        <input type="number" min="0" max="2" value={score1} onChange={e => setScore1(e.target.value)} className="w-16 bg-gray-200 text-center text-xl rounded-lg p-2" placeholder="0" />
                                         <span>-</span>
-                                        <input type="number" min="0" max="2" value={score2} onChange={e => setScore2(e.target.value)} className="w-16 bg-slate-700 text-center text-xl rounded-lg p-2" placeholder="0" />
+                                        <input type="number" min="0" max="2" value={score2} onChange={e => setScore2(e.target.value)} className="w-16 bg-gray-200 text-center text-xl rounded-lg p-2" placeholder="0" />
                                     </div>
-                                    <button onClick={handleSubmit} disabled={!winner} className="w-full py-3 bg-emerald-600 disabled:bg-slate-700 rounded-lg font-semibold">Save</button>
+                                    <button onClick={handleSubmit} disabled={!winner} className="w-full py-3 bg-emerald-600 disabled:bg-gray-200 rounded-lg font-semibold">Save</button>
                                 </div>
                             </div>
                         )}
@@ -502,20 +502,20 @@
             };
 
             const groupColors = {
-                A: { bg: 'bg-emerald-900/30', border: 'border-emerald-500', accent: 'text-emerald-400', glow: 'shadow-emerald-500/20' },
-                B: { bg: 'bg-amber-900/30', border: 'border-amber-500', accent: 'text-amber-400', glow: 'shadow-amber-500/20' }
+                A: { bg: 'bg-emerald-900/30', border: 'border-emerald-500', accent: 'text-green-600', glow: 'shadow-emerald-500/20' },
+                B: { bg: 'bg-amber-900/30', border: 'border-amber-500', accent: 'text-amber-600', glow: 'shadow-amber-500/20' }
             };
             const colors = groupColors[groupName] || groupColors.A;
 
             return (
-                <div className={`bg-slate-900 rounded-xl p-6 border ${colors.border} shadow-lg ${colors.glow}`}>
+                <div className={`bg-white shadow-sm border border-gray-200 rounded-xl p-6 border ${colors.border} shadow-lg ${colors.glow}`}>
                     <div className="flex items-center gap-3 mb-6">
                         <div className={`w-10 h-10 rounded-full ${colors.bg} border ${colors.border} flex items-center justify-center font-bold ${colors.accent}`}>
                             {groupName}
                         </div>
                         <div>
                             <h3 className="text-xl font-bold">Group {groupName} Playoffs</h3>
-                            <p className="text-xs text-slate-500">Single elimination bracket</p>
+                            <p className="text-xs text-gray-500">Single elimination bracket</p>
                         </div>
                     </div>
                     <div className="flex gap-6 items-center overflow-x-auto pb-4">
@@ -528,7 +528,7 @@
                                 return <MatchCard key={sf.id} match={sf} label={`${seed1Label} vs ${seed2Label}`} />;
                             })}
                             {/* Connector lines */}
-                            <div className="absolute right-0 top-16 h-24 w-8 border-r-2 border-t-2 border-b-2 border-slate-600 rounded-r-lg"></div>
+                            <div className="absolute right-0 top-16 h-24 w-8 border-r-2 border-t-2 border-b-2 border-gray-400 rounded-r-lg"></div>
                         </div>
 
                         {/* Arrow */}
@@ -544,9 +544,9 @@
                             <MatchCard match={playoff.final} label="Championship" />
                             {playoff.champion && (
                                 <div className={`mt-4 text-center px-4 py-2 rounded-lg ${colors.bg} border ${colors.border}`}>
-                                    <div className="text-xs text-slate-400 uppercase">Champion</div>
+                                    <div className="text-xs text-gray-500 uppercase">Champion</div>
                                     <div className="flex items-center justify-center gap-2 mt-1">
-                                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-6 h-6 text-amber-400">
+                                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-6 h-6 text-amber-600">
                                             <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 18.75h-9m9 0a3 3 0 0 1 3 3h-15a3 3 0 0 1 3-3m9 0v-3.375c0-.621-.503-1.125-1.125-1.125h-.871M7.5 18.75v-3.375c0-.621.504-1.125 1.125-1.125h.872m5.007 0H9.497m5.007 0a7.454 7.454 0 0 1-.982-3.172M9.497 14.25a7.454 7.454 0 0 0 .981-3.172M5.25 4.236c-.982.143-1.954.317-2.916.52A6.003 6.003 0 0 0 7.73 9.728M5.25 4.236V4.5c0 2.108.966 3.99 2.48 5.228M5.25 4.236V2.721C7.456 2.41 9.71 2.25 12 2.25c2.291 0 4.545.16 6.75.47v1.516M7.73 9.728a6.726 6.726 0 0 0 2.748 1.35m8.272-6.842V4.5c0 2.108-.966 3.99-2.48 5.228m2.48-5.492a46.32 46.32 0 0 1 2.916.52 6.003 6.003 0 0 1-5.395 4.972m0 0a6.726 6.726 0 0 1-2.749 1.35m0 0a6.772 6.772 0 0 1-2.992 0" />
                                         </svg>
                                         <span className={`font-bold text-lg ${colors.accent}`}>{playoff.champion}</span>
@@ -583,12 +583,12 @@
                 };
 
                 const canPlay = match.player1 && match.player2 && !match.completed;
-                const getGroupColor = (group) => group === 'A' ? 'text-emerald-400' : group === 'B' ? 'text-amber-400' : 'text-slate-400';
+                const getGroupColor = (group) => group === 'A' ? 'text-green-600' : group === 'B' ? 'text-amber-600' : 'text-gray-500';
 
                 return (
-                    <div className="bg-slate-800 rounded-lg p-3 w-52">
-                        <div className="text-xs text-slate-500 mb-2 font-semibold">{label}</div>
-                        <div className={`flex items-center gap-2 mb-1 ${match.winner === match.player1 ? 'text-emerald-400 font-semibold' : ''}`}>
+                    <div className="bg-gray-100 rounded-lg p-3 w-52">
+                        <div className="text-xs text-gray-500 mb-2 font-semibold">{label}</div>
+                        <div className={`flex items-center gap-2 mb-1 ${match.winner === match.player1 ? 'text-green-600 font-semibold' : ''}`}>
                             {match.player1 ? (
                                 <>
                                     <PlayerAvatar name={match.player1} size="sm" />
@@ -596,10 +596,10 @@
                                     {showSeeds && match.seed1 && <span className={`text-xs ${getGroupColor(match.player1Group)}`}>{match.seed1}</span>}
                                 </>
                             ) : (
-                                <span className="text-slate-500 italic text-sm">TBD</span>
+                                <span className="text-gray-500 italic text-sm">TBD</span>
                             )}
                         </div>
-                        <div className={`flex items-center gap-2 ${match.winner === match.player2 ? 'text-emerald-400 font-semibold' : ''}`}>
+                        <div className={`flex items-center gap-2 ${match.winner === match.player2 ? 'text-green-600 font-semibold' : ''}`}>
                             {match.player2 ? (
                                 <>
                                     <PlayerAvatar name={match.player2} size="sm" />
@@ -607,33 +607,33 @@
                                     {showSeeds && match.seed2 && <span className={`text-xs ${getGroupColor(match.player2Group)}`}>{match.seed2}</span>}
                                 </>
                             ) : (
-                                <span className="text-slate-500 italic text-sm">TBD</span>
+                                <span className="text-gray-500 italic text-sm">TBD</span>
                             )}
                         </div>
                         {match.completed ? (
-                            <div className="mt-2 text-center text-emerald-400 font-semibold text-sm">{match.score1} - {match.score2}</div>
+                            <div className="mt-2 text-center text-green-600 font-semibold text-sm">{match.score1} - {match.score2}</div>
                         ) : canPlay ? (
-                            <button onClick={() => setShowModal(true)} className="mt-2 w-full text-xs bg-violet-600 hover:bg-violet-500 py-1 rounded">Record</button>
+                            <button onClick={() => setShowModal(true)} className="mt-2 w-full text-xs bg-purple-600 hover:bg-purple-700 py-1 rounded">Record</button>
                         ) : null}
 
                         {showModal && (
                             <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50" onClick={() => setShowModal(false)}>
-                                <div className="bg-slate-800 rounded-xl p-6 max-w-sm w-full" onClick={e => e.stopPropagation()}>
+                                <div className="bg-gray-100 rounded-xl p-6 max-w-sm w-full" onClick={e => e.stopPropagation()}>
                                     <h3 className="text-lg font-bold mb-4 text-center">{label}</h3>
                                     <div className="grid grid-cols-2 gap-2 mb-4">
                                         {[match.player1, match.player2].map(p => (
-                                            <button key={p} onClick={() => setWinner(p)} className={`p-3 rounded-lg ${winner === p ? 'bg-emerald-600' : 'bg-slate-700'}`}>
+                                            <button key={p} onClick={() => setWinner(p)} className={`p-3 rounded-lg ${winner === p ? 'bg-emerald-600' : 'bg-gray-200'}`}>
                                                 <PlayerAvatar name={p} size="sm" /><div className="mt-1 text-sm">{p}</div>
                                             </button>
                                         ))}
                                     </div>
-                                    <p className="text-sm text-slate-400 mb-2 text-center">Score (Best of 3: 2-0 or 2-1)</p>
+                                    <p className="text-sm text-gray-500 mb-2 text-center">Score (Best of 3: 2-0 or 2-1)</p>
                                     <div className="flex items-center justify-center gap-4 mb-4">
-                                        <input type="number" min="0" max="2" value={score1} onChange={e => setScore1(e.target.value)} className="w-16 bg-slate-700 text-center text-xl rounded-lg p-2" placeholder="0" />
+                                        <input type="number" min="0" max="2" value={score1} onChange={e => setScore1(e.target.value)} className="w-16 bg-gray-200 text-center text-xl rounded-lg p-2" placeholder="0" />
                                         <span>-</span>
-                                        <input type="number" min="0" max="2" value={score2} onChange={e => setScore2(e.target.value)} className="w-16 bg-slate-700 text-center text-xl rounded-lg p-2" placeholder="0" />
+                                        <input type="number" min="0" max="2" value={score2} onChange={e => setScore2(e.target.value)} className="w-16 bg-gray-200 text-center text-xl rounded-lg p-2" placeholder="0" />
                                     </div>
-                                    <button onClick={handleSubmit} disabled={!winner} className="w-full py-3 bg-emerald-600 disabled:bg-slate-700 rounded-lg font-semibold">Save</button>
+                                    <button onClick={handleSubmit} disabled={!winner} className="w-full py-3 bg-emerald-600 disabled:bg-gray-200 rounded-lg font-semibold">Save</button>
                                 </div>
                             </div>
                         )}
@@ -642,23 +642,23 @@
             };
 
             return (
-                <div className="bg-slate-900 rounded-xl p-6 border border-violet-500 shadow-lg shadow-violet-500/20">
+                <div className="bg-white shadow-sm border border-gray-200 rounded-xl p-6 border border-violet-500 shadow-lg shadow-violet-500/20">
                     <div className="flex items-center gap-3 mb-6">
                         <div className="w-10 h-10 rounded-full bg-violet-900/50 border border-violet-500 flex items-center justify-center">
-                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-6 h-6 text-amber-400">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-6 h-6 text-amber-600">
                                 <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 18.75h-9m9 0a3 3 0 0 1 3 3h-15a3 3 0 0 1 3-3m9 0v-3.375c0-.621-.503-1.125-1.125-1.125h-.871M7.5 18.75v-3.375c0-.621.504-1.125 1.125-1.125h.872m5.007 0H9.497m5.007 0a7.454 7.454 0 0 1-.982-3.172M9.497 14.25a7.454 7.454 0 0 0 .981-3.172M5.25 4.236c-.982.143-1.954.317-2.916.52A6.003 6.003 0 0 0 7.73 9.728M5.25 4.236V4.5c0 2.108.966 3.99 2.48 5.228M5.25 4.236V2.721C7.456 2.41 9.71 2.25 12 2.25c2.291 0 4.545.16 6.75.47v1.516M7.73 9.728a6.726 6.726 0 0 0 2.748 1.35m8.272-6.842V4.5c0 2.108-.966 3.99-2.48 5.228m2.48-5.492a46.32 46.32 0 0 1 2.916.52 6.003 6.003 0 0 1-5.395 4.972m0 0a6.726 6.726 0 0 1-2.749 1.35m0 0a6.772 6.772 0 0 1-2.992 0" />
                             </svg>
                         </div>
                         <div>
                             <h3 className="text-xl font-bold text-violet-300">Championship Bracket</h3>
-                            <p className="text-xs text-slate-500">Top 4 from each group compete for the title</p>
+                            <p className="text-xs text-gray-500">Top 4 from each group compete for the title</p>
                         </div>
                     </div>
 
                     <div className="flex gap-4 items-start overflow-x-auto pb-4">
                         {/* Quarterfinals */}
                         <div className="flex flex-col gap-4">
-                            <div className="text-xs text-violet-400 font-semibold text-center uppercase tracking-wide mb-1">Quarterfinals</div>
+                            <div className="text-xs text-purple-600 font-semibold text-center uppercase tracking-wide mb-1">Quarterfinals</div>
                             <div className="flex flex-col gap-8">
                                 <MatchCard match={championship.quarterfinals[0]} label="QF1: A#1 vs B#4" />
                                 <MatchCard match={championship.quarterfinals[1]} label="QF2: B#2 vs A#3" />
@@ -671,7 +671,7 @@
                         </div>
 
                         {/* Arrow */}
-                        <div className="text-violet-400 px-2 pt-24">
+                        <div className="text-purple-600 px-2 pt-24">
                             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor" className="w-8 h-8">
                                 <path strokeLinecap="round" strokeLinejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
                             </svg>
@@ -679,7 +679,7 @@
 
                         {/* Semifinals */}
                         <div className="flex flex-col gap-4 pt-8">
-                            <div className="text-xs text-violet-400 font-semibold text-center uppercase tracking-wide mb-1">Semifinals</div>
+                            <div className="text-xs text-purple-600 font-semibold text-center uppercase tracking-wide mb-1">Semifinals</div>
                             <div className="flex flex-col gap-32">
                                 <MatchCard match={championship.semifinals[0]} label="SF1: QF1 Winner vs QF2 Winner" showSeeds={false} />
                                 <MatchCard match={championship.semifinals[1]} label="SF2: QF3 Winner vs QF4 Winner" showSeeds={false} />
@@ -687,7 +687,7 @@
                         </div>
 
                         {/* Arrow */}
-                        <div className="text-violet-400 px-2 pt-32">
+                        <div className="text-purple-600 px-2 pt-32">
                             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor" className="w-8 h-8">
                                 <path strokeLinecap="round" strokeLinejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
                             </svg>
@@ -695,16 +695,16 @@
 
                         {/* Final */}
                         <div className="flex flex-col items-center pt-24">
-                            <div className="text-xs text-amber-400 font-semibold text-center uppercase tracking-wide mb-1">Championship Final</div>
+                            <div className="text-xs text-amber-600 font-semibold text-center uppercase tracking-wide mb-1">Championship Final</div>
                             <MatchCard match={championship.final} label="Grand Final" showSeeds={false} />
                             {championship.champion && (
                                 <div className="mt-4 text-center px-6 py-3 rounded-lg bg-gradient-to-r from-amber-900/50 to-violet-900/50 border border-amber-500">
-                                    <div className="text-xs text-slate-400 uppercase">Season Champion</div>
+                                    <div className="text-xs text-gray-500 uppercase">Season Champion</div>
                                     <div className="flex items-center justify-center gap-2 mt-1">
-                                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-6 h-6 text-amber-400">
+                                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-6 h-6 text-amber-600">
                                             <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 18.75h-9m9 0a3 3 0 0 1 3 3h-15a3 3 0 0 1 3-3m9 0v-3.375c0-.621-.503-1.125-1.125-1.125h-.871M7.5 18.75v-3.375c0-.621.504-1.125 1.125-1.125h.872m5.007 0H9.497m5.007 0a7.454 7.454 0 0 1-.982-3.172M9.497 14.25a7.454 7.454 0 0 0 .981-3.172M5.25 4.236c-.982.143-1.954.317-2.916.52A6.003 6.003 0 0 0 7.73 9.728M5.25 4.236V4.5c0 2.108.966 3.99 2.48 5.228M5.25 4.236V2.721C7.456 2.41 9.71 2.25 12 2.25c2.291 0 4.545.16 6.75.47v1.516M7.73 9.728a6.726 6.726 0 0 0 2.748 1.35m8.272-6.842V4.5c0 2.108-.966 3.99-2.48 5.228m2.48-5.492a46.32 46.32 0 0 1 2.916.52 6.003 6.003 0 0 1-5.395 4.972m0 0a6.726 6.726 0 0 1-2.749 1.35m0 0a6.772 6.772 0 0 1-2.992 0" />
                                         </svg>
-                                        <span className="font-bold text-lg text-amber-400">{championship.champion}</span>
+                                        <span className="font-bold text-lg text-amber-600">{championship.champion}</span>
                                     </div>
                                 </div>
                             )}
@@ -712,11 +712,11 @@
                     </div>
 
                     {/* Seed Legend */}
-                    <div className="mt-4 pt-4 border-t border-slate-700">
-                        <div className="flex flex-wrap gap-4 text-xs text-slate-400">
-                            <span><span className="text-emerald-400">A#1-4</span> = Group A seeds</span>
-                            <span><span className="text-amber-400">B#1-4</span> = Group B seeds</span>
-                            <span><span className="text-violet-400">WC</span> = Wildcard winner</span>
+                    <div className="mt-4 pt-4 border-t border-gray-300">
+                        <div className="flex flex-wrap gap-4 text-xs text-gray-500">
+                            <span><span className="text-green-600">A#1-4</span> = Group A seeds</span>
+                            <span><span className="text-amber-600">B#1-4</span> = Group B seeds</span>
+                            <span><span className="text-purple-600">WC</span> = Wildcard winner</span>
                         </div>
                     </div>
                 </div>
@@ -748,55 +748,55 @@
                 };
 
                 return (
-                    <div className="bg-slate-800 rounded-lg p-4">
-                        <div className="text-xs text-slate-500 mb-2">{match.description}</div>
+                    <div className="bg-gray-100 rounded-lg p-4">
+                        <div className="text-xs text-gray-500 mb-2">{match.description}</div>
                         <div className="flex items-center justify-between">
                             <div className="flex items-center gap-3">
                                 <div className={`text-center ${match.winner === match.player1 ? 'ring-2 ring-emerald-400 rounded-lg p-1' : ''}`}>
                                     <PlayerAvatar name={match.player1} size="sm" />
                                     <div className="text-xs mt-1">{match.player1}</div>
-                                    <div className="text-xs text-emerald-400">Group {match.player1Group}</div>
+                                    <div className="text-xs text-green-600">Group {match.player1Group}</div>
                                 </div>
-                                <div className="text-slate-500 text-lg">vs</div>
+                                <div className="text-gray-500 text-lg">vs</div>
                                 <div className={`text-center ${match.winner === match.player2 ? 'ring-2 ring-emerald-400 rounded-lg p-1' : ''}`}>
                                     <PlayerAvatar name={match.player2} size="sm" />
                                     <div className="text-xs mt-1">{match.player2}</div>
-                                    <div className="text-xs text-amber-400">Group {match.player2Group}</div>
+                                    <div className="text-xs text-amber-600">Group {match.player2Group}</div>
                                 </div>
                             </div>
                             {match.completed ? (
-                                <div className="text-emerald-400 font-bold">{match.score1} - {match.score2}</div>
+                                <div className="text-green-600 font-bold">{match.score1} - {match.score2}</div>
                             ) : (
-                                <button onClick={() => setShowModal(true)} className="bg-violet-600 hover:bg-violet-500 px-4 py-2 rounded-lg text-sm">
+                                <button onClick={() => setShowModal(true)} className="bg-purple-600 hover:bg-purple-700 px-4 py-2 rounded-lg text-sm">
                                     Record
                                 </button>
                             )}
                         </div>
                         {match.completed && (
                             <div className="mt-2 text-sm text-center">
-                                <span className="text-emerald-400 font-semibold">{match.winner}</span>
-                                <span className="text-slate-400"> earns wildcard to Group {match.winner === match.player1 ? match.player1Group : match.player2Group} playoffs!</span>
+                                <span className="text-green-600 font-semibold">{match.winner}</span>
+                                <span className="text-gray-500"> earns wildcard to Group {match.winner === match.player1 ? match.player1Group : match.player2Group} playoffs!</span>
                             </div>
                         )}
 
                         {showModal && (
                             <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50" onClick={() => setShowModal(false)}>
-                                <div className="bg-slate-800 rounded-xl p-6 max-w-sm w-full" onClick={e => e.stopPropagation()}>
+                                <div className="bg-gray-100 rounded-xl p-6 max-w-sm w-full" onClick={e => e.stopPropagation()}>
                                     <h3 className="text-lg font-bold mb-4 text-center">Wildcard Match</h3>
                                     <div className="grid grid-cols-2 gap-2 mb-4">
                                         {[match.player1, match.player2].map(p => (
-                                            <button key={p} onClick={() => setWinner(p)} className={`p-3 rounded-lg ${winner === p ? 'bg-emerald-600' : 'bg-slate-700'}`}>
+                                            <button key={p} onClick={() => setWinner(p)} className={`p-3 rounded-lg ${winner === p ? 'bg-emerald-600' : 'bg-gray-200'}`}>
                                                 <PlayerAvatar name={p} size="sm" /><div className="mt-1 text-sm">{p}</div>
                                             </button>
                                         ))}
                                     </div>
-                                    <p className="text-sm text-slate-400 mb-2 text-center">Score (Best of 3: 2-0 or 2-1)</p>
+                                    <p className="text-sm text-gray-500 mb-2 text-center">Score (Best of 3: 2-0 or 2-1)</p>
                                     <div className="flex items-center justify-center gap-4 mb-4">
-                                        <input type="number" min="0" max="2" value={score1} onChange={e => setScore1(e.target.value)} className="w-16 bg-slate-700 text-center text-xl rounded-lg p-2" placeholder="0" />
+                                        <input type="number" min="0" max="2" value={score1} onChange={e => setScore1(e.target.value)} className="w-16 bg-gray-200 text-center text-xl rounded-lg p-2" placeholder="0" />
                                         <span>-</span>
-                                        <input type="number" min="0" max="2" value={score2} onChange={e => setScore2(e.target.value)} className="w-16 bg-slate-700 text-center text-xl rounded-lg p-2" placeholder="0" />
+                                        <input type="number" min="0" max="2" value={score2} onChange={e => setScore2(e.target.value)} className="w-16 bg-gray-200 text-center text-xl rounded-lg p-2" placeholder="0" />
                                     </div>
-                                    <button onClick={handleSubmit} disabled={!winner} className="w-full py-3 bg-emerald-600 disabled:bg-slate-700 rounded-lg font-semibold">Save</button>
+                                    <button onClick={handleSubmit} disabled={!winner} className="w-full py-3 bg-emerald-600 disabled:bg-gray-200 rounded-lg font-semibold">Save</button>
                                 </div>
                             </div>
                         )}
@@ -805,14 +805,14 @@
             };
 
             return (
-                <div className="bg-slate-900 rounded-xl p-4">
+                <div className="bg-white shadow-sm border border-gray-200 rounded-xl p-4">
                     <h3 className="text-lg font-bold mb-2 flex items-center gap-2">
-                        <span className="text-violet-400">⚡</span> Wildcard Round
+                        <span className="text-purple-600">⚡</span> Wildcard Round
                     </h3>
-                    <p className="text-sm text-slate-400 mb-2">
+                    <p className="text-sm text-gray-500 mb-2">
                         Group A #5-6 vs Group B #5-6 - Cross-group showdown for playoff spots!
                     </p>
-                    <div className="text-xs text-slate-500 mb-4 bg-slate-800/50 rounded-lg p-2">
+                    <div className="text-xs text-gray-500 mb-4 bg-gray-100/50 rounded-lg p-2">
                         <strong>Stakes:</strong> Winner earns a wildcard spot in their <em>own</em> group's playoffs.
                         Beat the player at your same rank from the other group to prove you deserve a playoff spot!
                     </div>
@@ -849,33 +849,33 @@
             return (
                 <div className="bg-gradient-to-r from-amber-900/50 to-yellow-900/50 border-2 border-amber-500/50 rounded-2xl p-6 text-center">
                     <div className="flex justify-center mb-2">
-                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-12 h-12 text-amber-400">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-12 h-12 text-amber-600">
                             <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 18.75h-9m9 0a3 3 0 0 1 3 3h-15a3 3 0 0 1 3-3m9 0v-3.375c0-.621-.503-1.125-1.125-1.125h-.871M7.5 18.75v-3.375c0-.621.504-1.125 1.125-1.125h.872m5.007 0H9.497m5.007 0a7.454 7.454 0 0 1-.982-3.172M9.497 14.25a7.454 7.454 0 0 0 .981-3.172M5.25 4.236c-.982.143-1.954.317-2.916.52A6.003 6.003 0 0 0 7.73 9.728M5.25 4.236V4.5c0 2.108.966 3.99 2.48 5.228M5.25 4.236V2.721C7.456 2.41 9.71 2.25 12 2.25c2.291 0 4.545.16 6.75.47v1.516M7.73 9.728a6.726 6.726 0 0 0 2.748 1.35m8.272-6.842V4.5c0 2.108-.966 3.99-2.48 5.228m2.48-5.492a46.32 46.32 0 0 1 2.916.52 6.003 6.003 0 0 1-5.395 4.972m0 0a6.726 6.726 0 0 1-2.749 1.35m0 0a6.772 6.772 0 0 1-2.992 0" />
                         </svg>
                     </div>
                     <h2 className="text-2xl font-bold mb-4">MAMMOTOME PING PONG FINALE</h2>
                     <div className="flex items-center justify-center gap-8">
                         <div className="text-center">
-                            <div className="text-xs text-slate-400 mb-1">Group A Champion</div>
+                            <div className="text-xs text-gray-500 mb-1">Group A Champion</div>
                             <PlayerAvatar name={match.player1} size="lg" />
-                            <div className={`mt-2 font-bold ${match.winner === match.player1 ? 'text-amber-400' : ''}`}>{match.player1}</div>
+                            <div className={`mt-2 font-bold ${match.winner === match.player1 ? 'text-amber-600' : ''}`}>{match.player1}</div>
                         </div>
-                        <div className="text-2xl font-bold text-slate-500">VS</div>
+                        <div className="text-2xl font-bold text-gray-500">VS</div>
                         <div className="text-center">
-                            <div className="text-xs text-slate-400 mb-1">Group B Champion</div>
+                            <div className="text-xs text-gray-500 mb-1">Group B Champion</div>
                             <PlayerAvatar name={match.player2} size="lg" />
-                            <div className={`mt-2 font-bold ${match.winner === match.player2 ? 'text-amber-400' : ''}`}>{match.player2}</div>
+                            <div className={`mt-2 font-bold ${match.winner === match.player2 ? 'text-amber-600' : ''}`}>{match.player2}</div>
                         </div>
                     </div>
                     {match.completed ? (
                         <div className="mt-4">
-                            <div className="text-3xl font-bold text-amber-400">{match.score1} - {match.score2}</div>
+                            <div className="text-3xl font-bold text-amber-600">{match.score1} - {match.score2}</div>
                             <div className="text-xl mt-2 flex items-center justify-center gap-2">
-                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-6 h-6 text-amber-400">
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-6 h-6 text-amber-600">
                                     <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904 9 18.75l-.813-2.846a4.5 4.5 0 0 0-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 0 0 3.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 0 0 3.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 0 0-3.09 3.09ZM18.259 8.715 18 9.75l-.259-1.035a3.375 3.375 0 0 0-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 0 0 2.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 0 0 2.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 0 0-2.456 2.456ZM16.894 20.567 16.5 21.75l-.394-1.183a2.25 2.25 0 0 0-1.423-1.423L13.5 18.75l1.183-.394a2.25 2.25 0 0 0 1.423-1.423l.394-1.183.394 1.183a2.25 2.25 0 0 0 1.423 1.423l1.183.394-1.183.394a2.25 2.25 0 0 0-1.423 1.423Z" />
                                 </svg>
                                 <span>{match.winner} is the Champion!</span>
-                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-6 h-6 text-amber-400">
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-6 h-6 text-amber-600">
                                     <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904 9 18.75l-.813-2.846a4.5 4.5 0 0 0-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 0 0 3.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 0 0 3.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 0 0-3.09 3.09ZM18.259 8.715 18 9.75l-.259-1.035a3.375 3.375 0 0 0-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 0 0 2.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 0 0 2.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 0 0-2.456 2.456ZM16.894 20.567 16.5 21.75l-.394-1.183a2.25 2.25 0 0 0-1.423-1.423L13.5 18.75l1.183-.394a2.25 2.25 0 0 0 1.423-1.423l.394-1.183.394 1.183a2.25 2.25 0 0 0 1.423 1.423l1.183.394-1.183.394a2.25 2.25 0 0 0-1.423 1.423Z" />
                                 </svg>
                             </div>
@@ -888,22 +888,22 @@
 
                     {showModal && (
                         <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50" onClick={() => setShowModal(false)}>
-                            <div className="bg-slate-800 rounded-xl p-6 max-w-sm w-full" onClick={e => e.stopPropagation()}>
+                            <div className="bg-gray-100 rounded-xl p-6 max-w-sm w-full" onClick={e => e.stopPropagation()}>
                                 <h3 className="text-xl font-bold mb-4">Finale Result</h3>
                                 <div className="grid grid-cols-2 gap-4 mb-4">
                                     {[match.player1, match.player2].map(p => (
-                                        <button key={p} onClick={() => setWinner(p)} className={`p-4 rounded-lg ${winner === p ? 'bg-amber-600' : 'bg-slate-700'}`}>
+                                        <button key={p} onClick={() => setWinner(p)} className={`p-4 rounded-lg ${winner === p ? 'bg-amber-600' : 'bg-gray-200'}`}>
                                             <PlayerAvatar name={p} size="md" /><div className="mt-2 font-semibold">{p}</div>
                                         </button>
                                     ))}
                                 </div>
-                                <p className="text-sm text-slate-400 mb-2 text-center">Score (Best of 3: 2-0 or 2-1)</p>
+                                <p className="text-sm text-gray-500 mb-2 text-center">Score (Best of 3: 2-0 or 2-1)</p>
                                 <div className="flex items-center justify-center gap-4 mb-4">
-                                    <input type="number" min="0" max="2" value={score1} onChange={e => setScore1(e.target.value)} className="w-20 bg-slate-700 text-center text-2xl rounded-lg p-2" placeholder="0" />
+                                    <input type="number" min="0" max="2" value={score1} onChange={e => setScore1(e.target.value)} className="w-20 bg-gray-200 text-center text-2xl rounded-lg p-2" placeholder="0" />
                                     <span className="text-xl">-</span>
-                                    <input type="number" min="0" max="2" value={score2} onChange={e => setScore2(e.target.value)} className="w-20 bg-slate-700 text-center text-2xl rounded-lg p-2" placeholder="0" />
+                                    <input type="number" min="0" max="2" value={score2} onChange={e => setScore2(e.target.value)} className="w-20 bg-gray-200 text-center text-2xl rounded-lg p-2" placeholder="0" />
                                 </div>
-                                <button onClick={handleSubmit} disabled={!winner} className="w-full py-3 bg-amber-600 disabled:bg-slate-700 rounded-lg font-semibold flex items-center justify-center gap-2">
+                                <button onClick={handleSubmit} disabled={!winner} className="w-full py-3 bg-amber-600 disabled:bg-gray-200 rounded-lg font-semibold flex items-center justify-center gap-2">
                                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-5 h-5">
                                         <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 18.75h-9m9 0a3 3 0 0 1 3 3h-15a3 3 0 0 1 3-3m9 0v-3.375c0-.621-.503-1.125-1.125-1.125h-.871M7.5 18.75v-3.375c0-.621.504-1.125 1.125-1.125h.872m5.007 0H9.497m5.007 0a7.454 7.454 0 0 1-.982-3.172M9.497 14.25a7.454 7.454 0 0 0 .981-3.172M5.25 4.236c-.982.143-1.954.317-2.916.52A6.003 6.003 0 0 0 7.73 9.728M5.25 4.236V4.5c0 2.108.966 3.99 2.48 5.228M5.25 4.236V2.721C7.456 2.41 9.71 2.25 12 2.25c2.291 0 4.545.16 6.75.47v1.516M7.73 9.728a6.726 6.726 0 0 0 2.748 1.35m8.272-6.842V4.5c0 2.108-.966 3.99-2.48 5.228m2.48-5.492a46.32 46.32 0 0 1 2.916.52 6.003 6.003 0 0 1-5.395 4.972m0 0a6.726 6.726 0 0 1-2.749 1.35m0 0a6.772 6.772 0 0 1-2.992 0" />
                                     </svg>
@@ -1125,11 +1125,11 @@
             // If no player selected, show player selection
             if (!currentPlayer) {
                 return (
-                    <div className="bg-slate-900 rounded-xl p-6 text-center">
+                    <div className="bg-white shadow-sm border border-gray-200 rounded-xl p-6 text-center">
                         <h3 className="text-xl font-bold mb-4">Who are you?</h3>
-                        <p className="text-slate-400 mb-4">Select your name to manage your schedule</p>
+                        <p className="text-gray-500 mb-4">Select your name to manage your schedule</p>
                         <select onChange={e => onSelectPlayer(e.target.value)} value=""
-                                className="bg-slate-800 rounded-lg px-4 py-3 text-lg w-full max-w-xs">
+                                className="bg-gray-100 rounded-lg px-4 py-3 text-lg w-full max-w-xs">
                             <option value="">Select your name...</option>
                             {allPlayers.map(p => <option key={p} value={p}>{p}</option>)}
                         </select>
@@ -1140,34 +1140,34 @@
             return (
                 <div className="space-y-4">
                     {/* Current Player Header */}
-                    <div className="bg-slate-900 rounded-xl p-4 flex items-center justify-between">
+                    <div className="bg-white shadow-sm border border-gray-200 rounded-xl p-4 flex items-center justify-between">
                         <div className="flex items-center gap-3">
                             <PlayerAvatar name={currentPlayer} size="lg" />
                             <div>
                                 <div className="font-bold text-lg">{currentPlayer}</div>
-                                <div className="text-sm text-slate-400">My Schedule</div>
+                                <div className="text-sm text-gray-500">My Schedule</div>
                             </div>
                         </div>
-                        <button onClick={() => onSelectPlayer('')} className="text-slate-400 hover:text-white text-sm">
+                        <button onClick={() => onSelectPlayer('')} className="text-gray-500 hover:text-white text-sm">
                             Switch Player
                         </button>
                     </div>
 
                     {/* My Upcoming Matches */}
-                    <div className="bg-slate-900 rounded-xl p-4">
+                    <div className="bg-white shadow-sm border border-gray-200 rounded-xl p-4">
                         <h3 className="text-lg font-bold mb-3">My Upcoming Matches</h3>
                         {myMatches.length === 0 ? (
-                            <p className="text-slate-500 text-center py-4">No upcoming matches</p>
+                            <p className="text-gray-500 text-center py-4">No upcoming matches</p>
                         ) : (
                             <div className="space-y-3">
                                 {myMatches.map(match => {
                                     const overlap = weekDates.flatMap(d => getOverlapSlots(match.opponent, d).map(s => ({ date: d, slot: s })));
                                     return (
-                                        <div key={match.id} className="bg-slate-800 rounded-lg p-4">
+                                        <div key={match.id} className="bg-gray-100 rounded-lg p-4">
                                             <div className="flex items-center justify-between mb-2">
                                                 <div className="flex items-center gap-2">
-                                                    <span className="text-xs bg-slate-700 px-2 py-1 rounded">Week {match.weekNum}</span>
-                                                    <span className={`text-xs px-2 py-1 rounded ${match.group === 'A' ? 'bg-emerald-900/50 text-emerald-400' : 'bg-amber-900/50 text-amber-400'}`}>
+                                                    <span className="text-xs bg-gray-200 px-2 py-1 rounded">Week {match.weekNum}</span>
+                                                    <span className={`text-xs px-2 py-1 rounded ${match.group === 'A' ? 'bg-emerald-900/50 text-green-600' : 'bg-amber-900/50 text-amber-600'}`}>
                                                         Group {match.group}
                                                     </span>
                                                 </div>
@@ -1179,7 +1179,7 @@
                                             </div>
                                             {overlap.length > 0 ? (
                                                 <div>
-                                                    <p className="text-xs text-emerald-400 mb-2">{overlap.length} mutual available slots this week:</p>
+                                                    <p className="text-xs text-green-600 mb-2">{overlap.length} mutual available slots this week:</p>
                                                     <div className="flex flex-wrap gap-1">
                                                         {overlap.slice(0, 6).map(({date, slot}) => (
                                                             <button key={date + slot} onClick={() => {
@@ -1187,15 +1187,15 @@
                                                                 setSelectedDate(date);
                                                                 setSelectedSlot(slot);
                                                                 setShowBookingModal(true);
-                                                            }} className="text-xs bg-emerald-900/50 text-emerald-400 px-2 py-1 rounded hover:bg-emerald-800">
+                                                            }} className="text-xs bg-emerald-900/50 text-green-600 px-2 py-1 rounded hover:bg-emerald-800">
                                                                 {dayNames[new Date(date).getDay()]} {formatTime(slot)}
                                                             </button>
                                                         ))}
-                                                        {overlap.length > 6 && <span className="text-xs text-slate-400">+{overlap.length - 6} more</span>}
+                                                        {overlap.length > 6 && <span className="text-xs text-gray-500">+{overlap.length - 6} more</span>}
                                                     </div>
                                                 </div>
                                             ) : (
-                                                <p className="text-xs text-amber-400">No mutual availability yet. Set your available times below!</p>
+                                                <p className="text-xs text-amber-600">No mutual availability yet. Set your available times below!</p>
                                             )}
                                         </div>
                                     );
@@ -1205,17 +1205,17 @@
                     </div>
 
                     {/* My Availability Grid */}
-                    <div className="bg-slate-900 rounded-xl p-4">
+                    <div className="bg-white shadow-sm border border-gray-200 rounded-xl p-4">
                         <h3 className="text-lg font-bold mb-3">Set My Availability</h3>
-                        <p className="text-sm text-slate-400 mb-4">Tap slots when you're free to play. Your opponents will see when you overlap!</p>
+                        <p className="text-sm text-gray-500 mb-4">Tap slots when you're free to play. Your opponents will see when you overlap!</p>
                         <div className="overflow-x-auto">
                             <table className="w-full text-sm">
                                 <thead>
                                     <tr>
-                                        <th className="p-1 text-left text-slate-400">Time</th>
+                                        <th className="p-1 text-left text-gray-500">Time</th>
                                         {weekDates.map((date, i) => (
                                             <th key={date} className="p-1 text-center">
-                                                <div className="text-slate-400 text-xs">{dayNames[i]}</div>
+                                                <div className="text-gray-500 text-xs">{dayNames[i]}</div>
                                                 <div>{new Date(date + 'T12:00').getDate()}</div>
                                             </th>
                                         ))}
@@ -1224,7 +1224,7 @@
                                 <tbody>
                                     {timeSlots.map(slot => (
                                         <tr key={slot}>
-                                            <td className="p-1 text-slate-400 text-xs">{formatTime(slot)}</td>
+                                            <td className="p-1 text-gray-500 text-xs">{formatTime(slot)}</td>
                                             {weekDates.map(date => {
                                                 const isAvailable = myAvailability[currentPlayer]?.[date]?.includes(slot);
                                                 const existingBooking = tableBookings.find(b =>
@@ -1242,12 +1242,12 @@
                                                             disabled={isTableBooked && !myBooking}
                                                             title={existingBooking ? `${existingBooking.player1} vs ${existingBooking.player2}${bookingGroup ? ` (Group ${bookingGroup})` : ''}` : ''}
                                                             className={`w-full h-8 rounded text-xs relative ${
-                                                                myBooking ? 'bg-violet-600 text-white' :
-                                                                isTableBooked && bookingGroup === 'A' ? 'bg-emerald-900/60 text-emerald-400 cursor-not-allowed border border-emerald-700' :
-                                                                isTableBooked && bookingGroup === 'B' ? 'bg-amber-900/60 text-amber-400 cursor-not-allowed border border-amber-700' :
-                                                                isTableBooked ? 'bg-slate-700 text-slate-400 cursor-not-allowed' :
+                                                                myBooking ? 'bg-purple-600 text-white' :
+                                                                isTableBooked && bookingGroup === 'A' ? 'bg-emerald-900/60 text-green-600 cursor-not-allowed border border-emerald-700' :
+                                                                isTableBooked && bookingGroup === 'B' ? 'bg-amber-900/60 text-amber-600 cursor-not-allowed border border-amber-700' :
+                                                                isTableBooked ? 'bg-gray-200 text-gray-500 cursor-not-allowed' :
                                                                 isAvailable ? 'bg-emerald-600 text-white' :
-                                                                'bg-slate-800 hover:bg-slate-700'
+                                                                'bg-gray-100 hover:bg-gray-200'
                                                             }`}
                                                         >
                                                             {myBooking ? 'My' : isTableBooked ? (bookingGroup || 'X') : isAvailable ? '✓' : ''}
@@ -1262,38 +1262,38 @@
                         </div>
                         <div className="flex gap-4 mt-3 text-xs flex-wrap">
                             <span className="flex items-center gap-1"><span className="w-3 h-3 bg-emerald-600 rounded"></span> I'm available</span>
-                            <span className="flex items-center gap-1"><span className="w-3 h-3 bg-violet-600 rounded"></span> My booking</span>
+                            <span className="flex items-center gap-1"><span className="w-3 h-3 bg-purple-600 rounded"></span> My booking</span>
                             <span className="flex items-center gap-1"><span className="w-3 h-3 bg-emerald-900/60 border border-emerald-700 rounded"></span> Group A</span>
                             <span className="flex items-center gap-1"><span className="w-3 h-3 bg-amber-900/60 border border-amber-700 rounded"></span> Group B</span>
-                            <span className="flex items-center gap-1"><span className="w-3 h-3 bg-slate-700 rounded"></span> Other</span>
+                            <span className="flex items-center gap-1"><span className="w-3 h-3 bg-gray-200 rounded"></span> Other</span>
                         </div>
                     </div>
 
                     {/* My Booked Matches */}
-                    <div className="bg-slate-900 rounded-xl p-4">
+                    <div className="bg-white shadow-sm border border-gray-200 rounded-xl p-4">
                         <h3 className="text-lg font-bold mb-3">My Booked Matches</h3>
                         {(() => {
                             const myBooked = tableBookings.filter(b =>
                                 (b.player1 === currentPlayer || b.player2 === currentPlayer) && b.status !== 'cancelled'
                             );
                             return myBooked.length === 0 ? (
-                                <p className="text-slate-500 text-center py-4">No booked matches yet</p>
+                                <p className="text-gray-500 text-center py-4">No booked matches yet</p>
                             ) : (
                                 <div className="space-y-2">
                                     {myBooked.map(b => (
-                                        <div key={b.id} className="flex items-center justify-between bg-slate-800 rounded-lg p-3">
+                                        <div key={b.id} className="flex items-center justify-between bg-gray-100 rounded-lg p-3">
                                             <div className="flex items-center gap-3">
-                                                <div className="text-violet-400 font-mono font-semibold">
+                                                <div className="text-purple-600 font-mono font-semibold">
                                                     {new Date(b.booking_date).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
                                                     {' '}{formatTime(b.start_time?.substring(0, 5))}
                                                 </div>
                                                 <div className="font-medium">vs {b.player1 === currentPlayer ? b.player2 : b.player1}</div>
                                             </div>
                                             <div className="flex gap-2">
-                                                <button onClick={() => openMoveModal(b)} className="text-amber-400 hover:text-amber-300 text-sm">
+                                                <button onClick={() => openMoveModal(b)} className="text-amber-600 hover:text-amber-300 text-sm">
                                                     Move
                                                 </button>
-                                                <button onClick={() => handleCancelBooking(b.id)} className="text-rose-400 hover:text-rose-300 text-sm">
+                                                <button onClick={() => handleCancelBooking(b.id)} className="text-red-500 hover:text-rose-300 text-sm">
                                                     Cancel
                                                 </button>
                                             </div>
@@ -1307,28 +1307,28 @@
                     {/* Booking Confirmation Modal */}
                     {showBookingModal && selectedMatch && (
                         <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4" onClick={() => setShowBookingModal(false)}>
-                            <div className="bg-slate-800 rounded-xl p-6 max-w-md w-full animate-slideIn" onClick={e => e.stopPropagation()}>
+                            <div className="bg-gray-100 rounded-xl p-6 max-w-md w-full animate-slideIn" onClick={e => e.stopPropagation()}>
                                 <h3 className="text-lg font-bold mb-2">Confirm Match Booking</h3>
-                                <p className="text-slate-400 mb-4">
+                                <p className="text-gray-500 mb-4">
                                     {new Date(selectedDate + 'T12:00').toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })} at {formatTime(selectedSlot)}
                                 </p>
-                                <div className="bg-slate-700 rounded-lg p-4 mb-4 flex items-center justify-center gap-4">
+                                <div className="bg-gray-200 rounded-lg p-4 mb-4 flex items-center justify-center gap-4">
                                     <div className="text-center">
                                         <PlayerAvatar name={currentPlayer} />
                                         <div className="mt-1 text-sm">{currentPlayer}</div>
                                     </div>
-                                    <div className="text-slate-400 text-lg">vs</div>
+                                    <div className="text-gray-500 text-lg">vs</div>
                                     <div className="text-center">
                                         <PlayerAvatar name={selectedMatch.opponent} />
                                         <div className="mt-1 text-sm">{selectedMatch.opponent}</div>
                                     </div>
                                 </div>
                                 <div className="flex gap-2">
-                                    <button onClick={() => setShowBookingModal(false)} className="flex-1 py-2 bg-slate-700 hover:bg-slate-600 rounded-lg">
+                                    <button onClick={() => setShowBookingModal(false)} className="flex-1 py-2 bg-gray-200 hover:bg-gray-300 rounded-lg">
                                         Cancel
                                     </button>
                                     <button onClick={handleBookMatch} disabled={loading}
-                                            className="flex-1 py-2 bg-violet-600 hover:bg-violet-500 disabled:bg-slate-700 rounded-lg font-semibold">
+                                            className="flex-1 py-2 bg-purple-600 hover:bg-purple-700 disabled:bg-gray-200 rounded-lg font-semibold">
                                         {loading ? 'Booking...' : 'Confirm Booking'}
                                     </button>
                                 </div>
@@ -1339,21 +1339,21 @@
                     {/* Move Booking Modal */}
                     {showMoveModal && bookingToMove && (
                         <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4" onClick={() => setShowMoveModal(false)}>
-                            <div className="bg-slate-800 rounded-xl p-6 max-w-md w-full animate-slideIn" onClick={e => e.stopPropagation()}>
+                            <div className="bg-gray-100 rounded-xl p-6 max-w-md w-full animate-slideIn" onClick={e => e.stopPropagation()}>
                                 <h3 className="text-lg font-bold mb-2">Move Booking</h3>
-                                <p className="text-slate-400 mb-4">
+                                <p className="text-gray-500 mb-4">
                                     Current: {new Date(bookingToMove.booking_date).toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })} at {formatTime(bookingToMove.start_time?.substring(0, 5))}
                                 </p>
                                 <div className="space-y-3 mb-4">
                                     <div>
-                                        <label className="block text-sm text-slate-400 mb-1">New Date</label>
+                                        <label className="block text-sm text-gray-500 mb-1">New Date</label>
                                         <input type="date" value={newDate} onChange={e => setNewDate(e.target.value)}
-                                               className="w-full bg-slate-700 rounded-lg px-3 py-2" />
+                                               className="w-full bg-gray-200 rounded-lg px-3 py-2" />
                                     </div>
                                     <div>
-                                        <label className="block text-sm text-slate-400 mb-1">New Time</label>
+                                        <label className="block text-sm text-gray-500 mb-1">New Time</label>
                                         <select value={newSlot} onChange={e => setNewSlot(e.target.value)}
-                                                className="w-full bg-slate-700 rounded-lg px-3 py-2">
+                                                className="w-full bg-gray-200 rounded-lg px-3 py-2">
                                             {timeSlots.map(slot => (
                                                 <option key={slot} value={slot}>{formatTime(slot)}</option>
                                             ))}
@@ -1361,11 +1361,11 @@
                                     </div>
                                 </div>
                                 <div className="flex gap-2">
-                                    <button onClick={() => setShowMoveModal(false)} className="flex-1 py-2 bg-slate-700 hover:bg-slate-600 rounded-lg">
+                                    <button onClick={() => setShowMoveModal(false)} className="flex-1 py-2 bg-gray-200 hover:bg-gray-300 rounded-lg">
                                         Cancel
                                     </button>
                                     <button onClick={handleMoveBooking} disabled={loading}
-                                            className="flex-1 py-2 bg-amber-600 hover:bg-amber-500 disabled:bg-slate-700 rounded-lg font-semibold">
+                                            className="flex-1 py-2 bg-amber-600 hover:bg-amber-500 disabled:bg-gray-200 rounded-lg font-semibold">
                                         {loading ? 'Moving...' : 'Move Booking'}
                                     </button>
                                 </div>
@@ -1593,7 +1593,7 @@
 
                         {/* Registration Form */}
                         {config?.registration_open && (
-                            <div className="bg-slate-900 rounded-xl p-6 mb-6">
+                            <div className="bg-white shadow-sm border border-gray-200 rounded-xl p-6 mb-6">
                                 <h2 className="text-2xl font-bold mb-4 flex items-center gap-2">
                                     <span className="text-fuchsia-400">❄️</span>
                                     Register to Play
@@ -1601,16 +1601,16 @@
 
                                 <form onSubmit={handleRegister} className="space-y-4">
                                     <div>
-                                        <label className="block text-sm text-slate-400 mb-1">Your Name *</label>
+                                        <label className="block text-sm text-gray-500 mb-1">Your Name *</label>
                                         <input
                                             type="text"
                                             value={playerName}
                                             onChange={e => setPlayerName(e.target.value)}
                                             placeholder="Enter your name"
-                                            className="w-full bg-slate-800 border border-slate-700 rounded-lg px-4 py-3 focus:ring-2 focus:ring-fuchsia-500 focus:border-transparent"
+                                            className="w-full bg-gray-100 border border-gray-300 rounded-lg px-4 py-3 focus:ring-2 focus:ring-fuchsia-500 focus:border-transparent"
                                             required
                                         />
-                                        <p className="text-xs text-slate-500 mt-1">
+                                        <p className="text-xs text-gray-500 mt-1">
                                             Returning players: Use the same name from last season to keep your ranking
                                         </p>
                                     </div>
@@ -1624,7 +1624,7 @@
                                     <button
                                         type="submit"
                                         disabled={submitting || !playerName.trim()}
-                                        className="w-full bg-gradient-to-r from-fuchsia-600 to-purple-600 hover:from-fuchsia-500 hover:to-purple-500 disabled:from-slate-600 disabled:to-slate-600 py-3 rounded-lg font-bold text-lg transition-all"
+                                        className="w-full bg-gradient-to-r from-fuchsia-600 to-purple-600 hover:from-fuchsia-500 hover:to-purple-500 disabled:from-gray-400 disabled:to-gray-400 py-3 rounded-lg font-bold text-lg transition-all"
                                     >
                                         {submitting ? 'Registering...' : '❄️ Register for Winter League'}
                                     </button>
@@ -1633,20 +1633,20 @@
                         )}
 
                         {/* Registered Players List */}
-                        <div className="bg-slate-900 rounded-xl p-6 mb-6">
+                        <div className="bg-white shadow-sm border border-gray-200 rounded-xl p-6 mb-6">
                             <h2 className="text-2xl font-bold mb-4">Registered Players ({registrations.length})</h2>
 
                             {registrations.length === 0 ? (
-                                <p className="text-slate-500 text-center py-8">No registrations yet. Be the first!</p>
+                                <p className="text-gray-500 text-center py-8">No registrations yet. Be the first!</p>
                             ) : (
                                 <div className="grid gap-2">
                                     {registrations.map((reg, idx) => (
-                                        <div key={reg.player_name} className={`flex items-center justify-between p-3 rounded-lg ${reg.is_ranked ? 'bg-violet-900/30 border border-violet-500/30' : 'bg-slate-800'}`}>
+                                        <div key={reg.player_name} className={`flex items-center justify-between p-3 rounded-lg ${reg.is_ranked ? 'bg-violet-900/30 border border-violet-500/30' : 'bg-gray-100'}`}>
                                             <div className="flex items-center gap-3">
-                                                <span className="text-slate-500 w-8">{idx + 1}.</span>
+                                                <span className="text-gray-500 w-8">{idx + 1}.</span>
                                                 <span className="font-semibold">{reg.player_name}</span>
                                                 {reg.is_ranked && (
-                                                    <span className="text-xs bg-violet-600/50 px-2 py-0.5 rounded text-violet-200">
+                                                    <span className="text-xs bg-purple-600/50 px-2 py-0.5 rounded text-violet-200">
                                                         Returning #{reg.final_seed || reg.suggested_seed || '?'}
                                                     </span>
                                                 )}
@@ -1657,7 +1657,7 @@
                                                 )}
                                             </div>
                                             {reg.final_seed && (
-                                                <span className="text-emerald-400 font-bold">Seed #{reg.final_seed}</span>
+                                                <span className="text-green-600 font-bold">Seed #{reg.final_seed}</span>
                                             )}
                                         </div>
                                     ))}
@@ -1667,19 +1667,19 @@
 
                         {/* Admin Panel */}
                         {isAdmin && (
-                            <div className="bg-slate-900 rounded-xl p-6">
+                            <div className="bg-white shadow-sm border border-gray-200 rounded-xl p-6">
                                 <button
                                     onClick={() => setShowAdminPanel(!showAdminPanel)}
                                     className="w-full flex items-center justify-between text-xl font-bold mb-4"
                                 >
                                     <span>⚙️ Admin Controls</span>
-                                    <span className="text-slate-400">{showAdminPanel ? '▼' : '▶'}</span>
+                                    <span className="text-gray-500">{showAdminPanel ? '▼' : '▶'}</span>
                                 </button>
 
                                 {showAdminPanel && (
                                     <div className="space-y-6">
                                         {/* Registration Settings */}
-                                        <div className="bg-slate-800 rounded-lg p-4">
+                                        <div className="bg-gray-100 rounded-lg p-4">
                                             <h3 className="font-bold mb-3">Registration Settings</h3>
                                             <div className="space-y-3">
                                                 <label className="flex items-center gap-3">
@@ -1692,17 +1692,17 @@
                                                     <span>Registration Open</span>
                                                 </label>
                                                 <div>
-                                                    <label className="block text-sm text-slate-400 mb-1">Close Date</label>
+                                                    <label className="block text-sm text-gray-500 mb-1">Close Date</label>
                                                     <input
                                                         type="datetime-local"
                                                         value={closeDate}
                                                         onChange={e => setCloseDate(e.target.value)}
-                                                        className="bg-slate-700 rounded px-3 py-2 w-full"
+                                                        className="bg-gray-200 rounded px-3 py-2 w-full"
                                                     />
                                                 </div>
                                                 <button
                                                     onClick={handleUpdateConfig}
-                                                    className="bg-violet-600 hover:bg-violet-500 px-4 py-2 rounded-lg font-semibold"
+                                                    className="bg-purple-600 hover:bg-purple-700 px-4 py-2 rounded-lg font-semibold"
                                                 >
                                                     Save Settings
                                                 </button>
@@ -1710,15 +1710,15 @@
                                         </div>
 
                                         {/* Review Registrations */}
-                                        <div className="bg-slate-800 rounded-lg p-4">
+                                        <div className="bg-gray-100 rounded-lg p-4">
                                             <h3 className="font-bold mb-3">Review Registrations ({registrations.length})</h3>
                                             <div className="space-y-2 max-h-96 overflow-y-auto">
                                                 {registrations.map(reg => (
-                                                    <div key={reg.id || reg.player_name} className="flex items-center justify-between gap-2 p-3 bg-slate-700/50 rounded-lg">
+                                                    <div key={reg.id || reg.player_name} className="flex items-center justify-between gap-2 p-3 bg-gray-200/50 rounded-lg">
                                                         <div className="flex-1 min-w-0">
                                                             <div className="flex items-center gap-2 flex-wrap">
                                                                 <span className="font-semibold">{reg.player_name}</span>
-                                                                {reg.is_ranked && <span className="text-xs bg-violet-600/50 px-2 py-0.5 rounded text-violet-200">Prev #{reg.suggested_seed}</span>}
+                                                                {reg.is_ranked && <span className="text-xs bg-purple-600/50 px-2 py-0.5 rounded text-violet-200">Prev #{reg.suggested_seed}</span>}
                                                                 <span className={`text-xs px-2 py-0.5 rounded ${reg.registration_status === 'approved' ? 'bg-emerald-600/50 text-emerald-200' : 'bg-amber-600/50 text-amber-200'}`}>
                                                                     {reg.registration_status === 'approved' ? 'Approved' : 'Pending'}
                                                                 </span>
@@ -1734,11 +1734,11 @@
                                                                         onChange={e => setEditSeed(e.target.value)}
                                                                         placeholder="Seed #"
                                                                         min="1"
-                                                                        className="w-20 bg-slate-600 rounded px-2 py-1.5 text-sm"
+                                                                        className="w-20 bg-gray-300 rounded px-2 py-1.5 text-sm"
                                                                     />
                                                                     <button onClick={() => handleApprove(reg.id, 'approved', editSeed)} className="text-xs bg-emerald-600 hover:bg-emerald-500 px-3 py-1.5 rounded font-semibold">Save</button>
-                                                                    <button onClick={() => handleApprove(reg.id, 'approved', null)} className="text-xs bg-slate-500 hover:bg-slate-400 px-3 py-1.5 rounded font-semibold">Unseeded</button>
-                                                                    <button onClick={() => { setEditingId(null); setEditSeed(''); }} className="text-xs bg-slate-600 hover:bg-slate-500 px-2 py-1.5 rounded">✕</button>
+                                                                    <button onClick={() => handleApprove(reg.id, 'approved', null)} className="text-xs bg-gray-400 hover:bg-gray-500 px-3 py-1.5 rounded font-semibold">Unseeded</button>
+                                                                    <button onClick={() => { setEditingId(null); setEditSeed(''); }} className="text-xs bg-gray-300 hover:bg-gray-400 px-2 py-1.5 rounded">✕</button>
                                                                 </>
                                                             ) : (
                                                                 <>
@@ -1753,15 +1753,15 @@
                                                     </div>
                                                 ))}
                                                 {registrations.length === 0 && (
-                                                    <p className="text-slate-500 text-center py-4">No registrations yet</p>
+                                                    <p className="text-gray-500 text-center py-4">No registrations yet</p>
                                                 )}
                                             </div>
                                         </div>
 
                                         {/* Generate Bracket */}
-                                        <div className="bg-slate-800 rounded-lg p-4">
+                                        <div className="bg-gray-100 rounded-lg p-4">
                                             <h3 className="font-bold mb-3">Generate League Bracket</h3>
-                                            <p className="text-sm text-slate-400 mb-3">
+                                            <p className="text-sm text-gray-500 mb-3">
                                                 Creates bracket with proper seeding and byes. Closes registration.
                                             </p>
                                             <button
@@ -1840,10 +1840,10 @@
 
             if (!isAdmin) {
                 return (
-                    <div className="bg-slate-900 rounded-xl p-6 max-w-md mx-auto">
+                    <div className="bg-white shadow-sm border border-gray-200 rounded-xl p-6 max-w-md mx-auto">
                         <h2 className="text-xl font-bold mb-4">Admin Login</h2>
-                        <input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="Password" className="w-full bg-slate-800 rounded-lg px-4 py-2 mb-4" />
-                        <button onClick={() => onLogin(password)} className="w-full bg-violet-600 hover:bg-violet-500 py-2 rounded-lg font-semibold">Login</button>
+                        <input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="Password" className="w-full bg-gray-100 rounded-lg px-4 py-2 mb-4" />
+                        <button onClick={() => onLogin(password)} className="w-full bg-purple-600 hover:bg-purple-700 py-2 rounded-lg font-semibold">Login</button>
                     </div>
                 );
             }
@@ -1852,7 +1852,7 @@
                 <div className="space-y-6">
                     {/* Season Management */}
                     {season && (
-                        <div className="bg-slate-900 rounded-xl p-4">
+                        <div className="bg-white shadow-sm border border-gray-200 rounded-xl p-4">
                             <h2 className="text-xl font-bold mb-4">Season Management</h2>
                             <div className="flex flex-wrap gap-3">
                                 {season.status === 'complete' && (
@@ -1876,7 +1876,7 @@
                                     Delete Season (No Archive)
                                 </button>
                             </div>
-                            <p className="text-xs text-slate-500 mt-3">
+                            <p className="text-xs text-gray-500 mt-3">
                                 {season.status === 'complete'
                                     ? 'Season is complete! Archive it to save to history before creating a new season.'
                                     : `Current season status: ${season.status}. Complete the season before archiving.`}
@@ -1885,7 +1885,7 @@
                     )}
 
                     {/* Add Player to Database */}
-                    <div className="bg-slate-900 rounded-xl p-4">
+                    <div className="bg-white shadow-sm border border-gray-200 rounded-xl p-4">
                         <h2 className="text-xl font-bold mb-4">Add Player to Database</h2>
                         <div className="flex gap-2 flex-wrap">
                             <input
@@ -1893,30 +1893,30 @@
                                 value={newPlayer}
                                 onChange={e => setNewPlayer(e.target.value)}
                                 placeholder="Player name"
-                                className="flex-1 min-w-[200px] bg-slate-800 rounded-lg px-4 py-2"
+                                className="flex-1 min-w-[200px] bg-gray-100 rounded-lg px-4 py-2"
                             />
                             <input
                                 type="number"
                                 value={newPlayerSeed}
                                 onChange={e => setNewPlayerSeed(e.target.value)}
                                 placeholder="Seed (optional)"
-                                className="w-32 bg-slate-800 rounded-lg px-4 py-2"
+                                className="w-32 bg-gray-100 rounded-lg px-4 py-2"
                             />
                             <button
                                 onClick={handleAddPlayerToDatabase}
                                 disabled={!newPlayer.trim() || addingPlayer}
-                                className="bg-violet-600 hover:bg-violet-500 disabled:bg-slate-700 px-6 py-2 rounded-lg font-semibold"
+                                className="bg-purple-600 hover:bg-purple-700 disabled:bg-gray-200 px-6 py-2 rounded-lg font-semibold"
                             >
                                 {addingPlayer ? 'Adding...' : 'Add Player'}
                             </button>
                         </div>
-                        <p className="text-xs text-slate-500 mt-2">Players added here are saved to the database permanently.</p>
+                        <p className="text-xs text-gray-500 mt-2">Players added here are saved to the database permanently.</p>
                     </div>
 
                     {/* Create Bracket */}
-                    <div className="bg-slate-900 rounded-xl p-4">
+                    <div className="bg-white shadow-sm border border-gray-200 rounded-xl p-4">
                         <h2 className="text-xl font-bold mb-4">Create Double Elimination Bracket</h2>
-                        <p className="text-sm text-slate-400 mb-4">Select players for the bracket tournament:</p>
+                        <p className="text-sm text-gray-500 mb-4">Select players for the bracket tournament:</p>
 
                         <div className="flex flex-wrap gap-2 mb-4">
                             {players.map(p => (
@@ -1925,8 +1925,8 @@
                                     onClick={() => toggleBracketPlayer(p)}
                                     className={`px-3 py-1 rounded-full text-sm transition-colors ${
                                         bracketPlayers.find(bp => bp.name === p.name)
-                                            ? 'bg-violet-600 text-white'
-                                            : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
+                                            ? 'bg-purple-600 text-white'
+                                            : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
                                     }`}
                                 >
                                     {p.name} {p.seed ? `(#${p.seed})` : ''}
@@ -1935,13 +1935,13 @@
                         </div>
 
                         <div className="flex items-center justify-between">
-                            <span className="text-sm text-slate-400">
+                            <span className="text-sm text-gray-500">
                                 {bracketPlayers.length} players selected
                             </span>
                             <button
                                 onClick={handleCreateBracket}
                                 disabled={bracketPlayers.length < 2 || creatingBracket}
-                                className="bg-amber-600 hover:bg-amber-500 disabled:bg-slate-700 disabled:text-slate-500 px-6 py-2 rounded-lg font-semibold"
+                                className="bg-amber-600 hover:bg-amber-500 disabled:bg-gray-200 disabled:text-gray-500 px-6 py-2 rounded-lg font-semibold"
                             >
                                 {creatingBracket ? 'Creating...' : 'Create Bracket'}
                             </button>
@@ -1949,56 +1949,56 @@
                     </div>
 
                     {/* Create Season */}
-                    <div className="bg-slate-900 rounded-xl p-4">
+                    <div className="bg-white shadow-sm border border-gray-200 rounded-xl p-4">
                         <h2 className="text-xl font-bold mb-4">Create New Season</h2>
 
                         <div className="mb-4">
                             <div className="flex gap-2 mb-2">
-                                <input type="text" value={newPlayer} onChange={e => setNewPlayer(e.target.value)} placeholder="Add player to groups" className="flex-1 bg-slate-800 rounded-lg px-4 py-2" />
-                                <button onClick={addNewPlayerToGroup} className="bg-violet-600 hover:bg-violet-500 px-4 py-2 rounded-lg"><Icons.Plus /></button>
+                                <input type="text" value={newPlayer} onChange={e => setNewPlayer(e.target.value)} placeholder="Add player to groups" className="flex-1 bg-gray-100 rounded-lg px-4 py-2" />
+                                <button onClick={addNewPlayerToGroup} className="bg-purple-600 hover:bg-purple-700 px-4 py-2 rounded-lg"><Icons.Plus /></button>
                             </div>
                         </div>
 
                         <div className="grid md:grid-cols-3 gap-4 mb-4">
                             <div>
-                                <h3 className="text-sm font-semibold text-slate-400 mb-2">Available Players</h3>
-                                <div className="bg-slate-800 rounded-lg p-2 min-h-[200px] max-h-[300px] overflow-y-auto space-y-1">
+                                <h3 className="text-sm font-semibold text-gray-500 mb-2">Available Players</h3>
+                                <div className="bg-gray-100 rounded-lg p-2 min-h-[200px] max-h-[300px] overflow-y-auto space-y-1">
                                     {players.filter(p => !groupA.find(g => g.name === p.name) && !groupB.find(g => g.name === p.name)).map(p => (
-                                        <div key={p.name} className="flex items-center justify-between bg-slate-700 rounded px-2 py-1 text-sm">
+                                        <div key={p.name} className="flex items-center justify-between bg-gray-200 rounded px-2 py-1 text-sm">
                                             <span>{p.name} {p.seed ? `(#${p.seed})` : ''}</span>
                                             <div className="flex gap-1">
-                                                <button onClick={() => addToGroup(p, 'A')} className="text-emerald-400 hover:text-emerald-300 text-xs">→A</button>
-                                                <button onClick={() => addToGroup(p, 'B')} className="text-amber-400 hover:text-amber-300 text-xs">→B</button>
+                                                <button onClick={() => addToGroup(p, 'A')} className="text-green-600 hover:text-emerald-300 text-xs">→A</button>
+                                                <button onClick={() => addToGroup(p, 'B')} className="text-amber-600 hover:text-amber-300 text-xs">→B</button>
                                             </div>
                                         </div>
                                     ))}
                                 </div>
                             </div>
                             <div>
-                                <h3 className="text-sm font-semibold text-emerald-400 mb-2">Group A: Seeded ({groupA.length})</h3>
+                                <h3 className="text-sm font-semibold text-green-600 mb-2">Group A: Seeded ({groupA.length})</h3>
                                 <div className="bg-emerald-900/20 border border-emerald-800 rounded-lg p-2 min-h-[200px] max-h-[300px] overflow-y-auto space-y-1">
                                     {groupA.map(p => (
-                                        <div key={p.name} className="flex items-center justify-between bg-slate-700 rounded px-2 py-1 text-sm">
+                                        <div key={p.name} className="flex items-center justify-between bg-gray-200 rounded px-2 py-1 text-sm">
                                             <span>{p.name}</span>
-                                            <button onClick={() => setGroupA(groupA.filter(g => g.name !== p.name))} className="text-rose-400 text-xs">×</button>
+                                            <button onClick={() => setGroupA(groupA.filter(g => g.name !== p.name))} className="text-red-500 text-xs">×</button>
                                         </div>
                                     ))}
                                 </div>
                             </div>
                             <div>
-                                <h3 className="text-sm font-semibold text-amber-400 mb-2">Group B: Unseeded ({groupB.length})</h3>
+                                <h3 className="text-sm font-semibold text-amber-600 mb-2">Group B: Unseeded ({groupB.length})</h3>
                                 <div className="bg-amber-900/20 border border-amber-800 rounded-lg p-2 min-h-[200px] max-h-[300px] overflow-y-auto space-y-1">
                                     {groupB.map(p => (
-                                        <div key={p.name} className="flex items-center justify-between bg-slate-700 rounded px-2 py-1 text-sm">
+                                        <div key={p.name} className="flex items-center justify-between bg-gray-200 rounded px-2 py-1 text-sm">
                                             <span>{p.name}</span>
-                                            <button onClick={() => setGroupB(groupB.filter(g => g.name !== p.name))} className="text-rose-400 text-xs">×</button>
+                                            <button onClick={() => setGroupB(groupB.filter(g => g.name !== p.name))} className="text-red-500 text-xs">×</button>
                                         </div>
                                     ))}
                                 </div>
                             </div>
                         </div>
 
-                        <button onClick={() => onCreateSeason(groupA, groupB)} disabled={groupA.length < 2 || groupB.length < 2} className="w-full bg-emerald-600 hover:bg-emerald-500 disabled:bg-slate-700 disabled:text-slate-500 py-3 rounded-lg font-semibold">
+                        <button onClick={() => onCreateSeason(groupA, groupB)} disabled={groupA.length < 2 || groupB.length < 2} className="w-full bg-emerald-600 hover:bg-emerald-500 disabled:bg-gray-200 disabled:text-gray-500 py-3 rounded-lg font-semibold">
                             Create Season (10 weeks)
                         </button>
                     </div>
@@ -2041,12 +2041,12 @@
             };
 
             return (
-                <div className="bg-slate-900 rounded-xl p-6 max-w-md">
+                <div className="bg-white shadow-sm border border-gray-200 rounded-xl p-6 max-w-md">
                     <h3 className="text-lg font-bold mb-2">Join the League</h3>
-                    <p className="text-sm text-slate-400 mb-4">Register to be added to the next season</p>
+                    <p className="text-sm text-gray-500 mb-4">Register to be added to the next season</p>
 
                     {message && (
-                        <div className={`p-3 rounded-lg mb-4 ${message.type === 'success' ? 'bg-emerald-900/50 text-emerald-400' : 'bg-rose-900/50 text-rose-400'}`}>
+                        <div className={`p-3 rounded-lg mb-4 ${message.type === 'success' ? 'bg-emerald-900/50 text-green-600' : 'bg-rose-900/50 text-red-500'}`}>
                             {message.text}
                         </div>
                     )}
@@ -2057,24 +2057,24 @@
                             value={name}
                             onChange={e => setName(e.target.value)}
                             placeholder="Your full name *"
-                            className="w-full bg-slate-800 rounded-lg px-4 py-3"
+                            className="w-full bg-gray-100 rounded-lg px-4 py-3"
                         />
                         <input
                             type="email"
                             value={email}
                             onChange={e => setEmail(e.target.value)}
                             placeholder="Email (optional)"
-                            className="w-full bg-slate-800 rounded-lg px-4 py-3"
+                            className="w-full bg-gray-100 rounded-lg px-4 py-3"
                         />
                         <button
                             onClick={handleRegister}
                             disabled={!name.trim() || loading}
-                            className="w-full bg-violet-600 hover:bg-violet-500 disabled:bg-slate-700 py-3 rounded-lg font-semibold"
+                            className="w-full bg-purple-600 hover:bg-purple-700 disabled:bg-gray-200 py-3 rounded-lg font-semibold"
                         >
                             {loading ? 'Registering...' : 'Register'}
                         </button>
                     </div>
-                    <p className="text-xs text-slate-500 mt-3">New players are added to Group B (Unseeded) when the next season starts.</p>
+                    <p className="text-xs text-gray-500 mt-3">New players are added to Group B (Unseeded) when the next season starts.</p>
                 </div>
             );
         }
@@ -2095,13 +2095,13 @@
                     .catch(() => setLoading(false));
             }, []);
 
-            if (loading) return <div className="text-center py-8 text-slate-400">Loading history...</div>;
+            if (loading) return <div className="text-center py-8 text-gray-500">Loading history...</div>;
 
             if (history.length === 0) {
                 return (
-                    <div className="bg-slate-900 rounded-xl p-6 text-center">
+                    <div className="bg-white shadow-sm border border-gray-200 rounded-xl p-6 text-center">
                         <h3 className="text-lg font-bold mb-2">Season History</h3>
-                        <p className="text-slate-400">No archived seasons yet. History will appear here after each completed season.</p>
+                        <p className="text-gray-500">No archived seasons yet. History will appear here after each completed season.</p>
                     </div>
                 );
             }
@@ -2111,28 +2111,28 @@
                     <h3 className="text-lg font-bold">Season History</h3>
                     <div className="grid gap-4">
                         {history.map(season => (
-                            <div key={season.season_number} className="bg-slate-900 rounded-xl p-4">
+                            <div key={season.season_number} className="bg-white shadow-sm border border-gray-200 rounded-xl p-4">
                                 <div className="flex items-center justify-between">
                                     <div>
                                         <h4 className="font-bold text-lg">{season.name}</h4>
-                                        <p className="text-sm text-slate-400">
+                                        <p className="text-sm text-gray-500">
                                             {new Date(season.created_at).toLocaleDateString()} • {season.total_matches} matches
                                         </p>
                                     </div>
                                     <div className="text-right">
                                         <div className="flex items-center gap-2 justify-end">
                                             <span className="text-2xl">🏆</span>
-                                            <span className="font-bold text-emerald-400">{season.champion}</span>
+                                            <span className="font-bold text-green-600">{season.champion}</span>
                                         </div>
-                                        <p className="text-sm text-slate-400">Runner-up: {season.runner_up}</p>
+                                        <p className="text-sm text-gray-500">Runner-up: {season.runner_up}</p>
                                     </div>
                                 </div>
-                                <div className="mt-3 pt-3 border-t border-slate-800 grid grid-cols-2 gap-4 text-sm">
+                                <div className="mt-3 pt-3 border-t border-gray-200 grid grid-cols-2 gap-4 text-sm">
                                     <div>
-                                        <span className="text-emerald-400">Group A Champion:</span> {season.group_a_champion}
+                                        <span className="text-green-600">Group A Champion:</span> {season.group_a_champion}
                                     </div>
                                     <div>
-                                        <span className="text-amber-400">Group B Champion:</span> {season.group_b_champion}
+                                        <span className="text-amber-600">Group B Champion:</span> {season.group_b_champion}
                                     </div>
                                 </div>
                             </div>
@@ -2227,7 +2227,7 @@
                 <div className="relative">
                     <button
                         onClick={() => setShowDropdown(!showDropdown)}
-                        className="relative p-2 hover:bg-slate-700 rounded-lg"
+                        className="relative p-2 hover:bg-gray-200 rounded-lg"
                     >
                         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-5 h-5">
                             <path strokeLinecap="round" strokeLinejoin="round" d="M14.857 17.082a23.848 23.848 0 0 0 5.454-1.31A8.967 8.967 0 0 1 18 9.75V9A6 6 0 0 0 6 9v.75a8.967 8.967 0 0 1-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 0 1-5.714 0m5.714 0a3 3 0 1 1-5.714 0" />
@@ -2240,11 +2240,11 @@
                     </button>
 
                     {showDropdown && (
-                        <div className="absolute right-0 top-full mt-2 w-80 bg-slate-800 rounded-xl shadow-xl z-50 border border-slate-700">
-                            <div className="flex items-center justify-between p-3 border-b border-slate-700">
+                        <div className="absolute right-0 top-full mt-2 w-80 bg-gray-100 rounded-xl shadow-xl z-50 border border-gray-300">
+                            <div className="flex items-center justify-between p-3 border-b border-gray-300">
                                 <span className="font-semibold">Notifications</span>
                                 {unreadCount > 0 && (
-                                    <button onClick={markAllRead} className="text-xs text-violet-400 hover:text-violet-300">
+                                    <button onClick={markAllRead} className="text-xs text-purple-600 hover:text-violet-300">
                                         Mark all read
                                     </button>
                                 )}
@@ -2252,16 +2252,16 @@
 
                             {/* Push Notification Toggle */}
                             {'Notification' in window && (
-                                <div className="p-3 border-b border-slate-700 bg-slate-700/30">
+                                <div className="p-3 border-b border-gray-300 bg-gray-200/30">
                                     {Notification.permission === 'denied' ? (
-                                        <div className="flex items-center gap-2 text-xs text-amber-400">
+                                        <div className="flex items-center gap-2 text-xs text-amber-600">
                                             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-4 h-4">
                                                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z" />
                                             </svg>
                                             <span>Browser notifications blocked. Check browser settings.</span>
                                         </div>
                                     ) : pushEnabled ? (
-                                        <div className="flex items-center gap-2 text-xs text-emerald-400">
+                                        <div className="flex items-center gap-2 text-xs text-green-600">
                                             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-4 h-4">
                                                 <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
                                             </svg>
@@ -2276,7 +2276,7 @@
                                                     showBrowserNotification('Notifications Enabled', 'You will now receive match updates!');
                                                 }
                                             }}
-                                            className="flex items-center gap-2 text-xs text-violet-400 hover:text-violet-300 transition-colors"
+                                            className="flex items-center gap-2 text-xs text-purple-600 hover:text-violet-300 transition-colors"
                                         >
                                             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-4 h-4">
                                                 <path strokeLinecap="round" strokeLinejoin="round" d="M14.857 17.082a23.848 23.848 0 0 0 5.454-1.31A8.967 8.967 0 0 1 18 9.75V9A6 6 0 0 0 6 9v.75a8.967 8.967 0 0 1-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 0 1-5.714 0m5.714 0a3 3 0 1 1-5.714 0" />
@@ -2289,16 +2289,16 @@
 
                             <div className="max-h-64 overflow-y-auto">
                                 {notifications.length === 0 ? (
-                                    <p className="p-4 text-center text-slate-400 text-sm">No notifications</p>
+                                    <p className="p-4 text-center text-gray-500 text-sm">No notifications</p>
                                 ) : (
                                     notifications.slice(0, 10).map(n => (
-                                        <div key={n.id} className={`p-3 border-b border-slate-700 ${!n.is_read ? 'bg-slate-700/50' : ''}`}>
+                                        <div key={n.id} className={`p-3 border-b border-gray-300 ${!n.is_read ? 'bg-gray-200/50' : ''}`}>
                                             <div className="flex items-start gap-2">
                                                 {!n.is_read && <span className="w-2 h-2 bg-violet-500 rounded-full mt-2"></span>}
                                                 <div className="flex-1">
                                                     <p className="font-medium text-sm">{n.title}</p>
-                                                    <p className="text-xs text-slate-400">{n.message}</p>
-                                                    <p className="text-xs text-slate-500 mt-1">{new Date(n.created_at).toLocaleString()}</p>
+                                                    <p className="text-xs text-gray-500">{n.message}</p>
+                                                    <p className="text-xs text-gray-500 mt-1">{new Date(n.created_at).toLocaleString()}</p>
                                                 </div>
                                             </div>
                                         </div>
@@ -2377,8 +2377,8 @@
 
             if (!players?.length) {
                 return (
-                    <div className="bg-slate-900 rounded-xl p-6 text-center">
-                        <p className="text-slate-400">No players registered yet.</p>
+                    <div className="bg-white shadow-sm border border-gray-200 rounded-xl p-6 text-center">
+                        <p className="text-gray-500">No players registered yet.</p>
                     </div>
                 );
             }
@@ -2386,12 +2386,12 @@
             return (
                 <div className="space-y-4">
                     {/* Player Selection */}
-                    <div className="bg-slate-900 rounded-xl p-4">
+                    <div className="bg-white shadow-sm border border-gray-200 rounded-xl p-4">
                         <h3 className="text-lg font-bold mb-3">Select Your Name</h3>
                         <select
                             value={currentPlayer}
                             onChange={e => onSelectPlayer(e.target.value)}
-                            className="w-full bg-slate-800 border border-slate-700 rounded-lg p-3 text-lg"
+                            className="w-full bg-gray-100 border border-gray-300 rounded-lg p-3 text-lg"
                         >
                             <option value="">-- Select Player --</option>
                             {players.map(p => (
@@ -2403,20 +2403,20 @@
                     {currentPlayer && playerStats && (
                         <>
                             {/* Player Card */}
-                            <div className={`bg-gradient-to-r ${playerStats.group === 'A' ? 'from-emerald-900/40 to-slate-900' : 'from-amber-900/40 to-slate-900'} rounded-xl p-6 border ${playerStats.group === 'A' ? 'border-emerald-700' : 'border-amber-700'}`}>
+                            <div className={`bg-gradient-to-r ${playerStats.group === 'A' ? 'from-green-100 to-white' : 'from-amber-100 to-white'} rounded-xl p-6 border ${playerStats.group === 'A' ? 'border-emerald-700' : 'border-amber-700'}`}>
                                 <div className="flex items-center gap-4 mb-4">
                                     <div className="relative group">
                                         <PlayerAvatar name={currentPlayer} size="lg" onClick={() => setShowAvatarPicker(true)} />
-                                        <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-violet-600 rounded-full flex items-center justify-center text-xs opacity-0 group-hover:opacity-100 transition-opacity">
+                                        <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-purple-600 rounded-full flex items-center justify-center text-xs opacity-0 group-hover:opacity-100 transition-opacity">
                                             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor" className="w-3 h-3"><path strokeLinecap="round" strokeLinejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L6.832 19.82a4.5 4.5 0 0 1-1.897 1.13l-2.685.8.8-2.685a4.5 4.5 0 0 1 1.13-1.897L16.863 4.487Zm0 0L19.5 7.125" /></svg>
                                         </div>
                                     </div>
                                     <div>
                                         <h2 className="text-2xl font-bold">{currentPlayer}</h2>
-                                        <p className={`text-sm ${playerStats.group === 'A' ? 'text-emerald-400' : 'text-amber-400'}`}>
+                                        <p className={`text-sm ${playerStats.group === 'A' ? 'text-green-600' : 'text-amber-600'}`}>
                                             Group {playerStats.group} • Rank #{playerStats.rank} of {playerStats.totalPlayers}
                                         </p>
-                                        <button onClick={() => setShowAvatarPicker(true)} className="text-xs text-slate-400 hover:text-white mt-1">
+                                        <button onClick={() => setShowAvatarPicker(true)} className="text-xs text-gray-500 hover:text-white mt-1">
                                             Change avatar
                                         </button>
                                     </div>
@@ -2435,23 +2435,23 @@
 
                                 {/* Stats Grid */}
                                 <div className="grid grid-cols-4 gap-4 text-center">
-                                    <div className="bg-slate-800/50 rounded-lg p-3">
-                                        <div className="text-2xl font-bold text-emerald-400">{playerStats.stats.wins}</div>
-                                        <div className="text-xs text-slate-400">Wins</div>
+                                    <div className="bg-gray-100/50 rounded-lg p-3">
+                                        <div className="text-2xl font-bold text-green-600">{playerStats.stats.wins}</div>
+                                        <div className="text-xs text-gray-500">Wins</div>
                                     </div>
-                                    <div className="bg-slate-800/50 rounded-lg p-3">
-                                        <div className="text-2xl font-bold text-rose-400">{playerStats.stats.losses}</div>
-                                        <div className="text-xs text-slate-400">Losses</div>
+                                    <div className="bg-gray-100/50 rounded-lg p-3">
+                                        <div className="text-2xl font-bold text-red-500">{playerStats.stats.losses}</div>
+                                        <div className="text-xs text-gray-500">Losses</div>
                                     </div>
-                                    <div className="bg-slate-800/50 rounded-lg p-3">
+                                    <div className="bg-gray-100/50 rounded-lg p-3">
                                         <div className="text-2xl font-bold">{playerStats.stats.pointsFor}</div>
-                                        <div className="text-xs text-slate-400">Games Won</div>
+                                        <div className="text-xs text-gray-500">Games Won</div>
                                     </div>
-                                    <div className="bg-slate-800/50 rounded-lg p-3">
-                                        <div className={`text-2xl font-bold ${(playerStats.stats.pointsFor - playerStats.stats.pointsAgainst) >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                                    <div className="bg-gray-100/50 rounded-lg p-3">
+                                        <div className={`text-2xl font-bold ${(playerStats.stats.pointsFor - playerStats.stats.pointsAgainst) >= 0 ? 'text-green-600' : 'text-red-500'}`}>
                                             {playerStats.stats.pointsFor - playerStats.stats.pointsAgainst >= 0 ? '+' : ''}{playerStats.stats.pointsFor - playerStats.stats.pointsAgainst}
                                         </div>
-                                        <div className="text-xs text-slate-400">Diff</div>
+                                        <div className="text-xs text-gray-500">Diff</div>
                                     </div>
                                 </div>
                             </div>
@@ -2459,13 +2459,13 @@
                             {/* Status Badges */}
                             <div className="flex flex-wrap gap-2">
                                 {playerStats.rank <= 4 && (
-                                    <span className="bg-emerald-900/50 text-emerald-400 px-3 py-1 rounded-full text-sm">✓ Playoff Qualified</span>
+                                    <span className="bg-emerald-900/50 text-green-600 px-3 py-1 rounded-full text-sm">✓ Playoff Qualified</span>
                                 )}
                                 {playerStats.rank === 5 || playerStats.rank === 6 ? (
-                                    <span className="bg-violet-900/50 text-violet-400 px-3 py-1 rounded-full text-sm">⚡ Wildcard Eligible</span>
+                                    <span className="bg-violet-900/50 text-purple-600 px-3 py-1 rounded-full text-sm">⚡ Wildcard Eligible</span>
                                 ) : null}
                                 {playerStats.wildcardMatch && (
-                                    <span className="bg-amber-900/50 text-amber-400 px-3 py-1 rounded-full text-sm">
+                                    <span className="bg-amber-900/50 text-amber-600 px-3 py-1 rounded-full text-sm">
                                         🎯 Wildcard: vs {playerStats.wildcardMatch.player1 === currentPlayer ? playerStats.wildcardMatch.player2 : playerStats.wildcardMatch.player1}
                                     </span>
                                 )}
@@ -2475,7 +2475,7 @@
                             </div>
 
                             {/* Match History */}
-                            <div className="bg-slate-900 rounded-xl p-4">
+                            <div className="bg-white shadow-sm border border-gray-200 rounded-xl p-4">
                                 <h3 className="text-lg font-bold mb-3">Your Matches</h3>
                                 <div className="space-y-2 max-h-96 overflow-y-auto">
                                     {playerStats.matches.map((match, idx) => {
@@ -2484,27 +2484,27 @@
                                         const isLoser = match.loser === currentPlayer;
 
                                         return (
-                                            <div key={idx} className={`flex items-center justify-between p-3 rounded-lg ${match.completed ? (isWinner ? 'bg-emerald-900/20 border border-emerald-800' : 'bg-rose-900/20 border border-rose-800') : 'bg-slate-800'}`}>
+                                            <div key={idx} className={`flex items-center justify-between p-3 rounded-lg ${match.completed ? (isWinner ? 'bg-emerald-900/20 border border-emerald-800' : 'bg-rose-900/20 border border-rose-800') : 'bg-gray-100'}`}>
                                                 <div className="flex items-center gap-3">
-                                                    <span className="text-xs text-slate-500 w-12">Wk {match.week}</span>
+                                                    <span className="text-xs text-gray-500 w-12">Wk {match.week}</span>
                                                     <PlayerAvatar name={opponent} size="sm" />
                                                     <span className="font-medium">{opponent}</span>
                                                 </div>
                                                 <div>
                                                     {match.completed ? (
-                                                        <div className={`flex items-center gap-2 ${isWinner ? 'text-emerald-400' : 'text-rose-400'}`}>
+                                                        <div className={`flex items-center gap-2 ${isWinner ? 'text-green-600' : 'text-red-500'}`}>
                                                             <span className="font-bold">{isWinner ? 'W' : 'L'}</span>
                                                             <span className="text-sm">{match.score1}-{match.score2}</span>
                                                         </div>
                                                     ) : (
-                                                        <span className="text-slate-500 text-sm">Upcoming</span>
+                                                        <span className="text-gray-500 text-sm">Upcoming</span>
                                                     )}
                                                 </div>
                                             </div>
                                         );
                                     })}
                                     {playerStats.matches.length === 0 && (
-                                        <p className="text-slate-500 text-center py-4">No matches scheduled yet.</p>
+                                        <p className="text-gray-500 text-center py-4">No matches scheduled yet.</p>
                                     )}
                                 </div>
                             </div>
@@ -2512,8 +2512,8 @@
                     )}
 
                     {currentPlayer && !playerStats && (
-                        <div className="bg-slate-900 rounded-xl p-6 text-center">
-                            <p className="text-slate-400">Player "{currentPlayer}" not found in current season.</p>
+                        <div className="bg-white shadow-sm border border-gray-200 rounded-xl p-6 text-center">
+                            <p className="text-gray-500">Player "{currentPlayer}" not found in current season.</p>
                         </div>
                     )}
                 </div>
@@ -2632,8 +2632,8 @@
 
             if (!season) {
                 return (
-                    <div className="bg-slate-900 rounded-xl p-6 text-center">
-                        <p className="text-slate-400">No season data available.</p>
+                    <div className="bg-white shadow-sm border border-gray-200 rounded-xl p-6 text-center">
+                        <p className="text-gray-500">No season data available.</p>
                     </div>
                 );
             }
@@ -2657,14 +2657,14 @@
             return (
                 <div className="space-y-4">
                     {/* Filter */}
-                    <div className="bg-slate-900 rounded-xl p-4 flex items-center justify-between">
+                    <div className="bg-white shadow-sm border border-gray-200 rounded-xl p-4 flex items-center justify-between">
                         <h2 className="text-xl font-bold flex items-center gap-2">
                             <span>📰</span> Match History
                         </h2>
                         <div className="flex gap-2">
                             {['all', 'A', 'B'].map(f => (
                                 <button key={f} onClick={() => setFilter(f)}
-                                        className={`px-3 py-1 rounded-lg text-sm ${filter === f ? 'bg-violet-600' : 'bg-slate-800 hover:bg-slate-700'}`}>
+                                        className={`px-3 py-1 rounded-lg text-sm ${filter === f ? 'bg-purple-600' : 'bg-gray-100 hover:bg-gray-200'}`}>
                                     {f === 'all' ? 'All' : `Group ${f}`}
                                 </button>
                             ))}
@@ -2673,25 +2673,25 @@
 
                     {/* Stats Summary */}
                     <div className="grid grid-cols-3 gap-4">
-                        <div className="bg-slate-900 rounded-xl p-4 text-center">
-                            <div className="text-3xl font-bold text-emerald-400">{allEvents.filter(e => e.type === 'match').length}</div>
-                            <div className="text-sm text-slate-400">Matches Played</div>
+                        <div className="bg-white shadow-sm border border-gray-200 rounded-xl p-4 text-center">
+                            <div className="text-3xl font-bold text-green-600">{allEvents.filter(e => e.type === 'match').length}</div>
+                            <div className="text-sm text-gray-500">Matches Played</div>
                         </div>
-                        <div className="bg-slate-900 rounded-xl p-4 text-center">
-                            <div className="text-3xl font-bold text-violet-400">{season.currentWeek || 1}</div>
-                            <div className="text-sm text-slate-400">Current Week</div>
+                        <div className="bg-white shadow-sm border border-gray-200 rounded-xl p-4 text-center">
+                            <div className="text-3xl font-bold text-purple-600">{season.currentWeek || 1}</div>
+                            <div className="text-sm text-gray-500">Current Week</div>
                         </div>
-                        <div className="bg-slate-900 rounded-xl p-4 text-center">
-                            <div className="text-3xl font-bold text-amber-400">{season.status}</div>
-                            <div className="text-sm text-slate-400">Season Status</div>
+                        <div className="bg-white shadow-sm border border-gray-200 rounded-xl p-4 text-center">
+                            <div className="text-3xl font-bold text-amber-600">{season.status}</div>
+                            <div className="text-sm text-gray-500">Season Status</div>
                         </div>
                     </div>
 
                     {/* Events Feed */}
-                    <div className="bg-slate-900 rounded-xl p-4 max-h-[600px] overflow-y-auto scrollbar-thin">
+                    <div className="bg-white shadow-sm border border-gray-200 rounded-xl p-4 max-h-[600px] overflow-y-auto scrollbar-thin">
                         <div className="space-y-3">
                             {filteredEvents.length === 0 ? (
-                                <p className="text-slate-500 text-center py-8">No matches completed yet.</p>
+                                <p className="text-gray-500 text-center py-8">No matches completed yet.</p>
                             ) : (
                                 filteredEvents.map((event, idx) => (
                                     <div key={idx} className={`border-l-4 ${getEventColor(event.group)} rounded-r-lg p-3 transition-all hover:translate-x-1`}>
@@ -2706,32 +2706,32 @@
                                                     ) : event.type === 'playoff' ? (
                                                         <span className="text-xs bg-cyan-600 px-2 py-0.5 rounded">Playoff {event.round}</span>
                                                     ) : event.type === 'wildcard' ? (
-                                                        <span className="text-xs bg-violet-600 px-2 py-0.5 rounded">Wildcard</span>
+                                                        <span className="text-xs bg-purple-600 px-2 py-0.5 rounded">Wildcard</span>
                                                     ) : (
                                                         <>
                                                             <span className={`text-xs px-2 py-0.5 rounded ${event.group === 'A' ? 'bg-emerald-600' : 'bg-amber-600'}`}>
                                                                 Group {event.group}
                                                             </span>
-                                                            <span className="text-xs text-slate-500">Week {event.week}</span>
+                                                            <span className="text-xs text-gray-500">Week {event.week}</span>
                                                         </>
                                                     )}
                                                 </div>
                                                 <div className="flex items-center gap-2">
                                                     <PlayerAvatar name={event.winner} size="sm" />
-                                                    <span className="font-bold text-emerald-400">{event.winner}</span>
-                                                    <span className="text-slate-400">defeated</span>
+                                                    <span className="font-bold text-green-600">{event.winner}</span>
+                                                    <span className="text-gray-500">defeated</span>
                                                     <PlayerAvatar name={event.loser} size="sm" />
-                                                    <span className="text-rose-400">{event.loser}</span>
-                                                    <span className="text-slate-500 ml-2">({event.score1}-{event.score2})</span>
+                                                    <span className="text-red-500">{event.loser}</span>
+                                                    <span className="text-gray-500 ml-2">({event.score1}-{event.score2})</span>
                                                 </div>
                                                 {event.type === 'champion' && (
-                                                    <p className="text-sm text-amber-400 mt-1">🎊 {event.winner} is the Group {event.group} Champion!</p>
+                                                    <p className="text-sm text-amber-600 mt-1">🎊 {event.winner} is the Group {event.group} Champion!</p>
                                                 )}
                                                 {event.type === 'superbowl' && (
-                                                    <p className="text-sm text-amber-400 mt-1">🏆 {event.winner} wins the Mammotome Ping Pong Finale!</p>
+                                                    <p className="text-sm text-amber-600 mt-1">🏆 {event.winner} wins the Mammotome Ping Pong Finale!</p>
                                                 )}
                                                 {event.type === 'wildcard' && (
-                                                    <p className="text-sm text-violet-400 mt-1">Earns wildcard to Group {event.winnerGroup} playoffs</p>
+                                                    <p className="text-sm text-purple-600 mt-1">Earns wildcard to Group {event.winnerGroup} playoffs</p>
                                                 )}
                                             </div>
                                         </div>
@@ -2968,27 +2968,27 @@
             const weekMatches = season?.schedule?.[selectedGroup]?.[selectedWeek - 1] || [];
 
             return (
-                <div className="min-h-screen">
-                    {/* Header */}
-                    <header className="bg-slate-900 border-b border-slate-800 sticky top-0 z-40">
+                <div className="min-h-screen bg-gray-50">
+                    {/* Header - Mammotome White/Purple Theme */}
+                    <header className="bg-white border-b border-gray-200 sticky top-0 z-40 shadow-sm">
                         <div className="max-w-6xl mx-auto px-4 py-3">
                             <div className="flex items-center justify-between mb-3">
                                 <div className="flex items-center gap-3">
                                     <span className="text-2xl">🏓</span>
                                     <div>
-                                        <h1 className="font-bold">{season?.name || 'Mammotome Ping Pong League'}</h1>
-                                        <p className="text-xs text-slate-400">
+                                        <h1 className="font-bold text-purple-900">{season?.name || 'Mammotome Ping Pong League'}</h1>
+                                        <p className="text-xs text-gray-500">
                                             {season ? `Week ${season.currentWeek} of ${season.totalWeeks} • ${season.status === 'playoffs' ? 'Playoffs' : season.status === 'complete' ? 'Complete' : 'Regular Season'}` : 'No active season'}
                                         </p>
                                     </div>
                                 </div>
                                 <div className="flex items-center gap-2">
                                     <NotificationsBell currentPlayer={currentPlayer} />
-                                    <button onClick={loadData} className="p-2 bg-slate-800 hover:bg-slate-700 rounded-lg" title="Refresh"><Icons.Refresh /></button>
+                                    <button onClick={loadData} className="p-2 bg-gray-100 hover:bg-gray-200 rounded-lg text-gray-600" title="Refresh"><Icons.Refresh /></button>
                                     {isAdmin && (
                                         <>
-                                            <span className="text-xs text-amber-400 bg-amber-900/30 px-2 py-1 rounded">Admin</span>
-                                            <button onClick={handleLogout} className="text-xs text-rose-400 bg-rose-900/30 hover:bg-rose-900/50 px-2 py-1 rounded">Logout</button>
+                                            <span className="text-xs text-purple-700 bg-purple-100 px-2 py-1 rounded font-semibold">Admin</span>
+                                            <button onClick={handleLogout} className="text-xs text-white bg-purple-600 hover:bg-purple-700 px-3 py-1 rounded">Logout</button>
                                         </>
                                     )}
                                 </div>
@@ -3004,7 +3004,7 @@
                                     { id: 'playoffs', icon: Icons.Trophy, label: 'Playoffs' },
                                     { id: 'admin', icon: Icons.Cog, label: 'Admin' },
                                 ].map(tab => (
-                                    <button key={tab.id} onClick={() => setView(tab.id)} className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm whitespace-nowrap ${view === tab.id ? 'bg-violet-600' : 'bg-slate-800 hover:bg-slate-700'}`}>
+                                    <button key={tab.id} onClick={() => setView(tab.id)} className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm whitespace-nowrap transition-colors ${view === tab.id ? 'bg-purple-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-purple-100 hover:text-purple-700'}`}>
                                         <tab.icon />{tab.label}
                                     </button>
                                 ))}
@@ -3027,16 +3027,16 @@
                                 </div>
 
                                 {/* League Info Section */}
-                                <div className="bg-slate-900 rounded-xl p-4">
+                                <div className="bg-white shadow-sm border border-gray-200 rounded-xl p-4">
                                     <h3 className="text-lg font-bold mb-4 flex items-center gap-2">
-                                        <span className="text-violet-400">📋</span> League Format & Rules
+                                        <span className="text-purple-600">📋</span> League Format & Rules
                                     </h3>
 
                                     <div className="grid md:grid-cols-2 gap-6 text-sm">
                                         {/* Match Format */}
                                         <div>
-                                            <h4 className="font-semibold text-emerald-400 mb-2">Match Format</h4>
-                                            <ul className="space-y-1 text-slate-300">
+                                            <h4 className="font-semibold text-green-600 mb-2">Match Format</h4>
+                                            <ul className="space-y-1 text-gray-700">
                                                 <li>• Best of 3 games per match</li>
                                                 <li>• Valid scores: 2-0 or 2-1</li>
                                                 <li>• Winner gets 1 match win</li>
@@ -3046,8 +3046,8 @@
 
                                         {/* Tiebreaker Rules */}
                                         <div>
-                                            <h4 className="font-semibold text-amber-400 mb-2">Tiebreaker Rules (in order)</h4>
-                                            <ol className="space-y-1 text-slate-300 list-decimal list-inside">
+                                            <h4 className="font-semibold text-amber-600 mb-2">Tiebreaker Rules (in order)</h4>
+                                            <ol className="space-y-1 text-gray-700 list-decimal list-inside">
                                                 <li>Most match wins</li>
                                                 <li>Point differential (games won - lost)</li>
                                                 <li>Most total games won</li>
@@ -3058,7 +3058,7 @@
                                         {/* Championship Bracket */}
                                         <div>
                                             <h4 className="font-semibold text-cyan-400 mb-2">Championship Bracket (8 Players)</h4>
-                                            <ul className="space-y-1 text-slate-300">
+                                            <ul className="space-y-1 text-gray-700">
                                                 <li>• Top 4 from each group compete together</li>
                                                 <li>• <strong>Quarterfinals:</strong> Cross-group matchups</li>
                                                 <li className="ml-4 text-xs">QF1: A#1 vs B#4 | QF2: B#2 vs A#3</li>
@@ -3071,8 +3071,8 @@
 
                                         {/* Wildcard Round */}
                                         <div>
-                                            <h4 className="font-semibold text-violet-400 mb-2">Wildcard Round</h4>
-                                            <ul className="space-y-1 text-slate-300">
+                                            <h4 className="font-semibold text-purple-600 mb-2">Wildcard Round</h4>
+                                            <ul className="space-y-1 text-gray-700">
                                                 <li>• Group A #5 vs Group B #5</li>
                                                 <li>• Group A #6 vs Group B #6</li>
                                                 <li>• Winners replace #4 seed from their group</li>
@@ -3082,8 +3082,8 @@
 
                                         {/* Mid-Season Review */}
                                         <div>
-                                            <h4 className="font-semibold text-rose-400 mb-2">Mid-Season Review (Week 5)</h4>
-                                            <ul className="space-y-1 text-slate-300">
+                                            <h4 className="font-semibold text-red-500 mb-2">Mid-Season Review (Week 5)</h4>
+                                            <ul className="space-y-1 text-gray-700">
                                                 <li>• Bottom 3 from Group A move to Group B</li>
                                                 <li>• Top 3 from Group B move to Group A</li>
                                                 <li>• Keeps groups competitive and balanced</li>
@@ -3093,8 +3093,8 @@
 
                                         {/* Odd Players / Bye Weeks */}
                                         <div>
-                                            <h4 className="font-semibold text-slate-400 mb-2">Bye Weeks (Odd Players)</h4>
-                                            <ul className="space-y-1 text-slate-300">
+                                            <h4 className="font-semibold text-gray-500 mb-2">Bye Weeks (Odd Players)</h4>
+                                            <ul className="space-y-1 text-gray-700">
                                                 <li>• If a group has odd # of players, one sits out each week</li>
                                                 <li>• "Bye" rotates so each player gets rest</li>
                                                 <li>• Bye does not count as win or loss</li>
@@ -3103,9 +3103,9 @@
                                     </div>
 
                                     {/* Column Legend */}
-                                    <div className="mt-4 pt-4 border-t border-slate-800">
-                                        <h4 className="font-semibold text-slate-400 mb-2">Table Legend</h4>
-                                        <div className="flex flex-wrap gap-4 text-xs text-slate-400">
+                                    <div className="mt-4 pt-4 border-t border-gray-200">
+                                        <h4 className="font-semibold text-gray-500 mb-2">Table Legend</h4>
+                                        <div className="flex flex-wrap gap-4 text-xs text-gray-500">
                                             <span><strong>W</strong> = Match Wins</span>
                                             <span><strong>L</strong> = Match Losses</span>
                                             <span><strong>PF</strong> = Games Won (Points For)</span>
@@ -3117,7 +3117,7 @@
                                 </div>
 
                                 {/* Recent Match Feed */}
-                                <div className="bg-slate-900 rounded-xl p-4">
+                                <div className="bg-white shadow-sm border border-gray-200 rounded-xl p-4">
                                     <h3 className="text-lg font-bold mb-4 flex items-center gap-2">
                                         <span className="text-cyan-400">📰</span> Recent Match Results
                                     </h3>
@@ -3164,7 +3164,7 @@
                                             const sorted = recentMatches.sort((a, b) => b.sortKey - a.sortKey).slice(0, 20);
 
                                             if (sorted.length === 0) {
-                                                return <p className="text-slate-500 text-center py-4">No matches completed yet.</p>;
+                                                return <p className="text-gray-500 text-center py-4">No matches completed yet.</p>;
                                             }
 
                                             return sorted.map((m, i) => (
@@ -3185,17 +3185,17 @@
                                                                 m.type === 'superbowl' ? 'bg-amber-600' :
                                                                 m.type === 'final' ? 'bg-amber-700' :
                                                                 m.type === 'playoff' ? 'bg-cyan-600' :
-                                                                m.type === 'wildcard' ? 'bg-violet-600' :
+                                                                m.type === 'wildcard' ? 'bg-purple-600' :
                                                                 m.group === 'A' ? 'bg-emerald-700' : 'bg-amber-700'
                                                             }`}>
                                                                 {m.type === 'superbowl' ? 'FINALE' : m.type === 'final' ? `G${m.group} Final` : m.type === 'playoff' ? `G${m.group} Playoff` : m.type === 'wildcard' ? 'Wildcard' : `G${m.group} W${m.week}`}
                                                             </span>
                                                         </div>
                                                         <div className="flex items-center gap-1 mt-1">
-                                                            <span className="font-semibold text-emerald-400 truncate">{m.winner}</span>
-                                                            <span className="text-slate-500 text-xs">beat</span>
-                                                            <span className="text-rose-400 truncate">{m.loser}</span>
-                                                            <span className="text-slate-500 text-xs ml-1">({m.score1}-{m.score2})</span>
+                                                            <span className="font-semibold text-green-600 truncate">{m.winner}</span>
+                                                            <span className="text-gray-500 text-xs">beat</span>
+                                                            <span className="text-red-500 truncate">{m.loser}</span>
+                                                            <span className="text-gray-500 text-xs ml-1">({m.score1}-{m.score2})</span>
                                                         </div>
                                                     </div>
                                                 </div>
@@ -3208,30 +3208,30 @@
 
                         {view === 'standings' && !season && (
                             <div className="text-center py-12">
-                                <p className="text-slate-400 mb-4">No active season. Go to Admin to create one.</p>
+                                <p className="text-gray-500 mb-4">No active season. Go to Admin to create one.</p>
                             </div>
                         )}
 
                         {view === 'schedule' && season && (
                             <div className="space-y-4">
                                 <div className="flex gap-2 items-center flex-wrap">
-                                    <span className="text-slate-400">Week:</span>
+                                    <span className="text-gray-500">Week:</span>
                                     {Array.from({ length: season.totalWeeks }, (_, i) => (
-                                        <button key={i} onClick={() => setSelectedWeek(i + 1)} className={`w-8 h-8 rounded-lg text-sm ${selectedWeek === i + 1 ? 'bg-violet-600' : 'bg-slate-800 hover:bg-slate-700'}`}>
+                                        <button key={i} onClick={() => setSelectedWeek(i + 1)} className={`w-8 h-8 rounded-lg text-sm ${selectedWeek === i + 1 ? 'bg-purple-600' : 'bg-gray-100 hover:bg-gray-200'}`}>
                                             {i + 1}
                                         </button>
                                     ))}
                                 </div>
                                 <div className="flex gap-2">
-                                    <button onClick={() => setSelectedGroup('A')} className={`px-4 py-2 rounded-lg ${selectedGroup === 'A' ? 'bg-emerald-600' : 'bg-slate-800'}`}>Group A</button>
-                                    <button onClick={() => setSelectedGroup('B')} className={`px-4 py-2 rounded-lg ${selectedGroup === 'B' ? 'bg-amber-600' : 'bg-slate-800'}`}>Group B</button>
+                                    <button onClick={() => setSelectedGroup('A')} className={`px-4 py-2 rounded-lg ${selectedGroup === 'A' ? 'bg-emerald-600' : 'bg-gray-100'}`}>Group A</button>
+                                    <button onClick={() => setSelectedGroup('B')} className={`px-4 py-2 rounded-lg ${selectedGroup === 'B' ? 'bg-amber-600' : 'bg-gray-100'}`}>Group B</button>
                                 </div>
-                                <div className="bg-slate-900 rounded-xl p-4">
+                                <div className="bg-white shadow-sm border border-gray-200 rounded-xl p-4">
                                     <h3 className="text-lg font-bold mb-3">Week {selectedWeek} - Group {selectedGroup}</h3>
                                     {weekMatches.filter(m => !m.cancelled).length > 0 ? (
                                         <WeeklyMatches matches={weekMatches.filter(m => !m.cancelled)} week={selectedWeek} onRecordResult={handleRecordResult} />
                                     ) : (
-                                        <p className="text-slate-500">No matches scheduled for this week.</p>
+                                        <p className="text-gray-500">No matches scheduled for this week.</p>
                                     )}
                                 </div>
 
@@ -3239,21 +3239,21 @@
                                 {isAdmin && season?.status === 'regular' && season.currentWeek >= Math.floor(season.totalWeeks / 2) && !season.midSeasonReview?.completed && (
                                     <div className="bg-gradient-to-r from-rose-900/30 to-amber-900/30 border border-rose-500/30 rounded-xl p-4">
                                         <h3 className="text-lg font-bold mb-2 flex items-center gap-2">
-                                            <span className="text-rose-400">🔄</span> Mid-Season Review Available
+                                            <span className="text-red-500">🔄</span> Mid-Season Review Available
                                         </h3>
-                                        <p className="text-sm text-slate-400 mb-3">
+                                        <p className="text-sm text-gray-500 mb-3">
                                             Week {season.currentWeek} reached! Time to balance the groups.
                                         </p>
                                         <div className="grid md:grid-cols-2 gap-4 mb-4 text-sm">
-                                            <div className="bg-slate-800/50 rounded-lg p-3">
-                                                <h4 className="text-rose-400 font-semibold mb-2">⬇️ Moving to Group B</h4>
-                                                <p className="text-slate-400 text-xs mb-1">Bottom 3 from Group A</p>
-                                                <p className="text-slate-300">Will face easier competition</p>
+                                            <div className="bg-gray-100/50 rounded-lg p-3">
+                                                <h4 className="text-red-500 font-semibold mb-2">⬇️ Moving to Group B</h4>
+                                                <p className="text-gray-500 text-xs mb-1">Bottom 3 from Group A</p>
+                                                <p className="text-gray-700">Will face easier competition</p>
                                             </div>
-                                            <div className="bg-slate-800/50 rounded-lg p-3">
-                                                <h4 className="text-emerald-400 font-semibold mb-2">⬆️ Moving to Group A</h4>
-                                                <p className="text-slate-400 text-xs mb-1">Top 3 from Group B</p>
-                                                <p className="text-slate-300">Earned their spot with stronger players</p>
+                                            <div className="bg-gray-100/50 rounded-lg p-3">
+                                                <h4 className="text-green-600 font-semibold mb-2">⬆️ Moving to Group A</h4>
+                                                <p className="text-gray-500 text-xs mb-1">Top 3 from Group B</p>
+                                                <p className="text-gray-700">Earned their spot with stronger players</p>
                                             </div>
                                         </div>
                                         <button onClick={handleMidSeasonReview} className="w-full bg-rose-600 hover:bg-rose-500 py-2 rounded-lg font-semibold">
@@ -3264,19 +3264,19 @@
 
                                 {/* Show mid-season review results if completed */}
                                 {season?.midSeasonReview?.completed && (
-                                    <div className="bg-slate-900 rounded-xl p-4">
+                                    <div className="bg-white shadow-sm border border-gray-200 rounded-xl p-4">
                                         <h3 className="text-lg font-bold mb-2 flex items-center gap-2">
-                                            <span className="text-emerald-400">✓</span> Mid-Season Review Completed
+                                            <span className="text-green-600">✓</span> Mid-Season Review Completed
                                         </h3>
-                                        <p className="text-xs text-slate-500 mb-3">Week {season.midSeasonReview.week}</p>
+                                        <p className="text-xs text-gray-500 mb-3">Week {season.midSeasonReview.week}</p>
                                         <div className="grid md:grid-cols-2 gap-4 text-sm">
                                             <div>
-                                                <h4 className="text-rose-400 font-semibold mb-1">Moved to Group B:</h4>
-                                                <p className="text-slate-300">{season.midSeasonReview.swaps?.fromAtoB?.join(', ') || 'None'}</p>
+                                                <h4 className="text-red-500 font-semibold mb-1">Moved to Group B:</h4>
+                                                <p className="text-gray-700">{season.midSeasonReview.swaps?.fromAtoB?.join(', ') || 'None'}</p>
                                             </div>
                                             <div>
-                                                <h4 className="text-emerald-400 font-semibold mb-1">Moved to Group A:</h4>
-                                                <p className="text-slate-300">{season.midSeasonReview.swaps?.fromBtoA?.join(', ') || 'None'}</p>
+                                                <h4 className="text-green-600 font-semibold mb-1">Moved to Group A:</h4>
+                                                <p className="text-gray-700">{season.midSeasonReview.swaps?.fromBtoA?.join(', ') || 'None'}</p>
                                             </div>
                                         </div>
                                     </div>
@@ -3294,17 +3294,17 @@
                             <div className="space-y-4">
                                 {/* Regular season - offer wildcard or direct playoffs */}
                                 {season?.status === 'regular' && isAdmin && (
-                                    <div className="bg-slate-900 rounded-xl p-4 text-center">
-                                        <p className="text-slate-400 mb-4">Regular season in progress. Start wildcard round or go directly to playoffs.</p>
+                                    <div className="bg-white shadow-sm border border-gray-200 rounded-xl p-4 text-center">
+                                        <p className="text-gray-500 mb-4">Regular season in progress. Start wildcard round or go directly to playoffs.</p>
                                         <div className="flex gap-4 justify-center flex-wrap">
-                                            <button onClick={handleStartWildcard} className="bg-violet-600 hover:bg-violet-500 px-6 py-2 rounded-lg font-semibold">
+                                            <button onClick={handleStartWildcard} className="bg-purple-600 hover:bg-purple-700 px-6 py-2 rounded-lg font-semibold">
                                                 Start Wildcard Round
                                             </button>
                                             <button onClick={handleStartPlayoffs} className="bg-amber-600 hover:bg-amber-500 px-6 py-2 rounded-lg font-semibold">
                                                 Skip to Playoffs
                                             </button>
                                         </div>
-                                        <p className="text-xs text-slate-500 mt-3">Wildcard: Group A #5-6 vs Group B #5-6 - winners earn playoff spot in their own group</p>
+                                        <p className="text-xs text-gray-500 mt-3">Wildcard: Group A #5-6 vs Group B #5-6 - winners earn playoff spot in their own group</p>
                                     </div>
                                 )}
 
@@ -3313,8 +3313,8 @@
                                     <>
                                         <WildcardRound wildcard={season.wildcard} onRecordResult={handleRecordResult} />
                                         {isAdmin && season.wildcard?.matches?.every(m => m.completed) && (
-                                            <div className="bg-slate-900 rounded-xl p-4 text-center">
-                                                <p className="text-emerald-400 mb-4">Wildcard round complete! Start playoffs.</p>
+                                            <div className="bg-white shadow-sm border border-gray-200 rounded-xl p-4 text-center">
+                                                <p className="text-green-600 mb-4">Wildcard round complete! Start playoffs.</p>
                                                 <button onClick={handleStartPlayoffs} className="bg-amber-600 hover:bg-amber-500 px-6 py-2 rounded-lg font-semibold">
                                                     Start Playoffs
                                                 </button>
@@ -3347,7 +3347,7 @@
                                 )}
 
                                 {!season?.playoffs && !season?.wildcard && season?.status !== 'regular' && (
-                                    <p className="text-center text-slate-500">No playoff data available.</p>
+                                    <p className="text-center text-gray-500">No playoff data available.</p>
                                 )}
                             </div>
                         )}
