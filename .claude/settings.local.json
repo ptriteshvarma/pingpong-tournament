@@ -7,7 +7,32 @@
       "Bash(git add:*)",
       "Bash(git rm:*)",
       "Bash(git commit -m \"$(cat <<''EOF''\nConvert to full-stack app with Express backend and SQLite database\n\n- Add Express server with REST API endpoints for players and tournaments\n- Add SQLite database (better-sqlite3) for persistent data storage\n- Move frontend to public/ directory\n- Update frontend to use API instead of localStorage\n- Add railway.json for Railway deployment\n- Update README with deployment instructions\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n)\")",
-      "Bash(git commit:*)"
+      "Bash(git commit:*)",
+      "Bash(npm install:*)",
+      "Bash(node:*)",
+      "Bash(taskkill:*)",
+      "Bash(netstat:*)",
+      "Bash(findstr:*)",
+      "Bash(powershell \"Stop-Process -Id 5228 -Force\")",
+      "Bash(cat:*)",
+      "Bash(DATABASE_URL=\"postgresql://postgres:BzCehsHrclUqHZGiJjfcVpaTJxAbFDaG@yamanote.proxy.rlwy.net:24160/railway\" node -e \"\nconst { Pool } = require\\(''pg''\\);\nconst pool = new Pool\\({ connectionString: process.env.DATABASE_URL, ssl: { rejectUnauthorized: false } }\\);\nasync function test\\(\\) {\n  try {\n    const tables = await pool.query\\(\"\"SELECT table_name FROM information_schema.tables WHERE table_schema = ''public''\"\"\\);\n    console.log\\(''Tables:'', tables.rows.map\\(r => r.table_name\\)\\);\n    \n    const players = await pool.query\\(''SELECT * FROM players ORDER BY seed NULLS LAST''\\);\n    console.log\\(''\\\\nPlayers:'', players.rows.length\\);\n    players.rows.forEach\\(p => console.log\\(''  -'', p.name, p.seed ? ''\\(seed '' + p.seed + ''\\)'' : ''''\\)\\);\n    \n    await pool.end\\(\\);\n  } catch \\(e\\) { console.error\\(''Error:'', e.message\\); }\n}\ntest\\(\\);\n\")",
+      "Bash(DATABASE_URL=\"postgresql://postgres:BzCehsHrclUqHZGiJjfcVpaTJxAbFDaG@yamanote.proxy.rlwy.net:24160/railway\" node:*)",
+      "Bash(curl:*)",
+      "Bash(DATABASE_URL=\"postgresql://postgres:BzCehsHrclUqHZGiJjfcVpaTJxAbFDaG@yamanote.proxy.rlwy.net:24160/railway\" node -e:*)",
+      "Bash(timeout /t 2 /nobreak:*)",
+      "Bash(powershell \"Stop-Process -Id 6316 -Force\")",
+      "Bash(powershell \"Stop-Process -Id 31312 -Force\")",
+      "Bash(timeout /t 3 /nobreak)",
+      "Bash(powershell \"Stop-Process -Id 29272 -Force\")",
+      "Bash(python3:*)",
+      "Bash(pkill:*)",
+      "Bash(http://localhost:3000/api/season/create)",
+      "Bash(fuser:*)",
+      "Bash(lsof:*)",
+      "Bash(xargs kill:*)",
+      "Bash(# Try to find the node PID differently ps aux | grep -i node | grep -v grep || tasklist)",
+      "Bash(tasklist:*)",
+      "Bash(kill:*)"
     ]
   }
 }

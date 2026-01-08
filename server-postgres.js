@@ -3106,13 +3106,13 @@ app.get('/api/registration/all', requireAdmin, async (req, res) => {
   }
 });
 
-// Get public registration list (names only, for display)
+// Get public registration list (includes id for admin actions)
 app.get('/api/registration/list', async (req, res) => {
   try {
     await ensureRegistrationTables();
 
     const result = await pool.query(`
-      SELECT player_name, is_ranked, registration_status, final_seed, created_at
+      SELECT id, player_name, is_ranked, registration_status, final_seed, suggested_seed, created_at
       FROM league_registration
       WHERE registration_status != 'rejected'
       ORDER BY

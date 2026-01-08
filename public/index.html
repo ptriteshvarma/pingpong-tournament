@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Ping Pong League</title>
+    <title>Mammotome Ping Pong League</title>
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -34,7 +34,10 @@
             text-shadow: 0 0 5px rgba(255,255,255,0.5);
         }
         .winter-gradient {
-            background: linear-gradient(135deg, #0c4a6e 0%, #164e63 25%, #1e3a5f 50%, #312e81 75%, #1e1b4b 100%);
+            background: linear-gradient(135deg, #4a1c6b 0%, #6b2d8a 25%, #8b3fa8 50%, #6b2d8a 75%, #4a1c6b 100%);
+        }
+        .mammotome-gradient {
+            background: linear-gradient(135deg, #5a1e7a 0%, #7b2d9a 50%, #9b3dba 100%);
         }
     </style>
 </head>
@@ -1550,8 +1553,9 @@
                             <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI2MCIgaGVpZ2h0PSI2MCI+PGNpcmNsZSBjeD0iMzAiIGN5PSIzMCIgcj0iMiIgZmlsbD0icmdiYSgyNTUsMjU1LDI1NSwwLjEpIi8+PC9zdmc+')] opacity-30"></div>
                             <div className="relative">
                                 <div className="text-6xl mb-4">❄️ 🏓 ❄️</div>
-                                <h1 className="text-4xl font-bold text-white mb-2">{config?.season_name || 'Winter League 2026'}</h1>
-                                <p className="text-cyan-200 text-lg">Register now to compete!</p>
+                                <h1 className="text-4xl font-bold text-white mb-2">Mammotome Ping Pong League</h1>
+                                <h2 className="text-2xl text-fuchsia-200 mb-2">{config?.season_name || 'Winter League 2026'}</h2>
+                                <p className="text-fuchsia-100 text-lg">Register now to compete!</p>
 
                                 {config?.registration_open ? (
                                     <div className="mt-4 inline-block bg-emerald-500/20 border border-emerald-400/50 rounded-full px-6 py-2">
@@ -1572,15 +1576,15 @@
                                     <div className="mt-4 flex justify-center gap-8 text-sm">
                                         <div className="text-center">
                                             <div className="text-3xl font-bold text-white">{config.stats.approved}</div>
-                                            <div className="text-cyan-200">Confirmed</div>
+                                            <div className="text-fuchsia-200">Confirmed</div>
                                         </div>
                                         <div className="text-center">
                                             <div className="text-3xl font-bold text-amber-300">{config.stats.pending}</div>
-                                            <div className="text-cyan-200">Awaiting Admin</div>
+                                            <div className="text-fuchsia-200">Awaiting Admin</div>
                                         </div>
                                         <div className="text-center">
-                                            <div className="text-3xl font-bold text-violet-300">{config.stats.ranked}</div>
-                                            <div className="text-cyan-200">Returning Players</div>
+                                            <div className="text-3xl font-bold text-fuchsia-300">{config.stats.ranked}</div>
+                                            <div className="text-fuchsia-200">Returning Players</div>
                                         </div>
                                     </div>
                                 )}
@@ -1591,7 +1595,7 @@
                         {config?.registration_open && (
                             <div className="bg-slate-900 rounded-xl p-6 mb-6">
                                 <h2 className="text-2xl font-bold mb-4 flex items-center gap-2">
-                                    <span className="text-cyan-400">❄️</span>
+                                    <span className="text-fuchsia-400">❄️</span>
                                     Register to Play
                                 </h2>
 
@@ -1603,7 +1607,7 @@
                                             value={playerName}
                                             onChange={e => setPlayerName(e.target.value)}
                                             placeholder="Enter your name"
-                                            className="w-full bg-slate-800 border border-slate-700 rounded-lg px-4 py-3 focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
+                                            className="w-full bg-slate-800 border border-slate-700 rounded-lg px-4 py-3 focus:ring-2 focus:ring-fuchsia-500 focus:border-transparent"
                                             required
                                         />
                                         <p className="text-xs text-slate-500 mt-1">
@@ -1620,7 +1624,7 @@
                                     <button
                                         type="submit"
                                         disabled={submitting || !playerName.trim()}
-                                        className="w-full bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 disabled:from-slate-600 disabled:to-slate-600 py-3 rounded-lg font-bold text-lg transition-all"
+                                        className="w-full bg-gradient-to-r from-fuchsia-600 to-purple-600 hover:from-fuchsia-500 hover:to-purple-500 disabled:from-slate-600 disabled:to-slate-600 py-3 rounded-lg font-bold text-lg transition-all"
                                     >
                                         {submitting ? 'Registering...' : '❄️ Register for Winter League'}
                                     </button>
@@ -1707,40 +1711,50 @@
 
                                         {/* Review Registrations */}
                                         <div className="bg-slate-800 rounded-lg p-4">
-                                            <h3 className="font-bold mb-3">Review Registrations</h3>
+                                            <h3 className="font-bold mb-3">Review Registrations ({registrations.length})</h3>
                                             <div className="space-y-2 max-h-96 overflow-y-auto">
                                                 {registrations.map(reg => (
-                                                    <div key={reg.player_name} className="flex items-center justify-between gap-2 p-2 bg-slate-700/50 rounded">
-                                                        <div className="flex-1">
-                                                            <span className="font-semibold">{reg.player_name}</span>
-                                                            {reg.is_ranked && <span className="text-xs text-violet-400 ml-2">(Prev: #{reg.suggested_seed})</span>}
-                                                            <span className={`text-xs ml-2 ${reg.registration_status === 'approved' ? 'text-emerald-400' : 'text-amber-400'}`}>
-                                                                {reg.registration_status}
-                                                            </span>
+                                                    <div key={reg.id || reg.player_name} className="flex items-center justify-between gap-2 p-3 bg-slate-700/50 rounded-lg">
+                                                        <div className="flex-1 min-w-0">
+                                                            <div className="flex items-center gap-2 flex-wrap">
+                                                                <span className="font-semibold">{reg.player_name}</span>
+                                                                {reg.is_ranked && <span className="text-xs bg-violet-600/50 px-2 py-0.5 rounded text-violet-200">Prev #{reg.suggested_seed}</span>}
+                                                                <span className={`text-xs px-2 py-0.5 rounded ${reg.registration_status === 'approved' ? 'bg-emerald-600/50 text-emerald-200' : 'bg-amber-600/50 text-amber-200'}`}>
+                                                                    {reg.registration_status === 'approved' ? 'Approved' : 'Pending'}
+                                                                </span>
+                                                                {reg.final_seed && <span className="text-xs bg-cyan-600/50 px-2 py-0.5 rounded text-cyan-200">Seed #{reg.final_seed}</span>}
+                                                            </div>
                                                         </div>
-                                                        {editingId === reg.id ? (
-                                                            <div className="flex items-center gap-2">
-                                                                <input
-                                                                    type="number"
-                                                                    value={editSeed}
-                                                                    onChange={e => setEditSeed(e.target.value)}
-                                                                    placeholder="Seed"
-                                                                    className="w-20 bg-slate-600 rounded px-2 py-1 text-sm"
-                                                                />
-                                                                <button onClick={() => handleApprove(reg.id, 'approved', editSeed)} className="text-xs bg-emerald-600 px-2 py-1 rounded">Save</button>
-                                                                <button onClick={() => setEditingId(null)} className="text-xs bg-slate-600 px-2 py-1 rounded">Cancel</button>
-                                                            </div>
-                                                        ) : (
-                                                            <div className="flex items-center gap-1">
-                                                                {reg.registration_status === 'pending' && (
-                                                                    <button onClick={() => handleApprove(reg.id, 'approved')} className="text-xs bg-emerald-600 hover:bg-emerald-500 px-2 py-1 rounded">Approve</button>
-                                                                )}
-                                                                <button onClick={() => { setEditingId(reg.id); setEditSeed(reg.final_seed || reg.suggested_seed || ''); }} className="text-xs bg-violet-600 hover:bg-violet-500 px-2 py-1 rounded">Set Seed</button>
-                                                                <button onClick={() => handleDelete(reg.id)} className="text-xs bg-rose-600 hover:bg-rose-500 px-2 py-1 rounded">Remove</button>
-                                                            </div>
-                                                        )}
+                                                        <div className="flex items-center gap-2 flex-shrink-0">
+                                                            {editingId === reg.id ? (
+                                                                <>
+                                                                    <input
+                                                                        type="number"
+                                                                        value={editSeed}
+                                                                        onChange={e => setEditSeed(e.target.value)}
+                                                                        placeholder="Seed #"
+                                                                        min="1"
+                                                                        className="w-20 bg-slate-600 rounded px-2 py-1.5 text-sm"
+                                                                    />
+                                                                    <button onClick={() => handleApprove(reg.id, 'approved', editSeed)} className="text-xs bg-emerald-600 hover:bg-emerald-500 px-3 py-1.5 rounded font-semibold">Save</button>
+                                                                    <button onClick={() => handleApprove(reg.id, 'approved', null)} className="text-xs bg-slate-500 hover:bg-slate-400 px-3 py-1.5 rounded font-semibold">Unseeded</button>
+                                                                    <button onClick={() => { setEditingId(null); setEditSeed(''); }} className="text-xs bg-slate-600 hover:bg-slate-500 px-2 py-1.5 rounded">✕</button>
+                                                                </>
+                                                            ) : (
+                                                                <>
+                                                                    {reg.registration_status === 'pending' && (
+                                                                        <button onClick={() => handleApprove(reg.id, 'approved', null)} className="text-xs bg-emerald-600 hover:bg-emerald-500 px-3 py-1.5 rounded font-semibold">Approve</button>
+                                                                    )}
+                                                                    <button onClick={() => { setEditingId(reg.id); setEditSeed(reg.final_seed || reg.suggested_seed || ''); }} className="text-xs bg-fuchsia-600 hover:bg-fuchsia-500 px-3 py-1.5 rounded font-semibold">Set Seed</button>
+                                                                    <button onClick={() => handleDelete(reg.id)} className="text-xs bg-rose-600 hover:bg-rose-500 px-3 py-1.5 rounded font-semibold">Remove</button>
+                                                                </>
+                                                            )}
+                                                        </div>
                                                     </div>
                                                 ))}
+                                                {registrations.length === 0 && (
+                                                    <p className="text-slate-500 text-center py-4">No registrations yet</p>
+                                                )}
                                             </div>
                                         </div>
 
@@ -2962,7 +2976,7 @@
                                 <div className="flex items-center gap-3">
                                     <span className="text-2xl">🏓</span>
                                     <div>
-                                        <h1 className="font-bold">{season?.name || 'Ping Pong League'}</h1>
+                                        <h1 className="font-bold">{season?.name || 'Mammotome Ping Pong League'}</h1>
                                         <p className="text-xs text-slate-400">
                                             {season ? `Week ${season.currentWeek} of ${season.totalWeeks} • ${season.status === 'playoffs' ? 'Playoffs' : season.status === 'complete' ? 'Complete' : 'Regular Season'}` : 'No active season'}
                                         </p>
