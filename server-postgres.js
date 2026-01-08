@@ -3071,6 +3071,15 @@ app.post('/api/registration/register', async (req, res) => {
       isRanked ? 'pending' : 'approved' // Auto-approve new players, ranked need review
     ]);
 
+    // Also add to players table if not already there (so they show in dropdowns)
+    if (!isRanked) {
+      await pool.query(`
+        INSERT INTO players (name, seed)
+        VALUES ($1, NULL)
+        ON CONFLICT (name) DO NOTHING
+      `, [trimmedName]);
+    }
+
     res.json({
       success: true,
       registration: insertResult.rows[0],
