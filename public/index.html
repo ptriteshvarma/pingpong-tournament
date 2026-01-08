@@ -81,17 +81,48 @@
         const avatarIconList = Object.keys(AvatarIcons);
 
         // Get player's avatar from localStorage
+        // Global avatar cache (loaded from database via players)
+        let playerAvatarCache = {};
+
+        const setAvatarCache = (players) => {
+            if (Array.isArray(players)) {
+                players.forEach(p => {
+                    if (p.avatar) playerAvatarCache[p.name] = p.avatar;
+                });
+            }
+        };
+
         const getPlayerAvatar = (name) => {
             if (!name) return null;
+            // Check database cache first, then localStorage fallback
+            if (playerAvatarCache[name]) return playerAvatarCache[name];
             const avatars = JSON.parse(localStorage.getItem('pingpong_avatars') || '{}');
             return avatars[name] || null;
         };
 
-        // Save player's avatar to localStorage
-        const savePlayerAvatar = (name, iconName) => {
+        // Save player's avatar to database and localStorage
+        const savePlayerAvatar = async (name, iconName) => {
+            // Save to localStorage for immediate feedback
             const avatars = JSON.parse(localStorage.getItem('pingpong_avatars') || '{}');
-            avatars[name] = iconName;
+            if (iconName) {
+                avatars[name] = iconName;
+                playerAvatarCache[name] = iconName;
+            } else {
+                delete avatars[name];
+                delete playerAvatarCache[name];
+            }
             localStorage.setItem('pingpong_avatars', JSON.stringify(avatars));
+
+            // Save to database
+            try {
+                await fetch(`${API_BASE}/players/${encodeURIComponent(name)}/avatar`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ avatar: iconName || null })
+                });
+            } catch (e) {
+                console.error('Failed to save avatar to database:', e);
+            }
         };
 
         // Player Avatar
@@ -121,16 +152,14 @@
             const colors = ['bg-violet-500', 'bg-blue-500', 'bg-emerald-500', 'bg-amber-500', 'bg-rose-500', 'bg-cyan-500'];
             const colorIndex = playerName ? playerName.charCodeAt(0) % colors.length : 0;
 
-            const handleSelect = (iconName) => {
-                savePlayerAvatar(playerName, iconName);
+            const handleSelect = async (iconName) => {
+                await savePlayerAvatar(playerName, iconName);
                 onSelect?.(iconName);
                 onClose();
             };
 
-            const handleClear = () => {
-                const avatars = JSON.parse(localStorage.getItem('pingpong_avatars') || '{}');
-                delete avatars[playerName];
-                localStorage.setItem('pingpong_avatars', JSON.stringify(avatars));
+            const handleClear = async () => {
+                await savePlayerAvatar(playerName, null);
                 onSelect?.(null);
                 onClose();
             };
@@ -1789,6 +1818,9 @@
             const [bracketPlayers, setBracketPlayers] = useState([]);
             const [addingPlayer, setAddingPlayer] = useState(false);
             const [creatingBracket, setCreatingBracket] = useState(false);
+            const [editingSeed, setEditingSeed] = useState(null);
+            const [editSeedValue, setEditSeedValue] = useState('');
+            const [deletingPlayer, setDeletingPlayer] = useState(null);
 
             const addToGroup = (player, group) => {
                 if (group === 'A') {
@@ -1838,6 +1870,39 @@
                 }
             };
 
+            const handleUpdateSeed = async (playerName, newSeed) => {
+                try {
+                    const res = await fetch(`${API_BASE}/players/${encodeURIComponent(playerName)}/seed`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json', 'X-Admin-Password': localStorage.getItem('adminPassword') || '' },
+                        body: JSON.stringify({ seed: newSeed === '' ? null : parseInt(newSeed) })
+                    });
+                    if (res.ok) {
+                        setEditingSeed(null);
+                        setEditSeedValue('');
+                        window.location.reload();
+                    }
+                } catch (e) {
+                    console.error('Failed to update seed:', e);
+                }
+            };
+
+            const handleDeletePlayer = async (playerName) => {
+                if (!confirm(`Are you sure you want to delete ${playerName}? This cannot be undone.`)) return;
+                try {
+                    const res = await fetch(`${API_BASE}/players/${encodeURIComponent(playerName)}`, {
+                        method: 'DELETE',
+                        headers: { 'X-Admin-Password': localStorage.getItem('adminPassword') || '' }
+                    });
+                    if (res.ok) {
+                        setDeletingPlayer(null);
+                        window.location.reload();
+                    }
+                } catch (e) {
+                    console.error('Failed to delete player:', e);
+                }
+            };
+
             if (!isAdmin) {
                 return (
                     <div className="bg-white shadow-sm border border-gray-200 rounded-xl p-6 max-w-md mx-auto">
@@ -1883,6 +1948,67 @@
                             </p>
                         </div>
                     )}
+
+                    {/* Manage Players */}
+                    <div className="bg-white shadow-sm border border-gray-200 rounded-xl p-4">
+                        <h2 className="text-xl font-bold mb-4">Manage Players ({players.length})</h2>
+                        <p className="text-sm text-gray-500 mb-4">Edit seed rankings or delete players from the database.</p>
+                        <div className="max-h-[400px] overflow-y-auto">
+                            <table className="w-full text-sm">
+                                <thead className="bg-gray-100 sticky top-0">
+                                    <tr>
+                                        <th className="text-left px-3 py-2">Player Name</th>
+                                        <th className="text-center px-3 py-2 w-24">Seed</th>
+                                        <th className="text-right px-3 py-2 w-32">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {players.map((p, idx) => (
+                                        <tr key={p.name} className={idx % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
+                                            <td className="px-3 py-2 font-medium">{p.name}</td>
+                                            <td className="px-3 py-2 text-center">
+                                                {editingSeed === p.name ? (
+                                                    <div className="flex items-center gap-1">
+                                                        <input
+                                                            type="number"
+                                                            value={editSeedValue}
+                                                            onChange={e => setEditSeedValue(e.target.value)}
+                                                            placeholder="Seed"
+                                                            className="w-16 px-2 py-1 bg-gray-100 rounded text-center text-sm"
+                                                            min="1"
+                                                        />
+                                                        <button onClick={() => handleUpdateSeed(p.name, editSeedValue)} className="text-green-600 hover:text-green-500 text-xs">✓</button>
+                                                        <button onClick={() => handleUpdateSeed(p.name, '')} className="text-amber-600 hover:text-amber-500 text-xs">⊘</button>
+                                                        <button onClick={() => { setEditingSeed(null); setEditSeedValue(''); }} className="text-gray-500 hover:text-gray-400 text-xs">✕</button>
+                                                    </div>
+                                                ) : (
+                                                    <span className={p.seed ? 'text-purple-600 font-semibold' : 'text-gray-400'}>
+                                                        {p.seed ? `#${p.seed}` : '—'}
+                                                    </span>
+                                                )}
+                                            </td>
+                                            <td className="px-3 py-2 text-right">
+                                                <div className="flex justify-end gap-2">
+                                                    <button
+                                                        onClick={() => { setEditingSeed(p.name); setEditSeedValue(p.seed || ''); }}
+                                                        className="text-purple-600 hover:text-purple-500 text-xs px-2 py-1 rounded bg-purple-100 hover:bg-purple-200"
+                                                    >
+                                                        Edit Seed
+                                                    </button>
+                                                    <button
+                                                        onClick={() => handleDeletePlayer(p.name)}
+                                                        className="text-rose-600 hover:text-rose-500 text-xs px-2 py-1 rounded bg-rose-100 hover:bg-rose-200"
+                                                    >
+                                                        Delete
+                                                    </button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
 
                     {/* Add Player to Database */}
                     <div className="bg-white shadow-sm border border-gray-200 rounded-xl p-4">
@@ -2773,6 +2899,7 @@
                     const swapZoneData = await swapZoneRes.json();
                     setSeason(seasonData);
                     setPlayers(playersData || []);
+                    setAvatarCache(playersData || []);
                     setSwapZone(swapZoneData);
                     if (seasonData?.currentWeek) setSelectedWeek(seasonData.currentWeek);
                 } catch (e) {

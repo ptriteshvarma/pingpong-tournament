@@ -6,6 +6,7 @@ CREATE TABLE IF NOT EXISTS players (
     id SERIAL PRIMARY KEY,
     name VARCHAR(255) UNIQUE NOT NULL,
     seed INTEGER,
+    avatar VARCHAR(50) DEFAULT NULL, -- emoji or initials for avatar
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 

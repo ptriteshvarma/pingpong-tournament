@@ -34,6 +34,22 @@ async function initDatabase() {
       console.log('✓ Database tables created successfully!');
     } else {
       console.log('✓ Database tables already exist');
+
+      // Migration: Add avatar column if it doesn't exist
+      try {
+        const avatarCol = await pool.query(`
+          SELECT EXISTS (
+            SELECT FROM information_schema.columns
+            WHERE table_name = 'players' AND column_name = 'avatar'
+          );
+        `);
+        if (!avatarCol.rows[0].exists) {
+          await pool.query('ALTER TABLE players ADD COLUMN avatar VARCHAR(50) DEFAULT NULL');
+          console.log('✓ Added avatar column to players table');
+        }
+      } catch (migrationErr) {
+        console.log('Migration check failed (non-critical):', migrationErr.message);
+      }
     }
 
     // Test connection
@@ -1178,7 +1194,7 @@ app.post('/api/admin/login', (req, res) => {
 // Get players
 app.get('/api/players', async (req, res) => {
   try {
-    const result = await pool.query('SELECT name, seed FROM players ORDER BY seed NULLS LAST, name');
+    const result = await pool.query('SELECT name, seed, avatar FROM players ORDER BY seed NULLS LAST, name');
     res.json(result.rows);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -1266,6 +1282,86 @@ app.post('/api/players', requireAdmin, async (req, res) => {
     } finally {
       client.release();
     }
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Update player seed (admin only)
+app.put('/api/players/:name/seed', requireAdmin, async (req, res) => {
+  try {
+    const { name } = req.params;
+    const { seed } = req.body;
+
+    const result = await pool.query(
+      'UPDATE players SET seed = $1 WHERE name = $2 RETURNING *',
+      [seed === null || seed === '' ? null : parseInt(seed), name]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Player not found' });
+    }
+
+    await pool.query(
+      `INSERT INTO activity_log (event_type, player_name, details) VALUES ($1, $2, $3)`,
+      ['seed_updated', name, JSON.stringify({ newSeed: seed })]
+    );
+
+    res.json({ success: true, player: result.rows[0] });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Update player avatar (no admin required - players can set their own)
+app.put('/api/players/:name/avatar', async (req, res) => {
+  try {
+    const { name } = req.params;
+    const { avatar } = req.body;
+
+    // Validate avatar (allow emoji or short string max 10 chars)
+    if (avatar && avatar.length > 10) {
+      return res.status(400).json({ error: 'Avatar must be 10 characters or less' });
+    }
+
+    const result = await pool.query(
+      'UPDATE players SET avatar = $1 WHERE name = $2 RETURNING *',
+      [avatar || null, name]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Player not found' });
+    }
+
+    res.json({ success: true, player: result.rows[0] });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Delete player (admin only)
+app.delete('/api/players/:name', requireAdmin, async (req, res) => {
+  try {
+    const { name } = req.params;
+
+    const result = await pool.query(
+      'DELETE FROM players WHERE name = $1 RETURNING *',
+      [name]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Player not found' });
+    }
+
+    // Also remove from registration if exists
+    await pool.query('DELETE FROM league_registration WHERE player_name = $1', [name]);
+
+    await pool.query(
+      `INSERT INTO activity_log (event_type, player_name, details) VALUES ($1, $2, $3)`,
+      ['player_deleted', name, JSON.stringify({ deletedAt: new Date().toISOString() })]
+    );
+
+    res.json({ success: true, deleted: result.rows[0] });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
