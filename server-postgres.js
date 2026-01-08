@@ -3071,14 +3071,13 @@ app.post('/api/registration/register', async (req, res) => {
       isRanked ? 'pending' : 'approved' // Auto-approve new players, ranked need review
     ]);
 
-    // Also add to players table if not already there (so they show in dropdowns)
-    if (!isRanked) {
-      await pool.query(`
-        INSERT INTO players (name, seed)
-        VALUES ($1, NULL)
-        ON CONFLICT (name) DO NOTHING
-      `, [trimmedName]);
-    }
+    // Add to players table - registration = adding yourself to the system
+    // This ensures they show up in all dropdowns (My Games, etc.)
+    await pool.query(`
+      INSERT INTO players (name, seed)
+      VALUES ($1, $2)
+      ON CONFLICT (name) DO UPDATE SET seed = COALESCE(players.seed, EXCLUDED.seed)
+    `, [trimmedName, matchedPlayer?.seed || null]);
 
     res.json({
       success: true,
