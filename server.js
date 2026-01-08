@@ -21,6 +21,7 @@ const PLAYERS_FILE = path.join(DATA_DIR, 'players.json');
 const BRACKET_FILE = path.join(DATA_DIR, 'bracket.json');
 const LEADERBOARD_FILE = path.join(DATA_DIR, 'leaderboard.json');
 const CONFIG_FILE = path.join(DATA_DIR, 'config.json');
+const SEASON_FILE = path.join(DATA_DIR, 'season.json');
 
 // Ensure directories exist
 if (!fs.existsSync(DATA_DIR)) {
@@ -436,6 +437,274 @@ const updateLeaderboard = (winner, loser) => {
   return leaderboard;
 };
 
+// ============== LEAGUE SEASON SYSTEM ==============
+
+// Generate round robin schedule for a group
+const generateRoundRobinSchedule = (players, doubleRoundRobin = true) => {
+  const n = players.length;
+  const matches = [];
+
+  // Use circle method for round robin
+  const playerList = [...players];
+  if (n % 2 === 1) {
+    playerList.push({ name: 'BYE', isBye: true }); // Add dummy for odd number
+  }
+
+  const numPlayers = playerList.length;
+  const numRounds = numPlayers - 1;
+  const halfSize = numPlayers / 2;
+
+  const playerIndices = playerList.map((_, i) => i);
+  const fixedPlayer = playerIndices.shift(); // First player stays fixed
+
+  for (let round = 0; round < numRounds; round++) {
+    const roundMatches = [];
+
+    // First match: fixed player vs current first in rotation
+    const p1Index = fixedPlayer;
+    const p2Index = playerIndices[0];
+
+    if (!playerList[p1Index].isBye && !playerList[p2Index].isBye) {
+      roundMatches.push({
+        player1: playerList[p1Index].name,
+        player2: playerList[p2Index].name
+      });
+    }
+
+    // Remaining matches
+    for (let i = 1; i < halfSize; i++) {
+      const p1 = playerIndices[i];
+      const p2 = playerIndices[numPlayers - 2 - i];
+
+      if (!playerList[p1].isBye && !playerList[p2].isBye) {
+        roundMatches.push({
+          player1: playerList[p1].name,
+          player2: playerList[p2].name
+        });
+      }
+    }
+
+    matches.push(...roundMatches);
+
+    // Rotate players (except fixed)
+    playerIndices.push(playerIndices.shift());
+  }
+
+  // Double round robin: add reverse fixtures
+  if (doubleRoundRobin) {
+    const reverseMatches = matches.map(m => ({
+      player1: m.player2,
+      player2: m.player1
+    }));
+    matches.push(...reverseMatches);
+  }
+
+  return matches;
+};
+
+// Distribute matches across weeks (2 games per player per week)
+const distributeMatchesToWeeks = (matches, players, numWeeks) => {
+  const weeks = Array.from({ length: numWeeks }, () => []);
+  const playerGamesPerWeek = {};
+
+  // Initialize tracking
+  players.forEach(p => {
+    playerGamesPerWeek[p.name] = Array(numWeeks).fill(0);
+  });
+
+  // Assign each match to a week
+  const unassigned = [...matches];
+
+  for (let week = 0; week < numWeeks && unassigned.length > 0; week++) {
+    const toRemove = [];
+
+    for (let i = 0; i < unassigned.length; i++) {
+      const match = unassigned[i];
+      const p1Games = playerGamesPerWeek[match.player1][week];
+      const p2Games = playerGamesPerWeek[match.player2][week];
+
+      // Each player can play max 2 games per week
+      if (p1Games < 2 && p2Games < 2) {
+        weeks[week].push({
+          ...match,
+          id: `W${week + 1}-M${weeks[week].length + 1}`,
+          week: week + 1,
+          completed: false,
+          winner: null,
+          loser: null,
+          score1: null,
+          score2: null,
+          scheduledDate: null,
+          scheduledTime: null
+        });
+
+        playerGamesPerWeek[match.player1][week]++;
+        playerGamesPerWeek[match.player2][week]++;
+        toRemove.push(i);
+      }
+    }
+
+    // Remove assigned matches
+    for (let i = toRemove.length - 1; i >= 0; i--) {
+      unassigned.splice(toRemove[i], 1);
+    }
+  }
+
+  // If any unassigned, add to last weeks
+  while (unassigned.length > 0) {
+    const match = unassigned.shift();
+    // Find week with least games for these players
+    let bestWeek = numWeeks - 1;
+    for (let w = 0; w < numWeeks; w++) {
+      if (playerGamesPerWeek[match.player1][w] < 2 && playerGamesPerWeek[match.player2][w] < 2) {
+        bestWeek = w;
+        break;
+      }
+    }
+    weeks[bestWeek].push({
+      ...match,
+      id: `W${bestWeek + 1}-M${weeks[bestWeek].length + 1}`,
+      week: bestWeek + 1,
+      completed: false,
+      winner: null,
+      loser: null,
+      score1: null,
+      score2: null,
+      scheduledDate: null,
+      scheduledTime: null
+    });
+  }
+
+  return weeks;
+};
+
+// Generate complete season
+const generateSeason = (groupA, groupB, numWeeks = 10) => {
+  // Generate round robin matches for each group
+  const groupAMatches = generateRoundRobinSchedule(groupA, true);
+  const groupBMatches = generateRoundRobinSchedule(groupB, true);
+
+  // Distribute to weeks
+  const groupAWeeks = distributeMatchesToWeeks(groupAMatches, groupA, numWeeks);
+  const groupBWeeks = distributeMatchesToWeeks(groupBMatches, groupB, numWeeks);
+
+  // Add group prefix to match IDs
+  groupAWeeks.forEach((week, wi) => {
+    week.forEach((match, mi) => {
+      match.id = `A-W${wi + 1}-M${mi + 1}`;
+      match.group = 'A';
+    });
+  });
+
+  groupBWeeks.forEach((week, wi) => {
+    week.forEach((match, mi) => {
+      match.id = `B-W${wi + 1}-M${mi + 1}`;
+      match.group = 'B';
+    });
+  });
+
+  // Initialize standings
+  const standings = {
+    A: {},
+    B: {}
+  };
+
+  groupA.forEach(p => {
+    standings.A[p.name] = {
+      wins: 0, losses: 0, points: 0,
+      pointsFor: 0, pointsAgainst: 0,
+      streak: 0, lastResults: []
+    };
+  });
+
+  groupB.forEach(p => {
+    standings.B[p.name] = {
+      wins: 0, losses: 0, points: 0,
+      pointsFor: 0, pointsAgainst: 0,
+      streak: 0, lastResults: []
+    };
+  });
+
+  return {
+    name: 'Season 1',
+    status: 'regular', // 'regular', 'playoffs', 'complete'
+    currentWeek: 1,
+    totalWeeks: numWeeks,
+    groups: {
+      A: { name: 'Seeded', players: groupA },
+      B: { name: 'Unseeded', players: groupB }
+    },
+    schedule: {
+      A: groupAWeeks,
+      B: groupBWeeks
+    },
+    standings,
+    playoffs: null,
+    superBowl: null,
+    champion: null,
+    createdAt: new Date().toISOString()
+  };
+};
+
+// Generate playoff bracket from top 4
+const generatePlayoffBracket = (standings, groupName) => {
+  // Sort by wins, then point differential
+  const sorted = Object.entries(standings)
+    .map(([name, stats]) => ({ name, ...stats }))
+    .sort((a, b) => {
+      if (b.wins !== a.wins) return b.wins - a.wins;
+      const aDiff = a.pointsFor - a.pointsAgainst;
+      const bDiff = b.pointsFor - b.pointsAgainst;
+      return bDiff - aDiff;
+    })
+    .slice(0, 4);
+
+  return {
+    group: groupName,
+    seeds: sorted.map((p, i) => ({ seed: i + 1, ...p })),
+    semifinals: [
+      {
+        id: `${groupName}-SF1`,
+        round: 'semifinal',
+        player1: sorted[0]?.name || null, // #1 seed
+        player2: sorted[3]?.name || null, // #4 seed
+        seed1: 1,
+        seed2: 4,
+        winner: null,
+        loser: null,
+        score1: null,
+        score2: null,
+        completed: false
+      },
+      {
+        id: `${groupName}-SF2`,
+        round: 'semifinal',
+        player1: sorted[1]?.name || null, // #2 seed
+        player2: sorted[2]?.name || null, // #3 seed
+        seed1: 2,
+        seed2: 3,
+        winner: null,
+        loser: null,
+        score1: null,
+        score2: null,
+        completed: false
+      }
+    ],
+    final: {
+      id: `${groupName}-F`,
+      round: 'final',
+      player1: null,
+      player2: null,
+      winner: null,
+      loser: null,
+      score1: null,
+      score2: null,
+      completed: false
+    },
+    champion: null
+  };
+};
+
 // Backup functions
 const createBackup = () => {
   try {
@@ -624,7 +893,15 @@ app.post('/api/bracket/generate', requireAdmin, (req, res) => {
 // Record match result
 app.post('/api/bracket/match', (req, res) => {
   try {
-    const { matchId, winner, loser, score1, score2 } = req.body;
+    const { matchId, winner, loser, score1, score2, isCasual } = req.body;
+
+    // Handle casual/friendly matches (not part of bracket)
+    if (isCasual || matchId.startsWith('CASUAL-')) {
+      // Just update leaderboard for casual matches
+      updateLeaderboard(winner, loser);
+      return res.json({ success: true, type: 'casual' });
+    }
+
     const bracket = readJSON(BRACKET_FILE, null);
 
     if (!bracket) {
@@ -697,6 +974,223 @@ app.post('/api/leaderboard/reset-weekly', requireAdmin, (req, res) => {
 
     writeJSON(LEADERBOARD_FILE, leaderboard);
     res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ============== SEASON API ROUTES ==============
+
+// Get current season
+app.get('/api/season', (req, res) => {
+  try {
+    const season = readJSON(SEASON_FILE, null);
+    res.json(season);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Create new season (admin only)
+app.post('/api/season/create', requireAdmin, (req, res) => {
+  try {
+    const { groupA, groupB, numWeeks = 10, seasonName = 'Season 1' } = req.body;
+
+    if (!groupA || !groupB || groupA.length < 2 || groupB.length < 2) {
+      return res.status(400).json({ error: 'Need at least 2 players in each group' });
+    }
+
+    const season = generateSeason(groupA, groupB, numWeeks);
+    season.name = seasonName;
+
+    const success = writeJSON(SEASON_FILE, season);
+    if (!success) {
+      return res.status(500).json({ error: 'Failed to save season' });
+    }
+
+    res.json({ success: true, season });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Record a league match result
+app.post('/api/season/match', (req, res) => {
+  try {
+    const { matchId, winner, loser, score1, score2 } = req.body;
+    const season = readJSON(SEASON_FILE, null);
+
+    if (!season) {
+      return res.status(400).json({ error: 'No active season' });
+    }
+
+    // Find the match
+    let match = null;
+    let group = null;
+
+    // Check regular season matches
+    for (const g of ['A', 'B']) {
+      for (const week of season.schedule[g]) {
+        for (const m of week) {
+          if (m.id === matchId) {
+            match = m;
+            group = g;
+            break;
+          }
+        }
+        if (match) break;
+      }
+      if (match) break;
+    }
+
+    // Check playoff matches
+    if (!match && season.playoffs) {
+      for (const g of ['A', 'B']) {
+        if (season.playoffs[g]) {
+          for (const sf of season.playoffs[g].semifinals) {
+            if (sf.id === matchId) {
+              match = sf;
+              group = g;
+              break;
+            }
+          }
+          if (season.playoffs[g].final.id === matchId) {
+            match = season.playoffs[g].final;
+            group = g;
+          }
+        }
+      }
+    }
+
+    // Check super bowl
+    if (!match && season.superBowl && season.superBowl.id === matchId) {
+      match = season.superBowl;
+      group = 'superBowl';
+    }
+
+    if (!match) {
+      return res.status(404).json({ error: 'Match not found' });
+    }
+
+    // Update match
+    match.winner = winner;
+    match.loser = loser;
+    match.score1 = score1;
+    match.score2 = score2;
+    match.completed = true;
+
+    // Update standings for regular season matches
+    if (group === 'A' || group === 'B') {
+      const standings = season.standings[group];
+      if (standings[winner] && standings[loser]) {
+        standings[winner].wins++;
+        standings[winner].points += 3; // 3 points for win
+        standings[winner].pointsFor += score1 > score2 ? score1 : score2;
+        standings[winner].pointsAgainst += score1 > score2 ? score2 : score1;
+        standings[winner].streak = standings[winner].streak >= 0 ? standings[winner].streak + 1 : 1;
+        standings[winner].lastResults.push('W');
+        if (standings[winner].lastResults.length > 5) standings[winner].lastResults.shift();
+
+        standings[loser].losses++;
+        standings[loser].pointsFor += score1 < score2 ? score1 : score2;
+        standings[loser].pointsAgainst += score1 < score2 ? score2 : score1;
+        standings[loser].streak = standings[loser].streak <= 0 ? standings[loser].streak - 1 : -1;
+        standings[loser].lastResults.push('L');
+        if (standings[loser].lastResults.length > 5) standings[loser].lastResults.shift();
+      }
+    }
+
+    // Handle playoff advancement
+    if (match.round === 'semifinal' && season.playoffs && season.playoffs[group]) {
+      const playoff = season.playoffs[group];
+      const bothSemisComplete = playoff.semifinals.every(sf => sf.completed);
+
+      if (bothSemisComplete) {
+        playoff.final.player1 = playoff.semifinals[0].winner;
+        playoff.final.player2 = playoff.semifinals[1].winner;
+      }
+    }
+
+    // Handle group final winner
+    if (match.round === 'final' && season.playoffs && season.playoffs[group]) {
+      season.playoffs[group].champion = winner;
+
+      // Check if both group finals complete -> create Super Bowl
+      const bothFinalsComplete =
+        season.playoffs.A?.final?.completed &&
+        season.playoffs.B?.final?.completed;
+
+      if (bothFinalsComplete && !season.superBowl) {
+        season.superBowl = {
+          id: 'SUPER-BOWL',
+          round: 'superBowl',
+          player1: season.playoffs.A.champion,
+          player2: season.playoffs.B.champion,
+          group1: 'A',
+          group2: 'B',
+          winner: null,
+          loser: null,
+          score1: null,
+          score2: null,
+          completed: false
+        };
+      }
+    }
+
+    // Handle Super Bowl winner
+    if (group === 'superBowl') {
+      season.champion = winner;
+      season.status = 'complete';
+    }
+
+    // Update leaderboard too
+    updateLeaderboard(winner, loser);
+
+    writeJSON(SEASON_FILE, season);
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Start playoffs (admin only)
+app.post('/api/season/playoffs', requireAdmin, (req, res) => {
+  try {
+    const season = readJSON(SEASON_FILE, null);
+
+    if (!season) {
+      return res.status(400).json({ error: 'No active season' });
+    }
+
+    // Generate playoff brackets for both groups
+    season.playoffs = {
+      A: generatePlayoffBracket(season.standings.A, 'A'),
+      B: generatePlayoffBracket(season.standings.B, 'B')
+    };
+    season.status = 'playoffs';
+
+    writeJSON(SEASON_FILE, season);
+    res.json({ success: true, playoffs: season.playoffs });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Advance to next week (admin only)
+app.post('/api/season/next-week', requireAdmin, (req, res) => {
+  try {
+    const season = readJSON(SEASON_FILE, null);
+
+    if (!season) {
+      return res.status(400).json({ error: 'No active season' });
+    }
+
+    if (season.currentWeek < season.totalWeeks) {
+      season.currentWeek++;
+      writeJSON(SEASON_FILE, season);
+    }
+
+    res.json({ success: true, currentWeek: season.currentWeek });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }

@@ -66,6 +66,54 @@ CREATE TABLE IF NOT EXISTS leaderboard (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+-- Table bookings (single table, blocks for all players)
+CREATE TABLE IF NOT EXISTS table_bookings (
+    id SERIAL PRIMARY KEY,
+    match_id VARCHAR(100), -- Optional: link to a league match
+    player1 VARCHAR(255) NOT NULL,
+    player2 VARCHAR(255) NOT NULL,
+    booking_date DATE NOT NULL,
+    start_time TIME NOT NULL,
+    end_time TIME NOT NULL,
+    group_name VARCHAR(10), -- 'A', 'B', or null for casual
+    status VARCHAR(20) DEFAULT 'booked', -- 'booked', 'completed', 'cancelled'
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    created_by VARCHAR(255),
+    UNIQUE(booking_date, start_time) -- Only one booking per time slot
+);
+
+CREATE INDEX idx_bookings_date ON table_bookings(booking_date);
+CREATE INDEX idx_bookings_status ON table_bookings(status);
+
+-- Season/League table (stores entire season as JSON for flexibility)
+CREATE TABLE IF NOT EXISTS season (
+    id INTEGER PRIMARY KEY DEFAULT 1,
+    name VARCHAR(255) NOT NULL DEFAULT 'Season 1',
+    status VARCHAR(20) DEFAULT 'regular', -- 'regular', 'playoffs', 'complete'
+    current_week INTEGER DEFAULT 1,
+    total_weeks INTEGER DEFAULT 10,
+    data JSONB NOT NULL, -- Full season data including groups, schedule, standings, playoffs
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT single_season CHECK (id = 1)
+);
+
+-- Activity log for history tracking
+CREATE TABLE IF NOT EXISTS activity_log (
+    id SERIAL PRIMARY KEY,
+    event_type VARCHAR(50) NOT NULL, -- 'match_result', 'group_switch', 'playoff_advance', 'wildcard', 'champion'
+    player_name VARCHAR(255),
+    opponent_name VARCHAR(255),
+    group_name VARCHAR(10),
+    week_number INTEGER,
+    details JSONB,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX idx_activity_log_type ON activity_log(event_type);
+CREATE INDEX idx_activity_log_player ON activity_log(player_name);
+CREATE INDEX idx_activity_log_created ON activity_log(created_at DESC);
+
 -- Indexes for performance
 CREATE INDEX idx_matches_status ON matches(status);
 CREATE INDEX idx_matches_round ON matches(round_type, round_number);
