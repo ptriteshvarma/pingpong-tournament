@@ -2912,6 +2912,377 @@ app.post('/api/notifications/broadcast', requireAdmin, async (req, res) => {
   }
 });
 
+// ============ LEAGUE REGISTRATION SYSTEM ============
+
+// Ensure registration tables exist
+const ensureRegistrationTables = async () => {
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS league_registration (
+      id SERIAL PRIMARY KEY,
+      player_name VARCHAR(255) NOT NULL,
+      email VARCHAR(255),
+      is_ranked BOOLEAN DEFAULT FALSE,
+      matched_player_id INTEGER,
+      suggested_seed INTEGER,
+      admin_approved BOOLEAN DEFAULT FALSE,
+      final_seed INTEGER,
+      registration_status VARCHAR(20) DEFAULT 'pending',
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE(player_name)
+    )
+  `);
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS league_config (
+      id INTEGER PRIMARY KEY DEFAULT 1,
+      season_name VARCHAR(255) DEFAULT 'Winter League 2026',
+      registration_open BOOLEAN DEFAULT TRUE,
+      registration_close_date TIMESTAMP,
+      league_start_date DATE,
+      max_players INTEGER DEFAULT 32,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+  // Insert default config if not exists
+  await pool.query(`
+    INSERT INTO league_config (id, season_name, registration_open)
+    VALUES (1, 'Winter League 2026', TRUE)
+    ON CONFLICT (id) DO NOTHING
+  `);
+};
+
+// Get registration config and status
+app.get('/api/registration/config', async (req, res) => {
+  try {
+    await ensureRegistrationTables();
+
+    const configResult = await pool.query('SELECT * FROM league_config WHERE id = 1');
+    const countResult = await pool.query(`
+      SELECT
+        COUNT(*) as total,
+        COUNT(*) FILTER (WHERE registration_status = 'approved') as approved,
+        COUNT(*) FILTER (WHERE registration_status = 'pending') as pending,
+        COUNT(*) FILTER (WHERE is_ranked = TRUE) as ranked
+      FROM league_registration
+    `);
+
+    const config = configResult.rows[0] || {
+      season_name: 'Winter League 2026',
+      registration_open: true,
+      max_players: 32
+    };
+
+    res.json({
+      ...config,
+      stats: countResult.rows[0]
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Update registration config (admin)
+app.put('/api/registration/config', requireAdmin, async (req, res) => {
+  try {
+    await ensureRegistrationTables();
+
+    const { season_name, registration_open, registration_close_date, league_start_date, max_players } = req.body;
+
+    await pool.query(`
+      UPDATE league_config SET
+        season_name = COALESCE($1, season_name),
+        registration_open = COALESCE($2, registration_open),
+        registration_close_date = $3,
+        league_start_date = $4,
+        max_players = COALESCE($5, max_players),
+        updated_at = CURRENT_TIMESTAMP
+      WHERE id = 1
+    `, [season_name, registration_open, registration_close_date, league_start_date, max_players]);
+
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Register a player (public)
+app.post('/api/registration/register', async (req, res) => {
+  try {
+    await ensureRegistrationTables();
+
+    // Check if registration is open
+    const configResult = await pool.query('SELECT * FROM league_config WHERE id = 1');
+    const config = configResult.rows[0];
+
+    if (!config?.registration_open) {
+      return res.status(400).json({ error: 'Registration is currently closed' });
+    }
+
+    if (config.registration_close_date && new Date(config.registration_close_date) < new Date()) {
+      return res.status(400).json({ error: 'Registration deadline has passed' });
+    }
+
+    // Check max players
+    const countResult = await pool.query('SELECT COUNT(*) as count FROM league_registration');
+    if (parseInt(countResult.rows[0].count) >= config.max_players) {
+      return res.status(400).json({ error: 'Maximum number of players reached' });
+    }
+
+    const { playerName, email } = req.body;
+
+    if (!playerName || playerName.trim().length < 2) {
+      return res.status(400).json({ error: 'Player name is required (minimum 2 characters)' });
+    }
+
+    const trimmedName = playerName.trim();
+
+    // Check if already registered
+    const existingReg = await pool.query(
+      'SELECT * FROM league_registration WHERE LOWER(player_name) = LOWER($1)',
+      [trimmedName]
+    );
+    if (existingReg.rows.length > 0) {
+      return res.status(400).json({ error: 'This name is already registered' });
+    }
+
+    // Check if matches a ranked player (case-insensitive fuzzy match)
+    const rankedMatch = await pool.query(`
+      SELECT id, name, seed FROM players
+      WHERE LOWER(name) = LOWER($1) OR LOWER(name) LIKE LOWER($2)
+      ORDER BY seed NULLS LAST
+      LIMIT 1
+    `, [trimmedName, `%${trimmedName}%`]);
+
+    const isRanked = rankedMatch.rows.length > 0;
+    const matchedPlayer = rankedMatch.rows[0];
+
+    // Insert registration
+    const insertResult = await pool.query(`
+      INSERT INTO league_registration (player_name, email, is_ranked, matched_player_id, suggested_seed, registration_status)
+      VALUES ($1, $2, $3, $4, $5, $6)
+      RETURNING *
+    `, [
+      trimmedName,
+      email || null,
+      isRanked,
+      matchedPlayer?.id || null,
+      matchedPlayer?.seed || null,
+      isRanked ? 'pending' : 'approved' // Auto-approve new players, ranked need review
+    ]);
+
+    res.json({
+      success: true,
+      registration: insertResult.rows[0],
+      isRanked,
+      matchedPlayer: matchedPlayer ? { name: matchedPlayer.name, seed: matchedPlayer.seed } : null,
+      message: isRanked
+        ? `Welcome back! Your previous seed was #${matchedPlayer.seed}. Admin will confirm your placement.`
+        : 'Registration successful! You will be placed in the unseeded group.'
+    });
+  } catch (error) {
+    if (error.code === '23505') { // unique violation
+      return res.status(400).json({ error: 'This name is already registered' });
+    }
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Get all registrations (admin)
+app.get('/api/registration/all', requireAdmin, async (req, res) => {
+  try {
+    await ensureRegistrationTables();
+
+    const result = await pool.query(`
+      SELECT r.*, p.name as original_player_name, p.seed as original_seed
+      FROM league_registration r
+      LEFT JOIN players p ON r.matched_player_id = p.id
+      ORDER BY r.is_ranked DESC, r.suggested_seed ASC NULLS LAST, r.created_at ASC
+    `);
+
+    res.json(result.rows);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Get public registration list (names only, for display)
+app.get('/api/registration/list', async (req, res) => {
+  try {
+    await ensureRegistrationTables();
+
+    const result = await pool.query(`
+      SELECT player_name, is_ranked, registration_status, final_seed, created_at
+      FROM league_registration
+      WHERE registration_status != 'rejected'
+      ORDER BY
+        CASE WHEN final_seed IS NOT NULL THEN final_seed ELSE 9999 END ASC,
+        is_ranked DESC,
+        created_at ASC
+    `);
+
+    res.json(result.rows);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Approve/update registration (admin)
+app.put('/api/registration/:id', requireAdmin, async (req, res) => {
+  try {
+    await ensureRegistrationTables();
+
+    const { id } = req.params;
+    const { registration_status, final_seed } = req.body;
+
+    await pool.query(`
+      UPDATE league_registration SET
+        registration_status = COALESCE($1, registration_status),
+        final_seed = $2,
+        admin_approved = TRUE,
+        updated_at = CURRENT_TIMESTAMP
+      WHERE id = $3
+    `, [registration_status, final_seed, id]);
+
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Delete registration (admin)
+app.delete('/api/registration/:id', requireAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    await pool.query('DELETE FROM league_registration WHERE id = $1', [id]);
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Generate league bracket from registrations (admin)
+app.post('/api/registration/generate-bracket', requireAdmin, async (req, res) => {
+  try {
+    await ensureRegistrationTables();
+
+    // Get approved registrations
+    const regResult = await pool.query(`
+      SELECT * FROM league_registration
+      WHERE registration_status = 'approved'
+      ORDER BY final_seed ASC NULLS LAST, suggested_seed ASC NULLS LAST, created_at ASC
+    `);
+
+    const players = regResult.rows;
+
+    if (players.length < 4) {
+      return res.status(400).json({ error: 'Need at least 4 approved players to generate bracket' });
+    }
+
+    // Calculate bracket size (next power of 2)
+    const n = players.length;
+    const bracketSize = Math.pow(2, Math.ceil(Math.log2(n)));
+    const numByes = bracketSize - n;
+
+    // Assign seeds: ranked players keep their seed, unseeded go after
+    const seededPlayers = players.filter(p => p.final_seed || p.suggested_seed || p.is_ranked);
+    const unseededPlayers = players.filter(p => !p.final_seed && !p.suggested_seed && !p.is_ranked);
+
+    // Sort seeded by final_seed or suggested_seed
+    seededPlayers.sort((a, b) => {
+      const seedA = a.final_seed || a.suggested_seed || 999;
+      const seedB = b.final_seed || b.suggested_seed || 999;
+      return seedA - seedB;
+    });
+
+    // Create final player list with seeds
+    const finalPlayers = [];
+    let seedNum = 1;
+
+    seededPlayers.forEach(p => {
+      finalPlayers.push({
+        name: p.player_name,
+        seed: seedNum++,
+        isRanked: true
+      });
+    });
+
+    unseededPlayers.forEach(p => {
+      finalPlayers.push({
+        name: p.player_name,
+        seed: seedNum++,
+        isRanked: false
+      });
+    });
+
+    // Standard bracket seeding (1 vs 16, 8 vs 9, etc)
+    const bracketOrder = [];
+    function fillBracket(low, high, arr) {
+      if (low === high) {
+        arr.push(low);
+      } else {
+        fillBracket(low, (low + high) / 2, arr);
+        fillBracket((low + high) / 2 + 1, high, arr);
+      }
+    }
+    fillBracket(1, bracketSize, bracketOrder);
+
+    // Create matches with byes for top seeds
+    const round1Matches = [];
+    for (let i = 0; i < bracketSize / 2; i++) {
+      const seed1 = bracketOrder[i * 2];
+      const seed2 = bracketOrder[i * 2 + 1];
+
+      const player1 = finalPlayers[seed1 - 1] || null;
+      const player2 = finalPlayers[seed2 - 1] || null;
+
+      const isBye = !player1 || !player2;
+      const winner = isBye ? (player1?.name || player2?.name) : null;
+
+      round1Matches.push({
+        matchNumber: i + 1,
+        player1: player1?.name || 'BYE',
+        player2: player2?.name || 'BYE',
+        seed1: player1?.seed || null,
+        seed2: player2?.seed || null,
+        isBye,
+        winner
+      });
+    }
+
+    // Close registration
+    await pool.query(`
+      UPDATE league_config SET registration_open = FALSE, updated_at = CURRENT_TIMESTAMP WHERE id = 1
+    `);
+
+    res.json({
+      success: true,
+      bracketSize,
+      numPlayers: n,
+      numByes,
+      seededCount: seededPlayers.length,
+      unseededCount: unseededPlayers.length,
+      players: finalPlayers,
+      round1: round1Matches
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Clear all registrations (admin)
+app.delete('/api/registration/all', requireAdmin, async (req, res) => {
+  try {
+    await pool.query('DELETE FROM league_registration');
+    await pool.query(`
+      UPDATE league_config SET registration_open = TRUE, updated_at = CURRENT_TIMESTAMP WHERE id = 1
+    `);
+    res.json({ success: true, message: 'All registrations cleared' });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Serve the main HTML file
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));

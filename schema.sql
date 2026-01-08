@@ -114,10 +114,42 @@ CREATE INDEX idx_activity_log_type ON activity_log(event_type);
 CREATE INDEX idx_activity_log_player ON activity_log(player_name);
 CREATE INDEX idx_activity_log_created ON activity_log(created_at DESC);
 
+-- League registration table for self-registration
+CREATE TABLE IF NOT EXISTS league_registration (
+    id SERIAL PRIMARY KEY,
+    player_name VARCHAR(255) NOT NULL,
+    email VARCHAR(255),
+    is_ranked BOOLEAN DEFAULT FALSE, -- matches existing ranked player
+    matched_player_id INTEGER REFERENCES players(id), -- link to existing ranked player
+    suggested_seed INTEGER, -- seed from previous season if ranked
+    admin_approved BOOLEAN DEFAULT FALSE, -- admin reviewed for ranked players
+    final_seed INTEGER, -- admin-assigned seed after review
+    registration_status VARCHAR(20) DEFAULT 'pending', -- 'pending', 'approved', 'rejected'
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(player_name)
+);
+
+-- League config for registration settings
+CREATE TABLE IF NOT EXISTS league_config (
+    id INTEGER PRIMARY KEY DEFAULT 1,
+    season_name VARCHAR(255) DEFAULT 'Winter League 2026',
+    registration_open BOOLEAN DEFAULT TRUE,
+    registration_close_date TIMESTAMP,
+    league_start_date DATE,
+    max_players INTEGER DEFAULT 32,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT single_config CHECK (id = 1)
+);
+
+CREATE INDEX idx_registration_status ON league_registration(registration_status);
+CREATE INDEX idx_registration_ranked ON league_registration(is_ranked);
+
 -- Indexes for performance
-CREATE INDEX idx_matches_status ON matches(status);
-CREATE INDEX idx_matches_round ON matches(round_type, round_number);
-CREATE INDEX idx_availability_player ON availability(player_name);
-CREATE INDEX idx_availability_date ON availability(date);
-CREATE INDEX idx_leaderboard_weekly_points ON leaderboard(weekly_points DESC);
-CREATE INDEX idx_leaderboard_alltime_points ON leaderboard(alltime_points DESC);
+CREATE INDEX IF NOT EXISTS idx_matches_status ON matches(status);
+CREATE INDEX IF NOT EXISTS idx_matches_round ON matches(round_type, round_number);
+CREATE INDEX IF NOT EXISTS idx_availability_player ON availability(player_name);
+CREATE INDEX IF NOT EXISTS idx_availability_date ON availability(date);
+CREATE INDEX IF NOT EXISTS idx_leaderboard_weekly_points ON leaderboard(weekly_points DESC);
+CREATE INDEX IF NOT EXISTS idx_leaderboard_alltime_points ON leaderboard(alltime_points DESC);
