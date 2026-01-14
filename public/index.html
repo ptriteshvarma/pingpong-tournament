@@ -1786,13 +1786,13 @@
                                                         Awaiting Admin Approval
                                                     </span>
                                                 )}
-                                                {reg.registration_status === 'approved' && !reg.final_seed && !reg.is_ranked && (
+                                                {reg.registration_status === 'approved' && (reg.final_seed === null || reg.final_seed === undefined || reg.final_seed === '') && (
                                                     <span className="text-xs bg-gray-500/50 px-2 py-0.5 rounded text-gray-300">
                                                         Unseeded
                                                     </span>
                                                 )}
                                             </div>
-                                            {reg.final_seed ? (
+                                            {reg.final_seed !== null && reg.final_seed !== undefined && reg.final_seed !== '' ? (
                                                 <span className="text-green-600 font-bold">Seed #{reg.final_seed}</span>
                                             ) : reg.registration_status === 'approved' ? (
                                                 <span className="text-amber-600 font-semibold">Group B</span>
@@ -1860,11 +1860,11 @@
                                                                 <span className={`text-xs px-2 py-0.5 rounded ${reg.registration_status === 'approved' ? 'bg-emerald-600/50 text-emerald-200' : 'bg-amber-600/50 text-amber-200'}`}>
                                                                     {reg.registration_status === 'approved' ? 'Approved' : 'Pending'}
                                                                 </span>
-                                                                {reg.final_seed ? (
+                                                                {reg.final_seed !== null && reg.final_seed !== undefined && reg.final_seed !== '' ? (
                                                                     <span className="text-xs bg-cyan-600/50 px-2 py-0.5 rounded text-cyan-200">Seed #{reg.final_seed}</span>
-                                                                ) : reg.registration_status === 'approved' ? (
+                                                                ) : (
                                                                     <span className="text-xs bg-amber-600/50 px-2 py-0.5 rounded text-amber-200">Unseeded (Group B)</span>
-                                                                ) : null}
+                                                                )}
                                                             </div>
                                                         </div>
                                                         <div className="flex items-center gap-2 flex-shrink-0">
