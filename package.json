@@ -1,11 +1,11 @@
 {
   "name": "pingpong-tournament",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Ping Pong Tournament Scheduler with PostgreSQL",
-  "main": "server.js",
+  "main": "server-postgres.js",
   "scripts": {
     "start": "node server-postgres.js",
-    "dev": "node server-postgres.js"
+    "build": "echo 'No build step required'"
   },
   "dependencies": {
     "express": "^4.18.2",
@@ -14,6 +14,6 @@
     "web-push": "^3.6.7"
   },
   "engines": {
-    "node": ">=18.0.0"
+    "node": "20.x"
   }
 }
