@@ -148,6 +148,20 @@ CREATE TABLE IF NOT EXISTS league_config (
 CREATE INDEX idx_registration_status ON league_registration(registration_status);
 CREATE INDEX idx_registration_ranked ON league_registration(is_ranked);
 
+-- Web Push Subscriptions for offline notifications
+CREATE TABLE IF NOT EXISTS push_subscriptions (
+    id SERIAL PRIMARY KEY,
+    player_name VARCHAR(255),
+    endpoint TEXT UNIQUE NOT NULL,
+    p256dh VARCHAR(255) NOT NULL,
+    auth VARCHAR(255) NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX idx_push_subscriptions_player ON push_subscriptions(player_name);
+CREATE INDEX idx_push_subscriptions_endpoint ON push_subscriptions(endpoint);
+
 -- Indexes for performance
 CREATE INDEX IF NOT EXISTS idx_matches_status ON matches(status);
 CREATE INDEX IF NOT EXISTS idx_matches_round ON matches(round_type, round_number);

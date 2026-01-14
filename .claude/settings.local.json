@@ -32,7 +32,10 @@
       "Bash(xargs kill:*)",
       "Bash(# Try to find the node PID differently ps aux | grep -i node | grep -v grep || tasklist)",
       "Bash(tasklist:*)",
-      "Bash(kill:*)"
+      "Bash(kill:*)",
+      "Bash(DATABASE_URL=\"postgresql://postgres:BzCehsHrclUqHZGiJjfcVpaTJxAbFDaG@yamanote.proxy.rlwy.net:24160/railway\" timeout 10 node:*)",
+      "Bash(powershell \"Stop-Process -Id 112484 -Force\")",
+      "Bash(DATABASE_URL=\"postgresql://postgres:BzCehsHrclUqHZGiJjfcVpaTJxAbFDaG@yamanote.proxy.rlwy.net:24160/railway\" timeout 15 node:*)"
     ]
   }
 }

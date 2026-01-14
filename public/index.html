@@ -1776,11 +1776,6 @@
                                             <div className="flex items-center gap-3">
                                                 <span className="text-gray-500 w-8">{idx + 1}.</span>
                                                 <span className="font-semibold">{reg.player_name}</span>
-                                                {reg.is_ranked && (
-                                                    <span className="text-xs bg-purple-600/50 px-2 py-0.5 rounded text-violet-200">
-                                                        Returning #{reg.final_seed || reg.suggested_seed || '?'}
-                                                    </span>
-                                                )}
                                                 {reg.registration_status === 'pending' && (
                                                     <span className="text-xs bg-amber-600/50 px-2 py-0.5 rounded text-amber-200" title="League admin will confirm your seed placement">
                                                         Awaiting Admin Approval
@@ -2381,18 +2376,92 @@
             );
         }
 
-        // Browser Push Notifications Helper
-        const requestPushPermission = async () => {
+        // Service Worker Registration for Web Push
+        const registerServiceWorker = async () => {
+            if (!('serviceWorker' in navigator)) {
+                console.log('Service Worker not supported');
+                return null;
+            }
+
+            try {
+                const registration = await navigator.serviceWorker.register('/service-worker.js');
+                console.log('Service Worker registered:', registration.scope);
+                return registration;
+            } catch (error) {
+                console.error('Service Worker registration failed:', error);
+                return null;
+            }
+        };
+
+        // Subscribe to Web Push notifications
+        const subscribeToPush = async (playerName) => {
+            try {
+                const registration = await navigator.serviceWorker.ready;
+
+                // Get VAPID public key from server
+                const vapidRes = await fetch(`${API_BASE}/push/vapid-public-key`);
+                const { publicKey } = await vapidRes.json();
+
+                // Convert VAPID key to Uint8Array
+                const urlBase64ToUint8Array = (base64String) => {
+                    const padding = '='.repeat((4 - base64String.length % 4) % 4);
+                    const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+                    const rawData = window.atob(base64);
+                    const outputArray = new Uint8Array(rawData.length);
+                    for (let i = 0; i < rawData.length; ++i) {
+                        outputArray[i] = rawData.charCodeAt(i);
+                    }
+                    return outputArray;
+                };
+
+                // Subscribe to push
+                const subscription = await registration.pushManager.subscribe({
+                    userVisibleOnly: true,
+                    applicationServerKey: urlBase64ToUint8Array(publicKey)
+                });
+
+                // Send subscription to server
+                await fetch(`${API_BASE}/push/subscribe`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        subscription: subscription.toJSON(),
+                        playerName
+                    })
+                });
+
+                console.log('Push subscription successful');
+                return subscription;
+            } catch (error) {
+                console.error('Push subscription failed:', error);
+                return null;
+            }
+        };
+
+        // Browser Push Notifications Helper (now with Service Worker)
+        const requestPushPermission = async (playerName = null) => {
             if (!('Notification' in window)) {
                 return { supported: false, permission: null };
             }
 
             if (Notification.permission === 'granted') {
+                // Already granted - make sure we're subscribed to web push
+                const swReg = await registerServiceWorker();
+                if (swReg) {
+                    await subscribeToPush(playerName);
+                }
                 return { supported: true, permission: 'granted' };
             }
 
             if (Notification.permission !== 'denied') {
                 const permission = await Notification.requestPermission();
+                if (permission === 'granted') {
+                    // Register service worker and subscribe to web push
+                    const swReg = await registerServiceWorker();
+                    if (swReg) {
+                        await subscribeToPush(playerName);
+                    }
+                }
                 return { supported: true, permission };
             }
 
@@ -2410,6 +2479,11 @@
                 });
             }
         };
+
+        // Register service worker on page load
+        if ('serviceWorker' in navigator) {
+            registerServiceWorker();
+        }
 
         // Notifications Bell Component
         function NotificationsBell({ currentPlayer }) {
@@ -2509,7 +2583,7 @@
                                     ) : (
                                         <button
                                             onClick={async () => {
-                                                const result = await requestPushPermission();
+                                                const result = await requestPushPermission(currentPlayer);
                                                 if (result.permission === 'granted') {
                                                     setPushEnabled(true);
                                                     showBrowserNotification('Notifications Enabled', 'You will now receive match updates!');
@@ -2985,7 +3059,43 @@
 
         // Main App
         function App() {
-            const [view, setView] = useState('standings');
+            // Get initial view from URL hash or localStorage
+            const getInitialView = () => {
+                const hash = window.location.hash.slice(1);
+                const validViews = ['register', 'standings', 'schedule', 'mygames', 'history', 'book', 'playoffs', 'admin'];
+                if (hash && validViews.includes(hash)) {
+                    return hash;
+                }
+                const saved = localStorage.getItem('pingpong_currentView');
+                if (saved && validViews.includes(saved)) {
+                    return saved;
+                }
+                return 'standings';
+            };
+
+            const [view, setViewState] = useState(getInitialView);
+
+            // Custom setView that also updates URL hash and localStorage
+            const setView = (newView) => {
+                setViewState(newView);
+                window.location.hash = newView;
+                localStorage.setItem('pingpong_currentView', newView);
+            };
+
+            // Listen for hash changes (browser back/forward)
+            useEffect(() => {
+                const handleHashChange = () => {
+                    const hash = window.location.hash.slice(1);
+                    const validViews = ['register', 'standings', 'schedule', 'mygames', 'history', 'book', 'playoffs', 'admin'];
+                    if (hash && validViews.includes(hash)) {
+                        setViewState(hash);
+                        localStorage.setItem('pingpong_currentView', hash);
+                    }
+                };
+                window.addEventListener('hashchange', handleHashChange);
+                return () => window.removeEventListener('hashchange', handleHashChange);
+            }, []);
+
             const [season, setSeason] = useState(null);
             const [players, setPlayers] = useState([]);
             const [swapZone, setSwapZone] = useState(null);
@@ -3002,12 +3112,19 @@
                 // Auto-request notification permission when player selects their name
                 if (player && 'Notification' in window && Notification.permission === 'default') {
                     try {
-                        const result = await requestPushPermission();
+                        const result = await requestPushPermission(player);
                         if (result.permission === 'granted') {
                             showBrowserNotification('Welcome ' + player + '!', 'You will receive match updates and notifications.');
                         }
                     } catch (e) {
                         console.log('Notification permission request failed');
+                    }
+                } else if (player && 'Notification' in window && Notification.permission === 'granted') {
+                    // Already have permission - just ensure we're subscribed with updated player name
+                    try {
+                        await subscribeToPush(player);
+                    } catch (e) {
+                        console.log('Push subscription update failed');
                     }
                 }
             };

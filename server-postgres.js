@@ -2,10 +2,30 @@ const express = require('express');
 const cors = require('cors');
 const path = require('path');
 const { Pool } = require('pg');
+const webpush = require('web-push');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 const ADMIN_PASSWORD = 'Username';
+
+// VAPID keys for Web Push
+// Generate once and store in environment variables for production
+// For development, these are auto-generated on first run and stored
+const VAPID_SUBJECT = process.env.VAPID_SUBJECT || 'mailto:pingpong@example.com';
+let VAPID_PUBLIC_KEY = process.env.VAPID_PUBLIC_KEY;
+let VAPID_PRIVATE_KEY = process.env.VAPID_PRIVATE_KEY;
+
+// Generate VAPID keys if not set (for development)
+if (!VAPID_PUBLIC_KEY || !VAPID_PRIVATE_KEY) {
+  const vapidKeys = webpush.generateVAPIDKeys();
+  VAPID_PUBLIC_KEY = vapidKeys.publicKey;
+  VAPID_PRIVATE_KEY = vapidKeys.privateKey;
+  console.log('Generated VAPID keys (set these in env for production):');
+  console.log('VAPID_PUBLIC_KEY=' + VAPID_PUBLIC_KEY);
+  console.log('VAPID_PRIVATE_KEY=' + VAPID_PRIVATE_KEY);
+}
+
+webpush.setVapidDetails(VAPID_SUBJECT, VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY);
 
 // PostgreSQL connection
 // Railway automatically provides DATABASE_URL environment variable
@@ -65,6 +85,25 @@ async function initDatabase() {
         }
       } catch (migrationErr) {
         console.log('Migration check failed (non-critical):', migrationErr.message);
+      }
+
+      // Migration: Create push_subscriptions table if it doesn't exist
+      try {
+        await pool.query(`
+          CREATE TABLE IF NOT EXISTS push_subscriptions (
+            id SERIAL PRIMARY KEY,
+            player_name VARCHAR(255),
+            endpoint TEXT UNIQUE NOT NULL,
+            p256dh VARCHAR(255) NOT NULL,
+            auth VARCHAR(255) NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+          )
+        `);
+        await pool.query('CREATE INDEX IF NOT EXISTS idx_push_subscriptions_player ON push_subscriptions(player_name)');
+        console.log('✓ Push subscriptions table ready');
+      } catch (migrationErr) {
+        console.log('Push subscriptions migration (non-critical):', migrationErr.message);
       }
     }
 
@@ -3604,7 +3643,226 @@ app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
-// Helper function to send match reminders
+// ============ WEB PUSH NOTIFICATIONS ============
+
+// Get VAPID public key for client subscription
+app.get('/api/push/vapid-public-key', (req, res) => {
+  res.json({ publicKey: VAPID_PUBLIC_KEY });
+});
+
+// Subscribe to push notifications
+app.post('/api/push/subscribe', async (req, res) => {
+  try {
+    const { subscription, playerName } = req.body;
+
+    if (!subscription || !subscription.endpoint || !subscription.keys) {
+      return res.status(400).json({ error: 'Invalid subscription object' });
+    }
+
+    const { endpoint, keys } = subscription;
+    const { p256dh, auth } = keys;
+
+    // Upsert subscription (update if endpoint exists, insert if not)
+    await pool.query(`
+      INSERT INTO push_subscriptions (player_name, endpoint, p256dh, auth, updated_at)
+      VALUES ($1, $2, $3, $4, CURRENT_TIMESTAMP)
+      ON CONFLICT (endpoint) DO UPDATE SET
+        player_name = $1,
+        p256dh = $3,
+        auth = $4,
+        updated_at = CURRENT_TIMESTAMP
+    `, [playerName || null, endpoint, p256dh, auth]);
+
+    res.json({ success: true, message: 'Push subscription saved' });
+  } catch (error) {
+    console.error('Push subscribe error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Unsubscribe from push notifications
+app.post('/api/push/unsubscribe', async (req, res) => {
+  try {
+    const { endpoint } = req.body;
+
+    if (!endpoint) {
+      return res.status(400).json({ error: 'Endpoint required' });
+    }
+
+    await pool.query('DELETE FROM push_subscriptions WHERE endpoint = $1', [endpoint]);
+    res.json({ success: true, message: 'Unsubscribed from push notifications' });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Send push notification to a specific player
+async function sendPushToPlayer(playerName, payload) {
+  try {
+    const subscriptions = await pool.query(
+      'SELECT * FROM push_subscriptions WHERE player_name = $1',
+      [playerName]
+    );
+
+    const results = [];
+    for (const sub of subscriptions.rows) {
+      try {
+        await webpush.sendNotification({
+          endpoint: sub.endpoint,
+          keys: { p256dh: sub.p256dh, auth: sub.auth }
+        }, JSON.stringify(payload));
+        results.push({ endpoint: sub.endpoint, success: true });
+      } catch (err) {
+        // Remove invalid subscriptions (e.g., user unsubscribed in browser)
+        if (err.statusCode === 404 || err.statusCode === 410) {
+          await pool.query('DELETE FROM push_subscriptions WHERE endpoint = $1', [sub.endpoint]);
+        }
+        results.push({ endpoint: sub.endpoint, success: false, error: err.message });
+      }
+    }
+    return results;
+  } catch (error) {
+    console.error('sendPushToPlayer error:', error);
+    return [];
+  }
+}
+
+// Send push notification to all subscribers (broadcast)
+async function sendPushBroadcast(payload) {
+  try {
+    const subscriptions = await pool.query('SELECT * FROM push_subscriptions');
+
+    const results = [];
+    for (const sub of subscriptions.rows) {
+      try {
+        await webpush.sendNotification({
+          endpoint: sub.endpoint,
+          keys: { p256dh: sub.p256dh, auth: sub.auth }
+        }, JSON.stringify(payload));
+        results.push({ endpoint: sub.endpoint, success: true });
+      } catch (err) {
+        // Remove invalid subscriptions
+        if (err.statusCode === 404 || err.statusCode === 410) {
+          await pool.query('DELETE FROM push_subscriptions WHERE endpoint = $1', [sub.endpoint]);
+        }
+        results.push({ endpoint: sub.endpoint, success: false, error: err.message });
+      }
+    }
+    return results;
+  } catch (error) {
+    console.error('sendPushBroadcast error:', error);
+    return [];
+  }
+}
+
+// Admin endpoint to send push broadcast
+app.post('/api/push/broadcast', requireAdmin, async (req, res) => {
+  try {
+    const { title, body, url } = req.body;
+
+    if (!title || !body) {
+      return res.status(400).json({ error: 'Title and body required' });
+    }
+
+    const payload = {
+      title,
+      body,
+      icon: '/favicon.ico',
+      tag: 'pingpong-broadcast',
+      data: { url: url || '/' }
+    };
+
+    const results = await sendPushBroadcast(payload);
+    const successCount = results.filter(r => r.success).length;
+
+    res.json({
+      success: true,
+      sent: successCount,
+      failed: results.length - successCount,
+      total: results.length
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Weekly summary push notification (can be triggered via cron or admin)
+app.post('/api/push/weekly-summary', requireAdmin, async (req, res) => {
+  try {
+    // Get current season data
+    const seasonResult = await pool.query('SELECT * FROM season WHERE id = 1');
+    if (!seasonResult.rows.length) {
+      return res.json({ success: false, message: 'No active season' });
+    }
+
+    const season = seasonResult.rows[0].data;
+    const standings = season.standings || {};
+
+    // Calculate top performers
+    const allPlayers = [];
+    for (const group of ['A', 'B']) {
+      if (standings[group]) {
+        Object.entries(standings[group]).forEach(([name, stats]) => {
+          allPlayers.push({ name, group, ...stats });
+        });
+      }
+    }
+
+    // Sort by wins
+    allPlayers.sort((a, b) => (b.wins || 0) - (a.wins || 0));
+    const topPlayers = allPlayers.slice(0, 3);
+
+    let body = `Week ${season.currentWeek || 1} update! `;
+    if (topPlayers.length > 0) {
+      body += `Top performers: ${topPlayers.map(p => `${p.name} (${p.wins}W)`).join(', ')}`;
+    }
+
+    const payload = {
+      title: '🏓 Weekly League Update',
+      body,
+      icon: '/favicon.ico',
+      tag: 'pingpong-weekly',
+      data: { url: '/#league' }
+    };
+
+    const results = await sendPushBroadcast(payload);
+    const successCount = results.filter(r => r.success).length;
+
+    res.json({
+      success: true,
+      message: `Weekly summary sent to ${successCount} subscribers`,
+      topPlayers
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Get push subscription stats (admin)
+app.get('/api/push/stats', requireAdmin, async (req, res) => {
+  try {
+    const total = await pool.query('SELECT COUNT(*) FROM push_subscriptions');
+    const withPlayer = await pool.query('SELECT COUNT(*) FROM push_subscriptions WHERE player_name IS NOT NULL');
+    const byPlayer = await pool.query(`
+      SELECT player_name, COUNT(*) as devices
+      FROM push_subscriptions
+      WHERE player_name IS NOT NULL
+      GROUP BY player_name
+      ORDER BY player_name
+    `);
+
+    res.json({
+      totalSubscriptions: parseInt(total.rows[0].count),
+      subscribersWithName: parseInt(withPlayer.rows[0].count),
+      anonymous: parseInt(total.rows[0].count) - parseInt(withPlayer.rows[0].count),
+      byPlayer: byPlayer.rows
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Helper function to send match reminders (with Web Push)
 async function sendMatchReminders() {
   try {
     const now = new Date();
@@ -3624,28 +3882,90 @@ async function sendMatchReminders() {
     `, [today, currentTime, oneHourTime]);
 
     for (const booking of bookings.rows) {
+      // In-app notification
       await createNotification(
         booking.player1,
         'match_reminder',
-        '⏰ Match in 1 Hour!',
+        'Match in 1 Hour!',
         `Your match vs ${booking.player2} is at ${booking.start_time} today`,
         '#schedule'
       );
       await createNotification(
         booking.player2,
         'match_reminder',
-        '⏰ Match in 1 Hour!',
+        'Match in 1 Hour!',
         `Your match vs ${booking.player1} is at ${booking.start_time} today`,
         '#schedule'
       );
+
+      // Web Push notification (works even when browser is closed)
+      await sendPushToPlayer(booking.player1, {
+        title: 'Match in 1 Hour!',
+        body: `vs ${booking.player2} at ${booking.start_time}`,
+        icon: '/favicon.ico',
+        tag: 'match-reminder-' + booking.id,
+        data: { url: '/#schedule' }
+      });
+      await sendPushToPlayer(booking.player2, {
+        title: 'Match in 1 Hour!',
+        body: `vs ${booking.player1} at ${booking.start_time}`,
+        icon: '/favicon.ico',
+        tag: 'match-reminder-' + booking.id,
+        data: { url: '/#schedule' }
+      });
+
       await pool.query('UPDATE table_bookings SET reminded = TRUE WHERE id = $1', [booking.id]);
     }
 
     if (bookings.rows.length > 0) {
-      console.log(`Sent ${bookings.rows.length} match reminders`);
+      console.log(`Sent ${bookings.rows.length} match reminders (in-app + push)`);
     }
   } catch (e) {
     console.log('Reminder check failed:', e.message);
+  }
+}
+
+// Weekly summary scheduled task (runs every Monday at 9 AM)
+async function checkWeeklySummary() {
+  try {
+    const now = new Date();
+    // Only run on Monday at 9 AM
+    if (now.getDay() === 1 && now.getHours() === 9 && now.getMinutes() < 15) {
+      const seasonResult = await pool.query('SELECT * FROM season WHERE id = 1');
+      if (seasonResult.rows.length) {
+        const season = seasonResult.rows[0].data;
+        const standings = season.standings || {};
+
+        const allPlayers = [];
+        for (const group of ['A', 'B']) {
+          if (standings[group]) {
+            Object.entries(standings[group]).forEach(([name, stats]) => {
+              allPlayers.push({ name, group, ...stats });
+            });
+          }
+        }
+
+        allPlayers.sort((a, b) => (b.wins || 0) - (a.wins || 0));
+        const topPlayers = allPlayers.slice(0, 3);
+
+        let body = `Week ${season.currentWeek || 1} standings! `;
+        if (topPlayers.length > 0) {
+          body += `Leaders: ${topPlayers.map(p => `${p.name} (${p.wins}W)`).join(', ')}`;
+        }
+
+        await sendPushBroadcast({
+          title: 'Weekly League Update',
+          body,
+          icon: '/favicon.ico',
+          tag: 'pingpong-weekly-' + season.currentWeek,
+          data: { url: '/#league' }
+        });
+
+        console.log('Sent weekly summary push notification');
+      }
+    }
+  } catch (e) {
+    console.log('Weekly summary check failed:', e.message);
   }
 }
 
@@ -3657,4 +3977,8 @@ app.listen(PORT, () => {
   // Check for match reminders every 15 minutes
   setInterval(sendMatchReminders, 15 * 60 * 1000);
   console.log('Match reminder scheduler started (checks every 15 minutes)');
+
+  // Check for weekly summary every 15 minutes (will only send on Monday 9 AM)
+  setInterval(checkWeeklySummary, 15 * 60 * 1000);
+  console.log('Weekly summary scheduler started (sends Monday 9 AM)');
 });
