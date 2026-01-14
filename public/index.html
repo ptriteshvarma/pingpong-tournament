@@ -1511,26 +1511,36 @@
 
             const handleApprove = async (id, status, seed = null) => {
                 try {
-                    await fetch(`${API_BASE}/registration/${id}`, {
+                    const res = await fetch(`${API_BASE}/registration/${id}`, {
                         method: 'PUT',
                         headers: { 'Content-Type': 'application/json', 'X-Admin-Password': 'Username' },
                         body: JSON.stringify({ registration_status: status, final_seed: seed ? parseInt(seed) : null })
                     });
+                    if (!res.ok) {
+                        const err = await res.json();
+                        alert('Failed: ' + (err.error || 'Unknown error'));
+                        return;
+                    }
                     setEditingId(null);
                     setEditSeed('');
                     fetchData();
-                } catch (e) { }
+                } catch (e) { console.error('Failed to approve:', e); alert('Failed to update registration'); }
             };
 
             const handleDelete = async (id) => {
-                if (!confirm('Remove this registration?')) return;
+                if (!confirm('Remove this registration? (Player will remain in the database)')) return;
                 try {
-                    await fetch(`${API_BASE}/registration/${id}`, {
+                    const res = await fetch(`${API_BASE}/registration/${id}`, {
                         method: 'DELETE',
                         headers: { 'X-Admin-Password': 'Username' }
                     });
+                    if (!res.ok) {
+                        const err = await res.json();
+                        alert('Failed: ' + (err.error || 'Unknown error'));
+                        return;
+                    }
                     fetchData();
-                } catch (e) { }
+                } catch (e) { console.error('Failed to delete:', e); alert('Failed to remove registration'); }
             };
 
             const handleUpdateConfig = async () => {
@@ -1561,7 +1571,7 @@
                     } else {
                         alert(data.error);
                     }
-                } catch (e) { }
+                } catch (e) { console.error('Failed to generate bracket:', e); alert('Failed to generate bracket'); }
             };
 
             const daysUntilClose = config?.registration_close_date
@@ -1776,10 +1786,17 @@
                                                         Awaiting Admin Approval
                                                     </span>
                                                 )}
+                                                {reg.registration_status === 'approved' && !reg.final_seed && !reg.is_ranked && (
+                                                    <span className="text-xs bg-gray-500/50 px-2 py-0.5 rounded text-gray-300">
+                                                        Unseeded
+                                                    </span>
+                                                )}
                                             </div>
-                                            {reg.final_seed && (
+                                            {reg.final_seed ? (
                                                 <span className="text-green-600 font-bold">Seed #{reg.final_seed}</span>
-                                            )}
+                                            ) : reg.registration_status === 'approved' ? (
+                                                <span className="text-amber-600 font-semibold">Group B</span>
+                                            ) : null}
                                         </div>
                                     ))}
                                 </div>
@@ -1843,7 +1860,11 @@
                                                                 <span className={`text-xs px-2 py-0.5 rounded ${reg.registration_status === 'approved' ? 'bg-emerald-600/50 text-emerald-200' : 'bg-amber-600/50 text-amber-200'}`}>
                                                                     {reg.registration_status === 'approved' ? 'Approved' : 'Pending'}
                                                                 </span>
-                                                                {reg.final_seed && <span className="text-xs bg-cyan-600/50 px-2 py-0.5 rounded text-cyan-200">Seed #{reg.final_seed}</span>}
+                                                                {reg.final_seed ? (
+                                                                    <span className="text-xs bg-cyan-600/50 px-2 py-0.5 rounded text-cyan-200">Seed #{reg.final_seed}</span>
+                                                                ) : reg.registration_status === 'approved' ? (
+                                                                    <span className="text-xs bg-amber-600/50 px-2 py-0.5 rounded text-amber-200">Unseeded (Group B)</span>
+                                                                ) : null}
                                                             </div>
                                                         </div>
                                                         <div className="flex items-center gap-2 flex-shrink-0">
