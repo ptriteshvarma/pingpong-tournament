@@ -65,6 +65,7 @@
             User: () => <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z" /></svg>,
             History: () => <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" /></svg>,
             Snowflake: () => <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d="M12 3v18m0-18l-3 3m3-3l3 3m-3 15l-3-3m3 3l3-3M3 12h18M3 12l3-3m-3 3l3 3m15-3l-3-3m3 3l-3 3M7.5 7.5l9 9m-9 0l9-9" /></svg>,
+            Menu: () => <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" /></svg>,
         };
 
         // Avatar Icons (Heroicons) - stored per player in localStorage
@@ -3814,24 +3815,40 @@
                                     )}
                                 </div>
                             </div>
-                            <div className="flex gap-1 overflow-x-auto">
+                            <div className="flex gap-1 overflow-x-auto items-center">
+                                {/* Main Navigation - Consolidated */}
                                 {[
-                                    { id: 'register', icon: Icons.Snowflake, label: 'Register' },
-                                    { id: 'standings', icon: Icons.ChartBar, label: 'Standings' },
+                                    { id: 'standings', icon: Icons.ChartBar, label: 'League' },
                                     { id: 'schedule', icon: Icons.Calendar, label: 'Schedule' },
                                     { id: 'mygames', icon: Icons.User, label: 'My Games' },
-                                    { id: 'history', icon: Icons.History, label: 'History' },
-                                    { id: 'book', icon: Icons.Clock, label: 'Book Table' },
-                                    { id: 'calendar', icon: Icons.Calendar, label: 'Calendar' },
+                                    { id: 'book', icon: Icons.Clock, label: 'Table' },
                                     { id: 'playoffs', icon: Icons.Trophy, label: 'Playoffs' },
-                                    { id: 'profile', icon: Icons.User, label: 'Profile' },
-                                    { id: 'archive', icon: Icons.History, label: 'Archive' },
-                                    { id: 'admin', icon: Icons.Cog, label: 'Admin' },
                                 ].map(tab => (
                                     <button key={tab.id} onClick={() => setView(tab.id)} className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm whitespace-nowrap transition-colors ${view === tab.id ? 'bg-purple-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-purple-100 hover:text-purple-700'}`}>
                                         <tab.icon />{tab.label}
                                     </button>
                                 ))}
+
+                                {/* More dropdown for less-used features */}
+                                <div className="relative group">
+                                    <button className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm whitespace-nowrap transition-colors ${['register', 'history', 'archive', 'profile', 'calendar', 'admin'].includes(view) ? 'bg-purple-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-purple-100 hover:text-purple-700'}`}>
+                                        <Icons.Menu />More
+                                    </button>
+                                    <div className="absolute right-0 top-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50 min-w-[160px]">
+                                        {[
+                                            { id: 'register', icon: Icons.Snowflake, label: 'Register' },
+                                            { id: 'profile', icon: Icons.User, label: 'Profile' },
+                                            { id: 'calendar', icon: Icons.Calendar, label: 'Calendar' },
+                                            { id: 'history', icon: Icons.History, label: 'Match History' },
+                                            { id: 'archive', icon: Icons.History, label: 'Season Archive' },
+                                            { id: 'admin', icon: Icons.Cog, label: 'Admin Panel' },
+                                        ].map(tab => (
+                                            <button key={tab.id} onClick={() => setView(tab.id)} className={`w-full flex items-center gap-2 px-4 py-2 text-sm text-left hover:bg-purple-50 ${view === tab.id ? 'bg-purple-100 text-purple-700' : 'text-gray-700'}`}>
+                                                <tab.icon />{tab.label}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </header>
