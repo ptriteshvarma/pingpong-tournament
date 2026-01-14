@@ -3,6 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#8b5cf6">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="manifest" href="/manifest.json">
     <title>Mammotome Ping Pong League</title>
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
@@ -1917,6 +1921,454 @@
             );
         }
 
+        // Player Profile Component
+        function PlayerProfile({ playerName }) {
+            const [stats, setStats] = useState(null);
+            const [loading, setLoading] = useState(true);
+            const [selectedPlayer, setSelectedPlayer] = useState(playerName);
+            const [allPlayers, setAllPlayers] = useState([]);
+
+            useEffect(() => {
+                fetch(`${API_BASE}/players`).then(r => r.json()).then(data => setAllPlayers(data || []));
+            }, []);
+
+            useEffect(() => {
+                if (!selectedPlayer) {
+                    setLoading(false);
+                    return;
+                }
+                setLoading(true);
+                fetch(`${API_BASE}/player/${encodeURIComponent(selectedPlayer)}/stats`)
+                    .then(r => r.json())
+                    .then(data => {
+                        setStats(data);
+                        setLoading(false);
+                    })
+                    .catch(() => setLoading(false));
+            }, [selectedPlayer]);
+
+            if (!selectedPlayer) {
+                return (
+                    <div className="bg-white shadow-sm border border-gray-200 rounded-xl p-6">
+                        <h2 className="text-xl font-bold mb-4">Player Profile</h2>
+                        <p className="text-gray-500 mb-4">Select a player to view their stats:</p>
+                        <select
+                            className="w-full p-3 border rounded-lg"
+                            onChange={(e) => setSelectedPlayer(e.target.value)}
+                            value=""
+                        >
+                            <option value="">-- Select Player --</option>
+                            {allPlayers.map(p => (
+                                <option key={p.name} value={p.name}>{p.name}</option>
+                            ))}
+                        </select>
+                    </div>
+                );
+            }
+
+            if (loading) {
+                return <div className="text-center py-8">Loading player stats...</div>;
+            }
+
+            if (!stats) {
+                return <div className="text-center py-8 text-gray-500">Could not load stats for {selectedPlayer}</div>;
+            }
+
+            return (
+                <div className="space-y-6">
+                    {/* Player Header */}
+                    <div className="bg-gradient-to-r from-purple-600 to-violet-700 rounded-xl p-6 text-white">
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <h2 className="text-2xl font-bold">{stats.playerName}</h2>
+                                {stats.currentSeason && (
+                                    <p className="text-purple-200">
+                                        Group {stats.currentSeason.group} | Rank #{stats.currentSeason.rank}
+                                    </p>
+                                )}
+                            </div>
+                            <select
+                                className="bg-white/20 text-white border border-white/30 rounded-lg px-3 py-2"
+                                value={selectedPlayer}
+                                onChange={(e) => setSelectedPlayer(e.target.value)}
+                            >
+                                {allPlayers.map(p => (
+                                    <option key={p.name} value={p.name} className="text-gray-900">{p.name}</option>
+                                ))}
+                            </select>
+                        </div>
+                    </div>
+
+                    {/* Stats Grid */}
+                    <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
+                        {stats.currentSeason && (
+                            <>
+                                <div className="bg-white shadow-sm border border-gray-200 rounded-xl p-4 text-center">
+                                    <div className="text-3xl font-bold text-green-600">{stats.currentSeason.wins}</div>
+                                    <div className="text-gray-500 text-sm">Season Wins</div>
+                                </div>
+                                <div className="bg-white shadow-sm border border-gray-200 rounded-xl p-4 text-center">
+                                    <div className="text-3xl font-bold text-red-500">{stats.currentSeason.losses}</div>
+                                    <div className="text-gray-500 text-sm">Season Losses</div>
+                                </div>
+                                <div className="bg-white shadow-sm border border-gray-200 rounded-xl p-4 text-center">
+                                    <div className="text-3xl font-bold text-purple-600">{stats.currentSeason.winRate}%</div>
+                                    <div className="text-gray-500 text-sm">Win Rate</div>
+                                </div>
+                                <div className="bg-white shadow-sm border border-gray-200 rounded-xl p-4 text-center">
+                                    <div className={`text-3xl font-bold ${stats.currentSeason.pointsFor - stats.currentSeason.pointsAgainst >= 0 ? 'text-green-600' : 'text-red-500'}`}>
+                                        {stats.currentSeason.pointsFor - stats.currentSeason.pointsAgainst >= 0 ? '+' : ''}{stats.currentSeason.pointsFor - stats.currentSeason.pointsAgainst}
+                                    </div>
+                                    <div className="text-gray-500 text-sm">Point Diff</div>
+                                </div>
+                            </>
+                        )}
+                    </div>
+
+                    {/* All-Time Stats */}
+                    <div className="bg-white shadow-sm border border-gray-200 rounded-xl p-4">
+                        <h3 className="font-bold text-lg mb-3">All-Time Stats</h3>
+                        <div className="grid grid-cols-2 md:grid-cols-5 gap-4 text-center">
+                            <div>
+                                <div className="text-2xl font-bold text-gray-800">{stats.allTime.seasonsPlayed}</div>
+                                <div className="text-xs text-gray-500">Seasons</div>
+                            </div>
+                            <div>
+                                <div className="text-2xl font-bold text-green-600">{stats.allTime.wins}</div>
+                                <div className="text-xs text-gray-500">Total Wins</div>
+                            </div>
+                            <div>
+                                <div className="text-2xl font-bold text-red-500">{stats.allTime.losses}</div>
+                                <div className="text-xs text-gray-500">Total Losses</div>
+                            </div>
+                            <div>
+                                <div className="text-2xl font-bold text-yellow-500">{stats.allTime.championships}</div>
+                                <div className="text-xs text-gray-500">Championships</div>
+                            </div>
+                            <div>
+                                <div className="text-2xl font-bold text-gray-400">{stats.allTime.runnerUps}</div>
+                                <div className="text-xs text-gray-500">Runner-Ups</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Head to Head */}
+                    {Object.keys(stats.headToHead).length > 0 && (
+                        <div className="bg-white shadow-sm border border-gray-200 rounded-xl p-4">
+                            <h3 className="font-bold text-lg mb-3">Head-to-Head Record</h3>
+                            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-2">
+                                {Object.entries(stats.headToHead)
+                                    .sort((a, b) => (b[1].wins + b[1].losses) - (a[1].wins + a[1].losses))
+                                    .map(([opponent, record]) => (
+                                        <div key={opponent} className="flex items-center justify-between p-2 bg-gray-50 rounded-lg">
+                                            <span className="font-medium">{opponent}</span>
+                                            <span className={`font-bold ${record.wins > record.losses ? 'text-green-600' : record.wins < record.losses ? 'text-red-500' : 'text-gray-500'}`}>
+                                                {record.wins}-{record.losses}
+                                            </span>
+                                        </div>
+                                    ))}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Match History */}
+                    {stats.matchHistory.length > 0 && (
+                        <div className="bg-white shadow-sm border border-gray-200 rounded-xl p-4">
+                            <h3 className="font-bold text-lg mb-3">Recent Matches</h3>
+                            <div className="space-y-2 max-h-64 overflow-y-auto">
+                                {stats.matchHistory.slice().reverse().map((match, idx) => (
+                                    <div key={idx} className={`flex items-center justify-between p-2 rounded-lg ${match.won ? 'bg-green-50 border-l-4 border-green-500' : 'bg-red-50 border-l-4 border-red-400'}`}>
+                                        <div>
+                                            <span className="text-gray-500 text-sm mr-2">
+                                                {typeof match.week === 'number' ? `Wk ${match.week}` : match.week}
+                                            </span>
+                                            <span className="font-medium">vs {match.opponent}</span>
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            <span className={`font-bold ${match.won ? 'text-green-600' : 'text-red-500'}`}>
+                                                {match.score}
+                                            </span>
+                                            <span className={`text-xs px-2 py-1 rounded ${match.won ? 'bg-green-200 text-green-800' : 'bg-red-200 text-red-800'}`}>
+                                                {match.won ? 'W' : 'L'}
+                                            </span>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+                </div>
+            );
+        }
+
+        // Table Calendar Component
+        function TableCalendar() {
+            const [calendarData, setCalendarData] = useState(null);
+            const [loading, setLoading] = useState(true);
+            const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
+
+            useEffect(() => {
+                const start = new Date();
+                start.setDate(start.getDate() - 7);
+                const end = new Date();
+                end.setDate(end.getDate() + 14);
+
+                fetch(`${API_BASE}/table/calendar?start=${start.toISOString().split('T')[0]}&end=${end.toISOString().split('T')[0]}`)
+                    .then(r => r.json())
+                    .then(data => {
+                        setCalendarData(data);
+                        setLoading(false);
+                    })
+                    .catch(() => setLoading(false));
+            }, []);
+
+            const [daySlots, setDaySlots] = useState(null);
+
+            useEffect(() => {
+                if (selectedDate) {
+                    fetch(`${API_BASE}/table/availability/${selectedDate}`)
+                        .then(r => r.json())
+                        .then(setDaySlots)
+                        .catch(() => {});
+                }
+            }, [selectedDate]);
+
+            if (loading) {
+                return <div className="text-center py-8">Loading calendar...</div>;
+            }
+
+            // Generate dates for display
+            const dates = [];
+            const startDate = new Date();
+            startDate.setDate(startDate.getDate() - 3);
+            for (let i = 0; i < 14; i++) {
+                const d = new Date(startDate);
+                d.setDate(d.getDate() + i);
+                dates.push(d.toISOString().split('T')[0]);
+            }
+
+            const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+            return (
+                <div className="space-y-6">
+                    <div className="bg-white shadow-sm border border-gray-200 rounded-xl p-4">
+                        <h2 className="text-xl font-bold mb-4">Table Availability Calendar</h2>
+
+                        {/* Date Selector */}
+                        <div className="flex gap-2 overflow-x-auto pb-2 mb-4">
+                            {dates.map(date => {
+                                const d = new Date(date + 'T12:00:00');
+                                const isToday = date === new Date().toISOString().split('T')[0];
+                                const bookings = calendarData?.bookings?.[date] || [];
+                                return (
+                                    <button
+                                        key={date}
+                                        onClick={() => setSelectedDate(date)}
+                                        className={`flex-shrink-0 p-3 rounded-lg text-center min-w-16 transition-colors ${
+                                            selectedDate === date
+                                                ? 'bg-purple-600 text-white'
+                                                : isToday
+                                                    ? 'bg-purple-100 text-purple-700 border-2 border-purple-300'
+                                                    : 'bg-gray-100 hover:bg-gray-200'
+                                        }`}
+                                    >
+                                        <div className="text-xs font-medium">{dayNames[d.getDay()]}</div>
+                                        <div className="text-lg font-bold">{d.getDate()}</div>
+                                        {bookings.length > 0 && (
+                                            <div className={`text-xs ${selectedDate === date ? 'text-purple-200' : 'text-purple-600'}`}>
+                                                {bookings.length} game{bookings.length !== 1 ? 's' : ''}
+                                            </div>
+                                        )}
+                                    </button>
+                                );
+                            })}
+                        </div>
+
+                        {/* Time Slots for Selected Date */}
+                        {daySlots && (
+                            <div>
+                                <h3 className="font-semibold mb-2">
+                                    {new Date(selectedDate + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
+                                </h3>
+                                <div className="grid grid-cols-4 md:grid-cols-5 lg:grid-cols-10 gap-2">
+                                    {daySlots.slots.map(slot => (
+                                        <div
+                                            key={slot.time}
+                                            className={`p-2 rounded-lg text-center text-sm ${
+                                                slot.available
+                                                    ? 'bg-green-100 text-green-700 border border-green-300'
+                                                    : 'bg-red-100 text-red-700 border border-red-300'
+                                            }`}
+                                            title={slot.booking ? `${slot.booking.player1} vs ${slot.booking.player2}` : 'Available'}
+                                        >
+                                            <div className="font-medium">{slot.time}</div>
+                                            <div className="text-xs">{slot.available ? 'Free' : 'Booked'}</div>
+                                        </div>
+                                    ))}
+                                </div>
+                                <div className="mt-3 flex gap-4 text-sm text-gray-600">
+                                    <span className="flex items-center gap-1">
+                                        <span className="w-3 h-3 rounded bg-green-500"></span> Available: {daySlots.totalAvailable}
+                                    </span>
+                                    <span className="flex items-center gap-1">
+                                        <span className="w-3 h-3 rounded bg-red-500"></span> Booked: {daySlots.totalBooked}
+                                    </span>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Bookings List */}
+                    {calendarData?.bookings?.[selectedDate]?.length > 0 && (
+                        <div className="bg-white shadow-sm border border-gray-200 rounded-xl p-4">
+                            <h3 className="font-bold mb-3">Scheduled Games</h3>
+                            <div className="space-y-2">
+                                {calendarData.bookings[selectedDate].map(booking => (
+                                    <div key={booking.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                                        <div>
+                                            <span className="font-medium">{booking.player1}</span>
+                                            <span className="text-gray-500 mx-2">vs</span>
+                                            <span className="font-medium">{booking.player2}</span>
+                                            {booking.group && (
+                                                <span className="ml-2 text-xs bg-purple-100 text-purple-700 px-2 py-0.5 rounded">
+                                                    Group {booking.group}
+                                                </span>
+                                            )}
+                                        </div>
+                                        <div className="text-gray-600">
+                                            {booking.startTime?.slice(0, 5)} - {booking.endTime?.slice(0, 5)}
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+                </div>
+            );
+        }
+
+        // Season Archive Component
+        function SeasonArchive() {
+            const [archives, setArchives] = useState([]);
+            const [loading, setLoading] = useState(true);
+            const [selectedSeason, setSelectedSeason] = useState(null);
+            const [seasonDetails, setSeasonDetails] = useState(null);
+
+            useEffect(() => {
+                fetch(`${API_BASE}/seasons/archive`)
+                    .then(r => r.json())
+                    .then(data => {
+                        setArchives(data || []);
+                        setLoading(false);
+                    })
+                    .catch(() => setLoading(false));
+            }, []);
+
+            const loadSeasonDetails = (id) => {
+                setSelectedSeason(id);
+                fetch(`${API_BASE}/seasons/archive/${id}`)
+                    .then(r => r.json())
+                    .then(setSeasonDetails)
+                    .catch(() => {});
+            };
+
+            if (loading) {
+                return <div className="text-center py-8">Loading archives...</div>;
+            }
+
+            if (archives.length === 0) {
+                return (
+                    <div className="bg-white shadow-sm border border-gray-200 rounded-xl p-6 text-center">
+                        <h2 className="text-xl font-bold mb-2">Season Archive</h2>
+                        <p className="text-gray-500">No archived seasons yet. Seasons are archived when completed.</p>
+                    </div>
+                );
+            }
+
+            return (
+                <div className="space-y-6">
+                    <div className="bg-white shadow-sm border border-gray-200 rounded-xl p-4">
+                        <h2 className="text-xl font-bold mb-4">Season Archive</h2>
+
+                        <div className="space-y-3">
+                            {archives.map(archive => (
+                                <div
+                                    key={archive.id}
+                                    className={`p-4 rounded-lg border cursor-pointer transition-colors ${
+                                        selectedSeason === archive.id
+                                            ? 'border-purple-500 bg-purple-50'
+                                            : 'border-gray-200 hover:border-purple-300 hover:bg-gray-50'
+                                    }`}
+                                    onClick={() => loadSeasonDetails(archive.id)}
+                                >
+                                    <div className="flex items-center justify-between">
+                                        <div>
+                                            <h3 className="font-bold text-lg">{archive.season_name}</h3>
+                                            <p className="text-sm text-gray-500">
+                                                {archive.total_players} players | {archive.total_matches} matches
+                                            </p>
+                                        </div>
+                                        <div className="text-right">
+                                            {archive.champion && (
+                                                <div className="text-yellow-600 font-bold flex items-center gap-1">
+                                                    <span>Champion:</span> {archive.champion}
+                                                </div>
+                                            )}
+                                            {archive.runner_up && (
+                                                <div className="text-gray-500 text-sm">
+                                                    Runner-up: {archive.runner_up}
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+
+                    {/* Season Details */}
+                    {seasonDetails && (
+                        <div className="bg-white shadow-sm border border-gray-200 rounded-xl p-4">
+                            <h3 className="font-bold text-lg mb-4">{seasonDetails.season_name} - Final Standings</h3>
+
+                            <div className="grid md:grid-cols-2 gap-4">
+                                {['A', 'B'].map(group => {
+                                    const standings = seasonDetails.data?.standings?.[group];
+                                    if (!standings) return null;
+
+                                    const sorted = Object.entries(standings)
+                                        .map(([name, s]) => ({ name, ...s }))
+                                        .sort((a, b) => {
+                                            if (b.wins !== a.wins) return b.wins - a.wins;
+                                            return (b.pointsFor - b.pointsAgainst) - (a.pointsFor - a.pointsAgainst);
+                                        });
+
+                                    return (
+                                        <div key={group}>
+                                            <h4 className="font-semibold mb-2 text-purple-600">Group {group}</h4>
+                                            <div className="space-y-1">
+                                                {sorted.map((player, idx) => (
+                                                    <div key={player.name} className="flex items-center justify-between p-2 bg-gray-50 rounded">
+                                                        <span>
+                                                            <span className="text-gray-400 mr-2">{idx + 1}.</span>
+                                                            {player.name}
+                                                        </span>
+                                                        <span className="text-sm">
+                                                            {player.wins}W-{player.losses}L
+                                                        </span>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        </div>
+                    )}
+                </div>
+            );
+        }
+
         function AdminPanel({ players, onCreateSeason, isAdmin, onLogin, onAddPlayer, onCreateBracket, season, onArchiveSeason, onClearSeason }) {
             const [groupA, setGroupA] = useState([]);
             const [groupB, setGroupB] = useState([]);
@@ -3062,7 +3514,7 @@
             // Get initial view from URL hash or localStorage
             const getInitialView = () => {
                 const hash = window.location.hash.slice(1);
-                const validViews = ['register', 'standings', 'schedule', 'mygames', 'history', 'book', 'playoffs', 'admin'];
+                const validViews = ['register', 'standings', 'schedule', 'mygames', 'history', 'book', 'playoffs', 'admin', 'profile', 'calendar', 'archive'];
                 if (hash && validViews.includes(hash)) {
                     return hash;
                 }
@@ -3086,7 +3538,7 @@
             useEffect(() => {
                 const handleHashChange = () => {
                     const hash = window.location.hash.slice(1);
-                    const validViews = ['register', 'standings', 'schedule', 'mygames', 'history', 'book', 'playoffs', 'admin'];
+                    const validViews = ['register', 'standings', 'schedule', 'mygames', 'history', 'book', 'playoffs', 'admin', 'profile', 'calendar', 'archive'];
                     if (hash && validViews.includes(hash)) {
                         setViewState(hash);
                         localStorage.setItem('pingpong_currentView', hash);
@@ -3370,7 +3822,10 @@
                                     { id: 'mygames', icon: Icons.User, label: 'My Games' },
                                     { id: 'history', icon: Icons.History, label: 'History' },
                                     { id: 'book', icon: Icons.Clock, label: 'Book Table' },
+                                    { id: 'calendar', icon: Icons.Calendar, label: 'Calendar' },
                                     { id: 'playoffs', icon: Icons.Trophy, label: 'Playoffs' },
+                                    { id: 'profile', icon: Icons.User, label: 'Profile' },
+                                    { id: 'archive', icon: Icons.History, label: 'Archive' },
                                     { id: 'admin', icon: Icons.Cog, label: 'Admin' },
                                 ].map(tab => (
                                     <button key={tab.id} onClick={() => setView(tab.id)} className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm whitespace-nowrap transition-colors ${view === tab.id ? 'bg-purple-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-purple-100 hover:text-purple-700'}`}>
@@ -3722,6 +4177,21 @@
                         )}
 
                         {view === 'admin' && <AdminPanel players={players} season={season} onCreateSeason={handleCreateSeason} isAdmin={isAdmin} onLogin={handleLogin} onAddPlayer={handleAddPlayer} onCreateBracket={handleCreateBracket} onArchiveSeason={handleArchiveSeason} onClearSeason={handleClearSeason} />}
+
+                        {/* Player Profile Page */}
+                        {view === 'profile' && (
+                            <PlayerProfile playerName={currentPlayer} onSelectPlayer={(name) => { setView('profile'); }} />
+                        )}
+
+                        {/* Table Calendar View */}
+                        {view === 'calendar' && (
+                            <TableCalendar />
+                        )}
+
+                        {/* Season Archive View */}
+                        {view === 'archive' && (
+                            <SeasonArchive />
+                        )}
                     </main>
                 </div>
             );

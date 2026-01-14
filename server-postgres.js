@@ -3638,6 +3638,392 @@ app.delete('/api/registration/all', requireAdmin, async (req, res) => {
   }
 });
 
+// ============ PLAYER STATS & PROFILE ============
+
+// Get player stats and match history
+app.get('/api/player/:name/stats', async (req, res) => {
+  try {
+    const playerName = decodeURIComponent(req.params.name);
+
+    // Get current season data
+    const seasonResult = await pool.query('SELECT data FROM season WHERE id = 1');
+    const season = seasonResult.rows.length ? seasonResult.rows[0].data : null;
+
+    // Get archived seasons
+    let archivedStats = [];
+    try {
+      const archiveResult = await pool.query(
+        'SELECT season_name, champion, data FROM season_archive ORDER BY end_date DESC'
+      );
+      archivedStats = archiveResult.rows;
+    } catch (e) { /* table might not exist */ }
+
+    // Calculate current season stats
+    let currentStats = {
+      wins: 0, losses: 0, pointsFor: 0, pointsAgainst: 0,
+      group: null, rank: null, matchHistory: [], headToHead: {}
+    };
+
+    if (season) {
+      // Find player's group and stats
+      for (const g of ['A', 'B']) {
+        if (season.standings?.[g]?.[playerName]) {
+          const stats = season.standings[g][playerName];
+          currentStats = {
+            ...currentStats,
+            ...stats,
+            group: g
+          };
+
+          // Calculate rank
+          const groupStandings = Object.entries(season.standings[g])
+            .map(([name, s]) => ({ name, ...s }))
+            .sort((a, b) => {
+              if (b.wins !== a.wins) return b.wins - a.wins;
+              return (b.pointsFor - b.pointsAgainst) - (a.pointsFor - a.pointsAgainst);
+            });
+          currentStats.rank = groupStandings.findIndex(p => p.name === playerName) + 1;
+          break;
+        }
+      }
+
+      // Get match history from schedule
+      for (const g of ['A', 'B']) {
+        if (season.schedule?.[g]) {
+          season.schedule[g].forEach((week, weekIdx) => {
+            week.forEach(match => {
+              if ((match.player1 === playerName || match.player2 === playerName) && match.completed) {
+                const isPlayer1 = match.player1 === playerName;
+                const opponent = isPlayer1 ? match.player2 : match.player1;
+                const won = match.winner === playerName;
+                const myScore = isPlayer1 ? match.score1 : match.score2;
+                const oppScore = isPlayer1 ? match.score2 : match.score1;
+
+                currentStats.matchHistory.push({
+                  week: weekIdx + 1,
+                  opponent,
+                  won,
+                  score: `${myScore}-${oppScore}`,
+                  group: g
+                });
+
+                // Head to head
+                if (!currentStats.headToHead[opponent]) {
+                  currentStats.headToHead[opponent] = { wins: 0, losses: 0 };
+                }
+                if (won) {
+                  currentStats.headToHead[opponent].wins++;
+                } else {
+                  currentStats.headToHead[opponent].losses++;
+                }
+              }
+            });
+          });
+        }
+      }
+
+      // Include playoff/championship matches
+      if (season.championship) {
+        const allMatches = [
+          ...(season.championship.quarterfinals || []),
+          ...(season.championship.semifinals || []),
+          season.championship.final
+        ].filter(m => m && m.completed);
+
+        allMatches.forEach(match => {
+          if (match.player1 === playerName || match.player2 === playerName) {
+            const isPlayer1 = match.player1 === playerName;
+            const opponent = isPlayer1 ? match.player2 : match.player1;
+            const won = match.winner === playerName;
+            const myScore = isPlayer1 ? match.score1 : match.score2;
+            const oppScore = isPlayer1 ? match.score2 : match.score1;
+
+            currentStats.matchHistory.push({
+              week: 'Playoffs',
+              opponent,
+              won,
+              score: `${myScore}-${oppScore}`,
+              matchName: match.matchName || 'Championship'
+            });
+
+            if (!currentStats.headToHead[opponent]) {
+              currentStats.headToHead[opponent] = { wins: 0, losses: 0 };
+            }
+            if (won) {
+              currentStats.headToHead[opponent].wins++;
+            } else {
+              currentStats.headToHead[opponent].losses++;
+            }
+          }
+        });
+      }
+    }
+
+    // Calculate all-time stats from archives
+    let allTimeStats = { wins: 0, losses: 0, championships: 0, runnerUps: 0, seasonsPlayed: 0 };
+
+    archivedStats.forEach(archive => {
+      const archiveData = archive.data;
+      if (archiveData?.standings) {
+        for (const g of ['A', 'B']) {
+          if (archiveData.standings[g]?.[playerName]) {
+            const s = archiveData.standings[g][playerName];
+            allTimeStats.wins += s.wins || 0;
+            allTimeStats.losses += s.losses || 0;
+            allTimeStats.seasonsPlayed++;
+          }
+        }
+      }
+      if (archive.champion === playerName) allTimeStats.championships++;
+      if (archive.runner_up === playerName) allTimeStats.runnerUps++;
+    });
+
+    // Add current season to all-time
+    allTimeStats.wins += currentStats.wins;
+    allTimeStats.losses += currentStats.losses;
+    if (season) allTimeStats.seasonsPlayed++;
+
+    res.json({
+      playerName,
+      currentSeason: season ? {
+        name: season.name,
+        group: currentStats.group,
+        rank: currentStats.rank,
+        wins: currentStats.wins,
+        losses: currentStats.losses,
+        pointsFor: currentStats.pointsFor,
+        pointsAgainst: currentStats.pointsAgainst,
+        winRate: currentStats.wins + currentStats.losses > 0
+          ? Math.round((currentStats.wins / (currentStats.wins + currentStats.losses)) * 100)
+          : 0
+      } : null,
+      matchHistory: currentStats.matchHistory,
+      headToHead: currentStats.headToHead,
+      allTime: allTimeStats
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ============ SEASON ARCHIVE ============
+
+// Get all archived seasons
+app.get('/api/seasons/archive', async (req, res) => {
+  try {
+    // Ensure table exists
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS season_archive (
+        id SERIAL PRIMARY KEY,
+        season_name VARCHAR(255) NOT NULL,
+        champion VARCHAR(255),
+        runner_up VARCHAR(255),
+        start_date DATE,
+        end_date DATE,
+        total_players INTEGER,
+        total_matches INTEGER,
+        data JSONB NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
+    const result = await pool.query(
+      'SELECT id, season_name, champion, runner_up, start_date, end_date, total_players, total_matches, created_at FROM season_archive ORDER BY end_date DESC'
+    );
+    res.json(result.rows);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Get specific archived season details
+app.get('/api/seasons/archive/:id', async (req, res) => {
+  try {
+    const result = await pool.query('SELECT * FROM season_archive WHERE id = $1', [req.params.id]);
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Season not found' });
+    }
+    res.json(result.rows[0]);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Archive current season (admin only) - call this when season ends
+app.post('/api/seasons/archive', requireAdmin, async (req, res) => {
+  try {
+    const seasonResult = await pool.query('SELECT * FROM season WHERE id = 1');
+    if (!seasonResult.rows.length) {
+      return res.status(400).json({ error: 'No active season to archive' });
+    }
+
+    const season = seasonResult.rows[0].data;
+
+    // Count total matches played
+    let totalMatches = 0;
+    let totalPlayers = new Set();
+
+    for (const g of ['A', 'B']) {
+      if (season.schedule?.[g]) {
+        season.schedule[g].forEach(week => {
+          week.forEach(match => {
+            if (match.completed) totalMatches++;
+            if (match.player1) totalPlayers.add(match.player1);
+            if (match.player2) totalPlayers.add(match.player2);
+          });
+        });
+      }
+    }
+
+    // Find runner-up from championship final
+    let runnerUp = null;
+    if (season.championship?.final?.completed) {
+      runnerUp = season.championship.final.winner === season.championship.final.player1
+        ? season.championship.final.player2
+        : season.championship.final.player1;
+    }
+
+    // Ensure archive table exists
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS season_archive (
+        id SERIAL PRIMARY KEY,
+        season_name VARCHAR(255) NOT NULL,
+        champion VARCHAR(255),
+        runner_up VARCHAR(255),
+        start_date DATE,
+        end_date DATE,
+        total_players INTEGER,
+        total_matches INTEGER,
+        data JSONB NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
+    // Insert into archive
+    const archiveResult = await pool.query(`
+      INSERT INTO season_archive (season_name, champion, runner_up, end_date, total_players, total_matches, data)
+      VALUES ($1, $2, $3, CURRENT_DATE, $4, $5, $6)
+      RETURNING id
+    `, [
+      season.name || 'Season',
+      season.champion || null,
+      runnerUp,
+      totalPlayers.size,
+      totalMatches,
+      JSON.stringify(season)
+    ]);
+
+    res.json({
+      success: true,
+      archiveId: archiveResult.rows[0].id,
+      message: `Season "${season.name}" archived successfully`
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ============ TABLE AVAILABILITY CALENDAR ============
+
+// Get table bookings for a date range (calendar view)
+app.get('/api/table/calendar', async (req, res) => {
+  try {
+    const { start, end } = req.query;
+
+    // Default to current week if no dates provided
+    const startDate = start || new Date().toISOString().split('T')[0];
+    const endDate = end || new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+
+    await ensureBookingsTable();
+
+    const result = await pool.query(`
+      SELECT id, player1, player2, booking_date, start_time, end_time, group_name, status, match_id
+      FROM table_bookings
+      WHERE booking_date >= $1 AND booking_date <= $2
+      ORDER BY booking_date, start_time
+    `, [startDate, endDate]);
+
+    // Group by date for calendar view
+    const calendar = {};
+    result.rows.forEach(booking => {
+      const dateStr = booking.booking_date.toISOString().split('T')[0];
+      if (!calendar[dateStr]) {
+        calendar[dateStr] = [];
+      }
+      calendar[dateStr].push({
+        id: booking.id,
+        player1: booking.player1,
+        player2: booking.player2,
+        startTime: booking.start_time,
+        endTime: booking.end_time,
+        group: booking.group_name,
+        status: booking.status,
+        matchId: booking.match_id
+      });
+    });
+
+    // Generate time slots for each day (8 AM to 6 PM)
+    const timeSlots = [];
+    for (let h = 8; h < 18; h++) {
+      timeSlots.push(`${h.toString().padStart(2, '0')}:00`);
+      timeSlots.push(`${h.toString().padStart(2, '0')}:30`);
+    }
+
+    res.json({
+      startDate,
+      endDate,
+      bookings: calendar,
+      timeSlots
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Get availability for a specific date (shows which slots are free/booked)
+app.get('/api/table/availability/:date', async (req, res) => {
+  try {
+    const date = req.params.date;
+
+    await ensureBookingsTable();
+
+    const result = await pool.query(`
+      SELECT start_time, end_time, player1, player2, status
+      FROM table_bookings
+      WHERE booking_date = $1 AND status != 'cancelled'
+      ORDER BY start_time
+    `, [date]);
+
+    // Generate all time slots and mark availability
+    const slots = [];
+    for (let h = 8; h < 18; h++) {
+      for (const m of ['00', '30']) {
+        const time = `${h.toString().padStart(2, '0')}:${m}`;
+        const booking = result.rows.find(b => b.start_time === time + ':00' || b.start_time === time);
+
+        slots.push({
+          time,
+          available: !booking,
+          booking: booking ? {
+            player1: booking.player1,
+            player2: booking.player2,
+            status: booking.status
+          } : null
+        });
+      }
+    }
+
+    res.json({
+      date,
+      slots,
+      totalBooked: result.rows.length,
+      totalAvailable: slots.filter(s => s.available).length
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Serve the main HTML file
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));

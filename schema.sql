@@ -162,6 +162,23 @@ CREATE TABLE IF NOT EXISTS push_subscriptions (
 CREATE INDEX idx_push_subscriptions_player ON push_subscriptions(player_name);
 CREATE INDEX idx_push_subscriptions_endpoint ON push_subscriptions(endpoint);
 
+-- Season Archive for historical seasons
+CREATE TABLE IF NOT EXISTS season_archive (
+    id SERIAL PRIMARY KEY,
+    season_name VARCHAR(255) NOT NULL,
+    champion VARCHAR(255),
+    runner_up VARCHAR(255),
+    start_date DATE,
+    end_date DATE,
+    total_players INTEGER,
+    total_matches INTEGER,
+    data JSONB NOT NULL, -- Full season data snapshot
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX idx_season_archive_name ON season_archive(season_name);
+CREATE INDEX idx_season_archive_date ON season_archive(end_date DESC);
+
 -- Indexes for performance
 CREATE INDEX IF NOT EXISTS idx_matches_status ON matches(status);
 CREATE INDEX IF NOT EXISTS idx_matches_round ON matches(round_type, round_number);
