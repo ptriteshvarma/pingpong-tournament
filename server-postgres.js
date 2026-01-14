@@ -50,6 +50,22 @@ async function initDatabase() {
       } catch (migrationErr) {
         console.log('Migration check failed (non-critical):', migrationErr.message);
       }
+
+      // Migration: Add reminded column to table_bookings if it doesn't exist
+      try {
+        const remindedCol = await pool.query(`
+          SELECT EXISTS (
+            SELECT FROM information_schema.columns
+            WHERE table_name = 'table_bookings' AND column_name = 'reminded'
+          );
+        `);
+        if (!remindedCol.rows[0].exists) {
+          await pool.query('ALTER TABLE table_bookings ADD COLUMN reminded BOOLEAN DEFAULT FALSE');
+          console.log('✓ Added reminded column to table_bookings table');
+        }
+      } catch (migrationErr) {
+        console.log('Migration check failed (non-critical):', migrationErr.message);
+      }
     }
 
     // Test connection
@@ -2043,6 +2059,31 @@ app.post('/api/season/create', requireAdmin, async (req, res) => {
         updated_at = CURRENT_TIMESTAMP
     `, [season.name, season.status, season.currentWeek, season.totalWeeks, JSON.stringify(season)]);
 
+    // Notify all players about season start and their Week 1 opponent
+    for (const g of ['A', 'B']) {
+      const week1Schedule = season.schedule[g][0];
+      if (week1Schedule) {
+        for (const m of week1Schedule) {
+          if (m.player1 && m.player2 && !m.cancelled) {
+            await createNotification(
+              m.player1,
+              'season_start',
+              '🏓 Season Started!',
+              `Week 1: You play ${m.player2} in Group ${g}. Book your match!`,
+              '#schedule'
+            );
+            await createNotification(
+              m.player2,
+              'season_start',
+              '🏓 Season Started!',
+              `Week 1: You play ${m.player1} in Group ${g}. Book your match!`,
+              '#schedule'
+            );
+          }
+        }
+      }
+    }
+
     res.json({ success: true, season });
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -2204,6 +2245,28 @@ app.post('/api/season/match', async (req, res) => {
         );
         season.status = 'playoffs';
         console.log('Auto-started combined championship bracket after wildcard complete');
+
+        // Notify all championship bracket participants
+        if (season.championship?.quarterfinals) {
+          for (const qf of season.championship.quarterfinals) {
+            if (qf.player1 && qf.player2) {
+              await createNotification(
+                qf.player1,
+                'playoffs',
+                '🏆 Championship Bracket!',
+                `You're in the playoffs! ${qf.matchName}: vs ${qf.player2}`,
+                '#standings'
+              );
+              await createNotification(
+                qf.player2,
+                'playoffs',
+                '🏆 Championship Bracket!',
+                `You're in the playoffs! ${qf.matchName}: vs ${qf.player1}`,
+                '#standings'
+              );
+            }
+          }
+        }
       }
     }
 
@@ -2343,6 +2406,33 @@ app.post('/api/season/match', async (req, res) => {
         season.currentWeek++;
         weekAdvanced = true;
 
+        // Notify players about their matches for the new week
+        const newWeekNum = season.currentWeek;
+        for (const g of ['A', 'B']) {
+          const weekSchedule = season.schedule[g][newWeekNum - 1];
+          if (weekSchedule) {
+            for (const m of weekSchedule) {
+              if (m.player1 && m.player2 && !m.cancelled) {
+                // Notify both players about their upcoming match
+                await createNotification(
+                  m.player1,
+                  'upcoming_match',
+                  `📅 Week ${newWeekNum} Match`,
+                  `You play ${m.player2} this week. Schedule your match!`,
+                  '#schedule'
+                );
+                await createNotification(
+                  m.player2,
+                  'upcoming_match',
+                  `📅 Week ${newWeekNum} Match`,
+                  `You play ${m.player1} this week. Schedule your match!`,
+                  '#schedule'
+                );
+              }
+            }
+          }
+        }
+
         // Check if we just hit mid-season (week 5 for 10-week season)
         const midPoint = Math.floor(season.totalWeeks / 2);
         if (season.currentWeek === midPoint && !season.midSeasonReview?.completed) {
@@ -2369,6 +2459,28 @@ app.post('/api/season/match', async (req, res) => {
           season.wildcard = generateWildcardRound(season.standings.A, season.standings.B);
           season.status = 'wildcard';
           console.log('Auto-started wildcard round after regular season complete');
+
+          // Notify wildcard participants
+          if (season.wildcard?.matches) {
+            for (const wcMatch of season.wildcard.matches) {
+              if (wcMatch.player1 && wcMatch.player2) {
+                await createNotification(
+                  wcMatch.player1,
+                  'wildcard',
+                  '🎯 Wildcard Round!',
+                  `You're in the wildcard! Beat ${wcMatch.player2} to qualify for playoffs.`,
+                  '#standings'
+                );
+                await createNotification(
+                  wcMatch.player2,
+                  'wildcard',
+                  '🎯 Wildcard Round!',
+                  `You're in the wildcard! Beat ${wcMatch.player1} to qualify for playoffs.`,
+                  '#standings'
+                );
+              }
+            }
+          }
         }
       }
     }
@@ -3031,6 +3143,60 @@ const createNotification = async (playerName, type, title, message, link = null)
   }
 };
 
+// Send reminders for upcoming bookings (call this via cron/scheduler every 15 min)
+app.post('/api/notifications/send-reminders', async (req, res) => {
+  try {
+    await ensureNotificationsTable();
+    await ensureBookingsTable();
+
+    // Find bookings happening in the next hour that haven't been reminded
+    const now = new Date();
+    const oneHourFromNow = new Date(now.getTime() + 60 * 60 * 1000);
+
+    const today = now.toISOString().split('T')[0];
+    const currentTime = now.toTimeString().slice(0, 5);
+    const oneHourTime = oneHourFromNow.toTimeString().slice(0, 5);
+
+    // Get bookings for today that start within the next hour
+    const bookings = await pool.query(`
+      SELECT * FROM table_bookings
+      WHERE booking_date = $1
+        AND start_time > $2
+        AND start_time <= $3
+        AND status = 'booked'
+        AND (reminded IS NULL OR reminded = FALSE)
+    `, [today, currentTime, oneHourTime]);
+
+    let remindersSent = 0;
+
+    for (const booking of bookings.rows) {
+      // Send reminder to both players
+      await createNotification(
+        booking.player1,
+        'match_reminder',
+        '⏰ Match in 1 Hour!',
+        `Your match vs ${booking.player2} is at ${booking.start_time} today`,
+        '#schedule'
+      );
+      await createNotification(
+        booking.player2,
+        'match_reminder',
+        '⏰ Match in 1 Hour!',
+        `Your match vs ${booking.player1} is at ${booking.start_time} today`,
+        '#schedule'
+      );
+
+      // Mark as reminded
+      await pool.query('UPDATE table_bookings SET reminded = TRUE WHERE id = $1', [booking.id]);
+      remindersSent++;
+    }
+
+    res.json({ success: true, remindersSent });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Broadcast notification to all players (admin)
 app.post('/api/notifications/broadcast', requireAdmin, async (req, res) => {
   try {
@@ -3438,8 +3604,57 @@ app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
+// Helper function to send match reminders
+async function sendMatchReminders() {
+  try {
+    const now = new Date();
+    const oneHourFromNow = new Date(now.getTime() + 60 * 60 * 1000);
+
+    const today = now.toISOString().split('T')[0];
+    const currentTime = now.toTimeString().slice(0, 5);
+    const oneHourTime = oneHourFromNow.toTimeString().slice(0, 5);
+
+    const bookings = await pool.query(`
+      SELECT * FROM table_bookings
+      WHERE booking_date = $1
+        AND start_time > $2
+        AND start_time <= $3
+        AND status = 'booked'
+        AND (reminded IS NULL OR reminded = FALSE)
+    `, [today, currentTime, oneHourTime]);
+
+    for (const booking of bookings.rows) {
+      await createNotification(
+        booking.player1,
+        'match_reminder',
+        '⏰ Match in 1 Hour!',
+        `Your match vs ${booking.player2} is at ${booking.start_time} today`,
+        '#schedule'
+      );
+      await createNotification(
+        booking.player2,
+        'match_reminder',
+        '⏰ Match in 1 Hour!',
+        `Your match vs ${booking.player1} is at ${booking.start_time} today`,
+        '#schedule'
+      );
+      await pool.query('UPDATE table_bookings SET reminded = TRUE WHERE id = $1', [booking.id]);
+    }
+
+    if (bookings.rows.length > 0) {
+      console.log(`Sent ${bookings.rows.length} match reminders`);
+    }
+  } catch (e) {
+    console.log('Reminder check failed:', e.message);
+  }
+}
+
 // Start server
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
   console.log(`Database: ${process.env.DATABASE_URL ? 'PostgreSQL' : 'Local development'}`);
+
+  // Check for match reminders every 15 minutes
+  setInterval(sendMatchReminders, 15 * 60 * 1000);
+  console.log('Match reminder scheduler started (checks every 15 minutes)');
 });

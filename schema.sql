@@ -78,6 +78,7 @@ CREATE TABLE IF NOT EXISTS table_bookings (
     end_time TIME NOT NULL,
     group_name VARCHAR(10), -- 'A', 'B', or null for casual
     status VARCHAR(20) DEFAULT 'booked', -- 'booked', 'completed', 'cancelled'
+    reminded BOOLEAN DEFAULT FALSE, -- Whether 1-hour reminder was sent
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     created_by VARCHAR(255),
     UNIQUE(booking_date, start_time) -- Only one booking per time slot
