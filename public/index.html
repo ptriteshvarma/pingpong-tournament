@@ -3515,7 +3515,7 @@
             // Get initial view from URL hash or localStorage
             const getInitialView = () => {
                 const hash = window.location.hash.slice(1);
-                const validViews = ['register', 'standings', 'schedule', 'mygames', 'history', 'book', 'playoffs', 'admin', 'profile', 'calendar', 'archive'];
+                const validViews = ['register', 'league', 'standings', 'schedule', 'mygames', 'profile', 'table', 'book', 'calendar', 'playoffs', 'history', 'archive', 'admin'];
                 if (hash && validViews.includes(hash)) {
                     return hash;
                 }
@@ -3523,7 +3523,7 @@
                 if (saved && validViews.includes(saved)) {
                     return saved;
                 }
-                return 'standings';
+                return 'league';
             };
 
             const [view, setViewState] = useState(getInitialView);
@@ -3539,7 +3539,7 @@
             useEffect(() => {
                 const handleHashChange = () => {
                     const hash = window.location.hash.slice(1);
-                    const validViews = ['register', 'standings', 'schedule', 'mygames', 'history', 'book', 'playoffs', 'admin', 'profile', 'calendar', 'archive'];
+                    const validViews = ['register', 'league', 'standings', 'schedule', 'mygames', 'profile', 'table', 'book', 'calendar', 'playoffs', 'history', 'archive', 'admin'];
                     if (hash && validViews.includes(hash)) {
                         setViewState(hash);
                         localStorage.setItem('pingpong_currentView', hash);
@@ -3816,39 +3816,23 @@
                                 </div>
                             </div>
                             <div className="flex gap-1 overflow-x-auto items-center">
-                                {/* Main Navigation - Consolidated */}
+                                {/* Main Navigation - 5 tabs */}
                                 {[
-                                    { id: 'standings', icon: Icons.ChartBar, label: 'League' },
-                                    { id: 'schedule', icon: Icons.Calendar, label: 'Schedule' },
+                                    { id: 'register', icon: Icons.Snowflake, label: 'Register' },
+                                    { id: 'league', icon: Icons.ChartBar, label: 'League' },
                                     { id: 'mygames', icon: Icons.User, label: 'My Games' },
-                                    { id: 'book', icon: Icons.Clock, label: 'Table' },
+                                    { id: 'table', icon: Icons.Clock, label: 'Table' },
                                     { id: 'playoffs', icon: Icons.Trophy, label: 'Playoffs' },
                                 ].map(tab => (
-                                    <button key={tab.id} onClick={() => setView(tab.id)} className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm whitespace-nowrap transition-colors ${view === tab.id ? 'bg-purple-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-purple-100 hover:text-purple-700'}`}>
+                                    <button key={tab.id} onClick={() => setView(tab.id)} className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm whitespace-nowrap transition-colors ${view === tab.id || (tab.id === 'league' && ['standings', 'schedule'].includes(view)) || (tab.id === 'mygames' && view === 'profile') || (tab.id === 'table' && ['book', 'calendar'].includes(view)) || (tab.id === 'playoffs' && ['brackets', 'history', 'archive'].includes(view)) ? 'bg-purple-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-purple-100 hover:text-purple-700'}`}>
                                         <tab.icon />{tab.label}
                                     </button>
                                 ))}
 
-                                {/* More dropdown for less-used features */}
-                                <div className="relative group">
-                                    <button className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm whitespace-nowrap transition-colors ${['register', 'history', 'archive', 'profile', 'calendar', 'admin'].includes(view) ? 'bg-purple-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-purple-100 hover:text-purple-700'}`}>
-                                        <Icons.Menu />More
-                                    </button>
-                                    <div className="absolute right-0 top-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50 min-w-[160px]">
-                                        {[
-                                            { id: 'register', icon: Icons.Snowflake, label: 'Register' },
-                                            { id: 'profile', icon: Icons.User, label: 'Profile' },
-                                            { id: 'calendar', icon: Icons.Calendar, label: 'Calendar' },
-                                            { id: 'history', icon: Icons.History, label: 'Match History' },
-                                            { id: 'archive', icon: Icons.History, label: 'Season Archive' },
-                                            { id: 'admin', icon: Icons.Cog, label: 'Admin Panel' },
-                                        ].map(tab => (
-                                            <button key={tab.id} onClick={() => setView(tab.id)} className={`w-full flex items-center gap-2 px-4 py-2 text-sm text-left hover:bg-purple-50 ${view === tab.id ? 'bg-purple-100 text-purple-700' : 'text-gray-700'}`}>
-                                                <tab.icon />{tab.label}
-                                            </button>
-                                        ))}
-                                    </div>
-                                </div>
+                                {/* Admin button - always visible for login access */}
+                                <button onClick={() => setView('admin')} className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm whitespace-nowrap transition-colors ${view === 'admin' ? 'bg-purple-600 text-white' : isAdmin ? 'bg-gray-100 text-gray-700 hover:bg-purple-100 hover:text-purple-700' : 'bg-gray-50 text-gray-400 hover:bg-gray-100 hover:text-gray-600'}`}>
+                                    <Icons.Cog />{isAdmin ? 'Admin' : 'Login'}
+                                </button>
                             </div>
                         </div>
                     </header>
@@ -3857,7 +3841,21 @@
                     <main className="max-w-6xl mx-auto p-4">
                         {view === 'register' && <WinterLeagueRegistration isAdmin={isAdmin} onRefresh={loadData} />}
 
-                        {view === 'standings' && season && (
+                        {/* Combined League View (Standings + Schedule) */}
+                        {(view === 'league' || view === 'standings' || view === 'schedule') && season && (
+                            <div className="space-y-4">
+                                {/* Sub-tabs */}
+                                <div className="flex gap-2 border-b border-gray-200 pb-2">
+                                    <button onClick={() => setView('standings')} className={`px-4 py-2 text-sm font-medium rounded-t-lg ${view === 'standings' || view === 'league' ? 'bg-purple-100 text-purple-700 border-b-2 border-purple-600' : 'text-gray-500 hover:text-gray-700'}`}>
+                                        Standings
+                                    </button>
+                                    <button onClick={() => setView('schedule')} className={`px-4 py-2 text-sm font-medium rounded-t-lg ${view === 'schedule' ? 'bg-purple-100 text-purple-700 border-b-2 border-purple-600' : 'text-gray-500 hover:text-gray-700'}`}>
+                                        Schedule
+                                    </button>
+                                </div>
+
+                                {/* Standings Content */}
+                                {(view === 'league' || view === 'standings') && (
                             <div className="space-y-6">
                                 {/* Swap Zone Banner - F1 style elimination/promotion zone */}
                                 <SwapZoneBanner swapZone={swapZone} />
@@ -4045,15 +4043,10 @@
                                     </div>
                                 </div>
                             </div>
-                        )}
+                                )}
 
-                        {view === 'standings' && !season && (
-                            <div className="text-center py-12">
-                                <p className="text-gray-500 mb-4">No active season. Go to Admin to create one.</p>
-                            </div>
-                        )}
-
-                        {view === 'schedule' && season && (
+                                {/* Schedule Content */}
+                                {view === 'schedule' && (
                             <div className="space-y-4">
                                 <div className="flex gap-2 items-center flex-wrap">
                                     <span className="text-gray-500">Week:</span>
@@ -4123,15 +4116,85 @@
                                     </div>
                                 )}
                             </div>
+                                )}
+                            </div>
                         )}
 
-                        {view === 'book' && <PlayerSchedule players={players} season={season} currentPlayer={currentPlayer} onSelectPlayer={handleSelectPlayer} />}
+                        {/* League - No season message */}
+                        {(view === 'league' || view === 'standings' || view === 'schedule') && !season && (
+                            <div className="text-center py-12">
+                                <p className="text-gray-500 mb-4">No active season. Go to Admin to create one.</p>
+                            </div>
+                        )}
 
-                        {view === 'mygames' && <MyGames players={players} season={season} currentPlayer={currentPlayer} onSelectPlayer={handleSelectPlayer} />}
+                        {/* Combined Table View (Book + Calendar) */}
+                        {(view === 'table' || view === 'book' || view === 'calendar') && (
+                            <div className="space-y-4">
+                                {/* Sub-tabs */}
+                                <div className="flex gap-2 border-b border-gray-200 pb-2">
+                                    <button onClick={() => setView('book')} className={`px-4 py-2 text-sm font-medium rounded-t-lg ${view === 'book' || view === 'table' ? 'bg-purple-100 text-purple-700 border-b-2 border-purple-600' : 'text-gray-500 hover:text-gray-700'}`}>
+                                        Book Table
+                                    </button>
+                                    <button onClick={() => setView('calendar')} className={`px-4 py-2 text-sm font-medium rounded-t-lg ${view === 'calendar' ? 'bg-purple-100 text-purple-700 border-b-2 border-purple-600' : 'text-gray-500 hover:text-gray-700'}`}>
+                                        Calendar
+                                    </button>
+                                </div>
 
-                        {view === 'history' && <HistoryFeed season={season} />}
+                                {/* Book Table Content */}
+                                {(view === 'table' || view === 'book') && (
+                                    <PlayerSchedule players={players} season={season} currentPlayer={currentPlayer} onSelectPlayer={handleSelectPlayer} />
+                                )}
 
-                        {view === 'playoffs' && (
+                                {/* Calendar Content */}
+                                {view === 'calendar' && (
+                                    <TableCalendar />
+                                )}
+                            </div>
+                        )}
+
+                        {/* Combined My Games View (My Matches + Profile) */}
+                        {(view === 'mygames' || view === 'profile') && (
+                            <div className="space-y-4">
+                                {/* Sub-tabs */}
+                                <div className="flex gap-2 border-b border-gray-200 pb-2">
+                                    <button onClick={() => setView('mygames')} className={`px-4 py-2 text-sm font-medium rounded-t-lg ${view === 'mygames' ? 'bg-purple-100 text-purple-700 border-b-2 border-purple-600' : 'text-gray-500 hover:text-gray-700'}`}>
+                                        My Matches
+                                    </button>
+                                    <button onClick={() => setView('profile')} className={`px-4 py-2 text-sm font-medium rounded-t-lg ${view === 'profile' ? 'bg-purple-100 text-purple-700 border-b-2 border-purple-600' : 'text-gray-500 hover:text-gray-700'}`}>
+                                        Profile
+                                    </button>
+                                </div>
+
+                                {/* My Matches Content */}
+                                {view === 'mygames' && (
+                                    <MyGames players={players} season={season} currentPlayer={currentPlayer} onSelectPlayer={handleSelectPlayer} />
+                                )}
+
+                                {/* Profile Content */}
+                                {view === 'profile' && (
+                                    <PlayerProfile playerName={currentPlayer} onSelectPlayer={(name) => { setView('profile'); }} />
+                                )}
+                            </div>
+                        )}
+
+                        {/* Combined Playoffs View (Brackets + History) */}
+                        {(view === 'playoffs' || view === 'brackets' || view === 'history' || view === 'archive') && (
+                            <div className="space-y-4">
+                                {/* Sub-tabs */}
+                                <div className="flex gap-2 border-b border-gray-200 pb-2">
+                                    <button onClick={() => setView('playoffs')} className={`px-4 py-2 text-sm font-medium rounded-t-lg ${view === 'playoffs' || view === 'brackets' ? 'bg-purple-100 text-purple-700 border-b-2 border-purple-600' : 'text-gray-500 hover:text-gray-700'}`}>
+                                        Brackets
+                                    </button>
+                                    <button onClick={() => setView('history')} className={`px-4 py-2 text-sm font-medium rounded-t-lg ${view === 'history' ? 'bg-purple-100 text-purple-700 border-b-2 border-purple-600' : 'text-gray-500 hover:text-gray-700'}`}>
+                                        History
+                                    </button>
+                                    <button onClick={() => setView('archive')} className={`px-4 py-2 text-sm font-medium rounded-t-lg ${view === 'archive' ? 'bg-purple-100 text-purple-700 border-b-2 border-purple-600' : 'text-gray-500 hover:text-gray-700'}`}>
+                                        Past Seasons
+                                    </button>
+                                </div>
+
+                                {/* Brackets Content */}
+                                {(view === 'playoffs' || view === 'brackets') && (
                             <div className="space-y-4">
                                 {/* Regular season - offer wildcard or direct playoffs */}
                                 {season?.status === 'regular' && isAdmin && (
@@ -4191,24 +4254,21 @@
                                     <p className="text-center text-gray-500">No playoff data available.</p>
                                 )}
                             </div>
+                                )}
+
+                                {/* History Content */}
+                                {view === 'history' && (
+                                    <HistoryFeed season={season} />
+                                )}
+
+                                {/* Past Seasons Content */}
+                                {view === 'archive' && (
+                                    <SeasonArchive />
+                                )}
+                            </div>
                         )}
 
                         {view === 'admin' && <AdminPanel players={players} season={season} onCreateSeason={handleCreateSeason} isAdmin={isAdmin} onLogin={handleLogin} onAddPlayer={handleAddPlayer} onCreateBracket={handleCreateBracket} onArchiveSeason={handleArchiveSeason} onClearSeason={handleClearSeason} />}
-
-                        {/* Player Profile Page */}
-                        {view === 'profile' && (
-                            <PlayerProfile playerName={currentPlayer} onSelectPlayer={(name) => { setView('profile'); }} />
-                        )}
-
-                        {/* Table Calendar View */}
-                        {view === 'calendar' && (
-                            <TableCalendar />
-                        )}
-
-                        {/* Season Archive View */}
-                        {view === 'archive' && (
-                            <SeasonArchive />
-                        )}
                     </main>
                 </div>
             );
