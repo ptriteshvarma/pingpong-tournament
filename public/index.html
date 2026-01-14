@@ -2255,7 +2255,7 @@
             const [seasonDetails, setSeasonDetails] = useState(null);
 
             useEffect(() => {
-                fetch(`${API_BASE}/seasons/archive`)
+                fetch(`${API_BASE}/seasons/history`)
                     .then(r => r.json())
                     .then(data => {
                         setArchives(data || []);
@@ -2264,9 +2264,9 @@
                     .catch(() => setLoading(false));
             }, []);
 
-            const loadSeasonDetails = (id) => {
-                setSelectedSeason(id);
-                fetch(`${API_BASE}/seasons/archive/${id}`)
+            const loadSeasonDetails = (seasonNumber) => {
+                setSelectedSeason(seasonNumber);
+                fetch(`${API_BASE}/seasons/history/${seasonNumber}`)
                     .then(r => r.json())
                     .then(setSeasonDetails)
                     .catch(() => {});
@@ -2293,19 +2293,19 @@
                         <div className="space-y-3">
                             {archives.map(archive => (
                                 <div
-                                    key={archive.id}
+                                    key={archive.season_number}
                                     className={`p-4 rounded-lg border cursor-pointer transition-colors ${
-                                        selectedSeason === archive.id
+                                        selectedSeason === archive.season_number
                                             ? 'border-purple-500 bg-purple-50'
                                             : 'border-gray-200 hover:border-purple-300 hover:bg-gray-50'
                                     }`}
-                                    onClick={() => loadSeasonDetails(archive.id)}
+                                    onClick={() => loadSeasonDetails(archive.season_number)}
                                 >
                                     <div className="flex items-center justify-between">
                                         <div>
-                                            <h3 className="font-bold text-lg">{archive.season_name}</h3>
+                                            <h3 className="font-bold text-lg">{archive.name}</h3>
                                             <p className="text-sm text-gray-500">
-                                                {archive.total_players} players | {archive.total_matches} matches
+                                                Season #{archive.season_number} | {archive.total_matches} matches
                                             </p>
                                         </div>
                                         <div className="text-right">
@@ -2329,7 +2329,7 @@
                     {/* Season Details */}
                     {seasonDetails && (
                         <div className="bg-white shadow-sm border border-gray-200 rounded-xl p-4">
-                            <h3 className="font-bold text-lg mb-4">{seasonDetails.season_name} - Final Standings</h3>
+                            <h3 className="font-bold text-lg mb-4">{seasonDetails.name} - Final Standings</h3>
 
                             <div className="grid md:grid-cols-2 gap-4">
                                 {['A', 'B'].map(group => {

@@ -880,7 +880,8 @@ const generateSeason = (groupA, groupB, numWeeks = 10) => {
     standings.A[p.name] = {
       wins: 0, losses: 0, points: 0,
       pointsFor: 0, pointsAgainst: 0,
-      streak: 0, lastResults: []
+      streak: 0, lastResults: [],
+      headToHead: {} // Track head-to-head record vs each opponent
     };
   });
 
@@ -888,7 +889,8 @@ const generateSeason = (groupA, groupB, numWeeks = 10) => {
     standings.B[p.name] = {
       wins: 0, losses: 0, points: 0,
       pointsFor: 0, pointsAgainst: 0,
-      streak: 0, lastResults: []
+      streak: 0, lastResults: [],
+      headToHead: {} // Track head-to-head record vs each opponent
     };
   });
 
@@ -917,13 +919,20 @@ const sortStandings = (standings) => {
     .sort((a, b) => {
       // 1. Most match wins
       if (b.wins !== a.wins) return b.wins - a.wins;
-      // 2. Point differential (games won minus games lost)
+      // 2. Head-to-head record (if tied on wins)
+      const h2hA = a.headToHead?.[b.name];
+      const h2hB = b.headToHead?.[a.name];
+      if (h2hA && h2hB) {
+        const h2hDiff = (h2hA.wins - h2hA.losses) - (h2hB.wins - h2hB.losses);
+        if (h2hDiff !== 0) return -h2hDiff; // Negative because we want winner first
+      }
+      // 3. Point differential (games won minus games lost)
       const diffA = a.pointsFor - a.pointsAgainst;
       const diffB = b.pointsFor - b.pointsAgainst;
       if (diffB !== diffA) return diffB - diffA;
-      // 3. Most total games won
+      // 4. Most total games won
       if (b.pointsFor !== a.pointsFor) return b.pointsFor - a.pointsFor;
-      // 4. Fewest games lost
+      // 5. Fewest games lost
       return a.pointsAgainst - b.pointsAgainst;
     });
 };
@@ -2298,20 +2307,29 @@ app.post('/api/season/match', async (req, res) => {
     if (group === 'A' || group === 'B') {
       const standings = season.standings[group];
       if (standings[winner] && standings[loser]) {
+        // Use correctly attributed scores (winnerScore/loserScore already calculated above)
         standings[winner].wins++;
         standings[winner].points += 3;
-        standings[winner].pointsFor += score1 > score2 ? score1 : score2;
-        standings[winner].pointsAgainst += score1 > score2 ? score2 : score1;
+        standings[winner].pointsFor += winnerScore;
+        standings[winner].pointsAgainst += loserScore;
         standings[winner].streak = standings[winner].streak >= 0 ? standings[winner].streak + 1 : 1;
         standings[winner].lastResults.push('W');
         if (standings[winner].lastResults.length > 5) standings[winner].lastResults.shift();
 
         standings[loser].losses++;
-        standings[loser].pointsFor += score1 < score2 ? score1 : score2;
-        standings[loser].pointsAgainst += score1 < score2 ? score2 : score1;
+        standings[loser].pointsFor += loserScore;
+        standings[loser].pointsAgainst += winnerScore;
         standings[loser].streak = standings[loser].streak <= 0 ? standings[loser].streak - 1 : -1;
         standings[loser].lastResults.push('L');
         if (standings[loser].lastResults.length > 5) standings[loser].lastResults.shift();
+
+        // Track head-to-head record
+        if (!standings[winner].headToHead) standings[winner].headToHead = {};
+        if (!standings[loser].headToHead) standings[loser].headToHead = {};
+        if (!standings[winner].headToHead[loser]) standings[winner].headToHead[loser] = { wins: 0, losses: 0 };
+        if (!standings[loser].headToHead[winner]) standings[loser].headToHead[winner] = { wins: 0, losses: 0 };
+        standings[winner].headToHead[loser].wins++;
+        standings[loser].headToHead[winner].losses++;
       }
     }
 
@@ -2590,6 +2608,140 @@ app.post('/api/season/match', async (req, res) => {
     `, [JSON.stringify(season), season.currentWeek, season.status]);
 
     res.json({ success: true, weekAdvanced, newWeek: season.currentWeek, midSeasonTriggered, wildcardStarted: season.status === 'wildcard' });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Correct/reverse a match result (admin only)
+app.post('/api/season/match/correct', requireAdmin, async (req, res) => {
+  try {
+    const { matchId, newWinner, newLoser, newScore1, newScore2 } = req.body;
+
+    const result = await pool.query('SELECT data FROM season WHERE id = 1 FOR UPDATE');
+    if (result.rows.length === 0) {
+      return res.status(400).json({ error: 'No active season' });
+    }
+
+    const season = result.rows[0].data;
+
+    // Find the match in regular season
+    let match = null;
+    let group = null;
+
+    for (const g of ['A', 'B']) {
+      for (const week of season.schedule[g]) {
+        for (const m of week) {
+          if (m.id === matchId) {
+            match = m;
+            group = g;
+            break;
+          }
+        }
+        if (match) break;
+      }
+      if (match) break;
+    }
+
+    if (!match) {
+      return res.status(404).json({ error: 'Match not found. Note: Only regular season matches can be corrected.' });
+    }
+
+    if (!match.completed) {
+      return res.status(400).json({ error: 'Match has not been completed yet' });
+    }
+
+    // Validate new values
+    const participants = [match.player1, match.player2].filter(Boolean);
+    if (!participants.includes(newWinner) || !participants.includes(newLoser)) {
+      return res.status(400).json({ error: 'Winner and loser must be match participants', participants });
+    }
+
+    if (!Number.isInteger(newScore1) || !Number.isInteger(newScore2) || newScore1 < 0 || newScore2 < 0) {
+      return res.status(400).json({ error: 'Scores must be non-negative integers' });
+    }
+
+    const newWinnerScore = newWinner === match.player1 ? newScore1 : newScore2;
+    const newLoserScore = newWinner === match.player1 ? newScore2 : newScore1;
+    if (newWinnerScore <= newLoserScore) {
+      return res.status(400).json({ error: 'Winner must have a higher score' });
+    }
+
+    // Reverse old stats
+    const standings = season.standings[group];
+    const oldWinner = match.winner;
+    const oldLoser = match.loser;
+    const oldWinnerScore = oldWinner === match.player1 ? match.score1 : match.score2;
+    const oldLoserScore = oldWinner === match.player1 ? match.score2 : match.score1;
+
+    if (standings[oldWinner] && standings[oldLoser]) {
+      // Reverse old winner stats
+      standings[oldWinner].wins--;
+      standings[oldWinner].points -= 3;
+      standings[oldWinner].pointsFor -= oldWinnerScore;
+      standings[oldWinner].pointsAgainst -= oldLoserScore;
+      if (standings[oldWinner].lastResults.length > 0) standings[oldWinner].lastResults.pop();
+
+      // Reverse old loser stats
+      standings[oldLoser].losses--;
+      standings[oldLoser].pointsFor -= oldLoserScore;
+      standings[oldLoser].pointsAgainst -= oldWinnerScore;
+      if (standings[oldLoser].lastResults.length > 0) standings[oldLoser].lastResults.pop();
+
+      // Reverse head-to-head
+      if (standings[oldWinner].headToHead?.[oldLoser]) {
+        standings[oldWinner].headToHead[oldLoser].wins--;
+      }
+      if (standings[oldLoser].headToHead?.[oldWinner]) {
+        standings[oldLoser].headToHead[oldWinner].losses--;
+      }
+    }
+
+    // Apply new stats
+    if (standings[newWinner] && standings[newLoser]) {
+      standings[newWinner].wins++;
+      standings[newWinner].points += 3;
+      standings[newWinner].pointsFor += newWinnerScore;
+      standings[newWinner].pointsAgainst += newLoserScore;
+      standings[newWinner].lastResults.push('W');
+      if (standings[newWinner].lastResults.length > 5) standings[newWinner].lastResults.shift();
+
+      standings[newLoser].losses++;
+      standings[newLoser].pointsFor += newLoserScore;
+      standings[newLoser].pointsAgainst += newWinnerScore;
+      standings[newLoser].lastResults.push('L');
+      if (standings[newLoser].lastResults.length > 5) standings[newLoser].lastResults.shift();
+
+      // Update head-to-head
+      if (!standings[newWinner].headToHead) standings[newWinner].headToHead = {};
+      if (!standings[newLoser].headToHead) standings[newLoser].headToHead = {};
+      if (!standings[newWinner].headToHead[newLoser]) standings[newWinner].headToHead[newLoser] = { wins: 0, losses: 0 };
+      if (!standings[newLoser].headToHead[newWinner]) standings[newLoser].headToHead[newWinner] = { wins: 0, losses: 0 };
+      standings[newWinner].headToHead[newLoser].wins++;
+      standings[newLoser].headToHead[newWinner].losses++;
+    }
+
+    // Update the match record
+    const correction = {
+      correctedAt: new Date().toISOString(),
+      oldResult: { winner: oldWinner, loser: oldLoser, score1: match.score1, score2: match.score2 }
+    };
+    match.winner = newWinner;
+    match.loser = newLoser;
+    match.score1 = newScore1;
+    match.score2 = newScore2;
+    match.correction = correction;
+
+    await pool.query(`
+      UPDATE season SET data = $1, updated_at = CURRENT_TIMESTAMP WHERE id = 1
+    `, [JSON.stringify(season)]);
+
+    res.json({
+      success: true,
+      message: `Match ${matchId} corrected`,
+      oldResult: correction.oldResult,
+      newResult: { winner: newWinner, loser: newLoser, score1: newScore1, score2: newScore2 }
+    });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -3869,123 +4021,6 @@ app.get('/api/player/:name/stats', async (req, res) => {
       matchHistory: currentStats.matchHistory,
       headToHead: currentStats.headToHead,
       allTime: allTimeStats
-    });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// ============ SEASON ARCHIVE ============
-
-// Get all archived seasons
-app.get('/api/seasons/archive', async (req, res) => {
-  try {
-    // Ensure table exists
-    await pool.query(`
-      CREATE TABLE IF NOT EXISTS season_archive (
-        id SERIAL PRIMARY KEY,
-        season_name VARCHAR(255) NOT NULL,
-        champion VARCHAR(255),
-        runner_up VARCHAR(255),
-        start_date DATE,
-        end_date DATE,
-        total_players INTEGER,
-        total_matches INTEGER,
-        data JSONB NOT NULL,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      )
-    `);
-
-    const result = await pool.query(
-      'SELECT id, season_name, champion, runner_up, start_date, end_date, total_players, total_matches, created_at FROM season_archive ORDER BY end_date DESC'
-    );
-    res.json(result.rows);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// Get specific archived season details
-app.get('/api/seasons/archive/:id', async (req, res) => {
-  try {
-    const result = await pool.query('SELECT * FROM season_archive WHERE id = $1', [req.params.id]);
-    if (result.rows.length === 0) {
-      return res.status(404).json({ error: 'Season not found' });
-    }
-    res.json(result.rows[0]);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// Archive current season (admin only) - call this when season ends
-app.post('/api/seasons/archive', requireAdmin, async (req, res) => {
-  try {
-    const seasonResult = await pool.query('SELECT * FROM season WHERE id = 1');
-    if (!seasonResult.rows.length) {
-      return res.status(400).json({ error: 'No active season to archive' });
-    }
-
-    const season = seasonResult.rows[0].data;
-
-    // Count total matches played
-    let totalMatches = 0;
-    let totalPlayers = new Set();
-
-    for (const g of ['A', 'B']) {
-      if (season.schedule?.[g]) {
-        season.schedule[g].forEach(week => {
-          week.forEach(match => {
-            if (match.completed) totalMatches++;
-            if (match.player1) totalPlayers.add(match.player1);
-            if (match.player2) totalPlayers.add(match.player2);
-          });
-        });
-      }
-    }
-
-    // Find runner-up from championship final
-    let runnerUp = null;
-    if (season.championship?.final?.completed) {
-      runnerUp = season.championship.final.winner === season.championship.final.player1
-        ? season.championship.final.player2
-        : season.championship.final.player1;
-    }
-
-    // Ensure archive table exists
-    await pool.query(`
-      CREATE TABLE IF NOT EXISTS season_archive (
-        id SERIAL PRIMARY KEY,
-        season_name VARCHAR(255) NOT NULL,
-        champion VARCHAR(255),
-        runner_up VARCHAR(255),
-        start_date DATE,
-        end_date DATE,
-        total_players INTEGER,
-        total_matches INTEGER,
-        data JSONB NOT NULL,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      )
-    `);
-
-    // Insert into archive
-    const archiveResult = await pool.query(`
-      INSERT INTO season_archive (season_name, champion, runner_up, end_date, total_players, total_matches, data)
-      VALUES ($1, $2, $3, CURRENT_DATE, $4, $5, $6)
-      RETURNING id
-    `, [
-      season.name || 'Season',
-      season.champion || null,
-      runnerUp,
-      totalPlayers.size,
-      totalMatches,
-      JSON.stringify(season)
-    ]);
-
-    res.json({
-      success: true,
-      archiveId: archiveResult.rows[0].id,
-      message: `Season "${season.name}" archived successfully`
     });
   } catch (error) {
     res.status(500).json({ error: error.message });
