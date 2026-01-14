@@ -995,15 +995,24 @@ const generateChampionshipBracket = (standingsA, standingsB, wildcardWinnerA = n
   const sortedA = sortStandings(standingsA);
   const sortedB = sortStandings(standingsB);
 
-  // Top 4 from each group
-  const a1 = { name: sortedA[0]?.name, group: 'A', seed: 1 };
-  const a2 = { name: sortedA[1]?.name, group: 'A', seed: 2 };
-  const a3 = { name: sortedA[2]?.name, group: 'A', seed: 3 };
-  const a4 = { name: sortedA[3]?.name, group: 'A', seed: 4 };
-  const b1 = { name: sortedB[0]?.name, group: 'B', seed: 1 };
-  const b2 = { name: sortedB[1]?.name, group: 'B', seed: 2 };
-  const b3 = { name: sortedB[2]?.name, group: 'B', seed: 3 };
-  const b4 = { name: sortedB[3]?.name, group: 'B', seed: 4 };
+  // Validate minimum players for championship bracket
+  if (sortedA.length < 4 || sortedB.length < 4) {
+    console.warn(`Championship bracket requires 4+ players per group. A: ${sortedA.length}, B: ${sortedB.length}`);
+    // Return a reduced bracket or null if not enough players
+    if (sortedA.length < 2 || sortedB.length < 2) {
+      return null; // Cannot generate any meaningful bracket
+    }
+  }
+
+  // Top 4 from each group (with fallback to null for missing players)
+  const a1 = { name: sortedA[0]?.name || null, group: 'A', seed: 1 };
+  const a2 = { name: sortedA[1]?.name || null, group: 'A', seed: 2 };
+  const a3 = { name: sortedA[2]?.name || null, group: 'A', seed: 3 };
+  const a4 = { name: sortedA[3]?.name || null, group: 'A', seed: 4 };
+  const b1 = { name: sortedB[0]?.name || null, group: 'B', seed: 1 };
+  const b2 = { name: sortedB[1]?.name || null, group: 'B', seed: 2 };
+  const b3 = { name: sortedB[2]?.name || null, group: 'B', seed: 3 };
+  const b4 = { name: sortedB[3]?.name || null, group: 'B', seed: 4 };
 
   // Wildcard winners can replace #4 seed
   let finalA4 = a4, finalB4 = b4;
@@ -2067,6 +2076,18 @@ app.post('/api/season/create', requireAdmin, async (req, res) => {
       return res.status(400).json({ error: 'Need at least 2 players in each group' });
     }
 
+    // Warn if groups are too small for full tournament features
+    const warnings = [];
+    if (groupA.length < 4 || groupB.length < 4) {
+      warnings.push('Groups with fewer than 4 players will have limited championship bracket');
+    }
+    if (groupA.length < 6 || groupB.length < 6) {
+      warnings.push('Groups with fewer than 6 players will skip wildcard round');
+    }
+    if (groupA.length < 3 || groupB.length < 3) {
+      warnings.push('Groups with fewer than 3 players cannot perform mid-season swap');
+    }
+
     const season = generateSeason(groupA, groupB, numWeeks);
     season.name = seasonName;
 
@@ -2123,7 +2144,7 @@ app.post('/api/season/create', requireAdmin, async (req, res) => {
       }
     }
 
-    res.json({ success: true, season });
+    res.json({ success: true, season, warnings: warnings.length > 0 ? warnings : undefined });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -2134,7 +2155,8 @@ app.post('/api/season/match', async (req, res) => {
   try {
     const { matchId, winner, loser, score1, score2 } = req.body;
 
-    const result = await pool.query('SELECT data FROM season WHERE id = 1');
+    // Use SELECT FOR UPDATE to lock the row and prevent race conditions
+    const result = await pool.query('SELECT data, updated_at FROM season WHERE id = 1 FOR UPDATE');
     if (result.rows.length === 0) {
       return res.status(400).json({ error: 'No active season' });
     }
@@ -2225,6 +2247,44 @@ app.post('/api/season/match', async (req, res) => {
 
     if (!match) {
       return res.status(404).json({ error: 'Match not found' });
+    }
+
+    // SECURITY: Prevent re-submitting already completed matches
+    if (match.completed) {
+      return res.status(400).json({
+        error: 'Match already completed',
+        existingResult: {
+          winner: match.winner,
+          loser: match.loser,
+          score: `${match.score1}-${match.score2}`
+        }
+      });
+    }
+
+    // SECURITY: Validate winner/loser are actual participants in this match
+    const participants = [match.player1, match.player2].filter(Boolean);
+    if (!participants.includes(winner) || !participants.includes(loser)) {
+      return res.status(400).json({
+        error: 'Winner and loser must be match participants',
+        participants: participants
+      });
+    }
+
+    // SECURITY: Winner and loser must be different
+    if (winner === loser) {
+      return res.status(400).json({ error: 'Winner and loser cannot be the same player' });
+    }
+
+    // SECURITY: Validate scores are non-negative integers
+    if (!Number.isInteger(score1) || !Number.isInteger(score2) || score1 < 0 || score2 < 0) {
+      return res.status(400).json({ error: 'Scores must be non-negative integers' });
+    }
+
+    // SECURITY: Winner's score must be higher than loser's score
+    const winnerScore = winner === match.player1 ? score1 : score2;
+    const loserScore = winner === match.player1 ? score2 : score1;
+    if (winnerScore <= loserScore) {
+      return res.status(400).json({ error: 'Winner must have a higher score than loser' });
     }
 
     // Update match
@@ -2640,6 +2700,15 @@ app.post('/api/season/mid-review', requireAdmin, async (req, res) => {
     // Sort standings to find bottom 3 from A and top 3 from B
     const sortedA = sortStandings(season.standings.A);
     const sortedB = sortStandings(season.standings.B);
+
+    // Validate minimum group sizes for swap
+    if (sortedA.length < 3 || sortedB.length < 3) {
+      return res.status(400).json({
+        error: 'Mid-season swap requires at least 3 players in each group',
+        groupASize: sortedA.length,
+        groupBSize: sortedB.length
+      });
+    }
 
     // Bottom 3 from Group A (worst performers)
     const bottomA = sortedA.slice(-3);
