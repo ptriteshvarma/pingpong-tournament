@@ -2,30 +2,44 @@ const express = require('express');
 const cors = require('cors');
 const path = require('path');
 const { Pool } = require('pg');
-const webpush = require('web-push');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 const ADMIN_PASSWORD = 'Username';
 
-// VAPID keys for Web Push
-// Generate once and store in environment variables for production
-// For development, these are auto-generated on first run and stored
-const VAPID_SUBJECT = process.env.VAPID_SUBJECT || 'mailto:pingpong@example.com';
+// VAPID keys for Web Push - lazy loaded to avoid build issues
+let webpush = null;
 let VAPID_PUBLIC_KEY = process.env.VAPID_PUBLIC_KEY;
 let VAPID_PRIVATE_KEY = process.env.VAPID_PRIVATE_KEY;
+const VAPID_SUBJECT = process.env.VAPID_SUBJECT || 'mailto:pingpong@example.com';
 
-// Generate VAPID keys if not set (for development)
-if (!VAPID_PUBLIC_KEY || !VAPID_PRIVATE_KEY) {
-  const vapidKeys = webpush.generateVAPIDKeys();
-  VAPID_PUBLIC_KEY = vapidKeys.publicKey;
-  VAPID_PRIVATE_KEY = vapidKeys.privateKey;
-  console.log('Generated VAPID keys (set these in env for production):');
-  console.log('VAPID_PUBLIC_KEY=' + VAPID_PUBLIC_KEY);
-  console.log('VAPID_PRIVATE_KEY=' + VAPID_PRIVATE_KEY);
+// Initialize web-push lazily (after server starts, not during build)
+function initWebPush() {
+  if (webpush) return webpush;
+
+  try {
+    webpush = require('web-push');
+
+    // Generate VAPID keys if not set (for development only)
+    if (!VAPID_PUBLIC_KEY || !VAPID_PRIVATE_KEY) {
+      console.log('WARNING: VAPID keys not set in environment. Generating temporary keys.');
+      console.log('For production, set VAPID_PUBLIC_KEY and VAPID_PRIVATE_KEY env vars.');
+      const vapidKeys = webpush.generateVAPIDKeys();
+      VAPID_PUBLIC_KEY = vapidKeys.publicKey;
+      VAPID_PRIVATE_KEY = vapidKeys.privateKey;
+      console.log('VAPID_PUBLIC_KEY=' + VAPID_PUBLIC_KEY);
+      console.log('VAPID_PRIVATE_KEY=' + VAPID_PRIVATE_KEY);
+    }
+
+    webpush.setVapidDetails(VAPID_SUBJECT, VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY);
+    console.log('Web Push initialized successfully');
+  } catch (err) {
+    console.error('Failed to initialize web-push:', err.message);
+    webpush = null;
+  }
+
+  return webpush;
 }
-
-webpush.setVapidDetails(VAPID_SUBJECT, VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY);
 
 // PostgreSQL connection
 // Railway automatically provides DATABASE_URL environment variable
@@ -4137,6 +4151,7 @@ app.get('/', (req, res) => {
 
 // Get VAPID public key for client subscription
 app.get('/api/push/vapid-public-key', (req, res) => {
+  initWebPush(); // Ensure VAPID keys are initialized
   res.json({ publicKey: VAPID_PUBLIC_KEY });
 });
 
@@ -4188,6 +4203,9 @@ app.post('/api/push/unsubscribe', async (req, res) => {
 
 // Send push notification to a specific player
 async function sendPushToPlayer(playerName, payload) {
+  const wp = initWebPush();
+  if (!wp) return []; // Web push not available
+
   try {
     const subscriptions = await pool.query(
       'SELECT * FROM push_subscriptions WHERE player_name = $1',
@@ -4197,7 +4215,7 @@ async function sendPushToPlayer(playerName, payload) {
     const results = [];
     for (const sub of subscriptions.rows) {
       try {
-        await webpush.sendNotification({
+        await wp.sendNotification({
           endpoint: sub.endpoint,
           keys: { p256dh: sub.p256dh, auth: sub.auth }
         }, JSON.stringify(payload));
@@ -4219,13 +4237,16 @@ async function sendPushToPlayer(playerName, payload) {
 
 // Send push notification to all subscribers (broadcast)
 async function sendPushBroadcast(payload) {
+  const wp = initWebPush();
+  if (!wp) return []; // Web push not available
+
   try {
     const subscriptions = await pool.query('SELECT * FROM push_subscriptions');
 
     const results = [];
     for (const sub of subscriptions.rows) {
       try {
-        await webpush.sendNotification({
+        await wp.sendNotification({
           endpoint: sub.endpoint,
           keys: { p256dh: sub.p256dh, auth: sub.auth }
         }, JSON.stringify(payload));
