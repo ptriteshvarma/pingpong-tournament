@@ -1883,6 +1883,19 @@ app.post('/api/bookings', async (req, res) => {
       };
     }
 
+    // Send notification to opponent about the booking
+    const formattedDate = new Date(booking_date).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+    const opponent = created_by === player1 ? player2 : player1;
+    const booker = created_by || player1;
+
+    await createNotification(
+      opponent,
+      'match_scheduled',
+      '📅 Match Scheduled',
+      `${booker} booked a match vs you on ${formattedDate} at ${start_time}`,
+      '#schedule'
+    );
+
     res.json(response);
   } catch (error) {
     if (error.code === '23505') { // Unique violation
@@ -2273,6 +2286,39 @@ app.post('/api/season/match', async (req, res) => {
 
     // Update leaderboard too
     await updateLeaderboard(winner, loser);
+
+    // Send notifications for match result
+    const scoreStr = `${score1}-${score2}`;
+
+    // Notify winner
+    await createNotification(
+      winner,
+      'match_result',
+      '🏆 Match Won!',
+      `You defeated ${loser} (${scoreStr})`,
+      '#mygames'
+    );
+
+    // Notify loser
+    await createNotification(
+      loser,
+      'match_result',
+      '📊 Match Completed',
+      `${winner} won (${scoreStr}). Good game!`,
+      '#mygames'
+    );
+
+    // Special notifications for championship matches
+    if (group === 'championship' && match.round === 'final' && matchId === 'CHAMP-FINAL') {
+      // Broadcast champion notification to everyone
+      await createNotification(
+        null, // null = broadcast to all
+        'champion',
+        '🏆 Season Champion!',
+        `${winner} is the new Mammotome Ping Pong League Champion!`,
+        '#standings'
+      );
+    }
 
     // Auto-advance week if all matches in current week are completed (for regular season only)
     let weekAdvanced = false;

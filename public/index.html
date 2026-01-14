@@ -2995,9 +2995,21 @@
             const [selectedGroup, setSelectedGroup] = useState('A');
             const [currentPlayer, setCurrentPlayer] = useState(() => localStorage.getItem('pingpong_currentPlayer') || '');
 
-            const handleSelectPlayer = (player) => {
+            const handleSelectPlayer = async (player) => {
                 setCurrentPlayer(player);
                 localStorage.setItem('pingpong_currentPlayer', player);
+
+                // Auto-request notification permission when player selects their name
+                if (player && 'Notification' in window && Notification.permission === 'default') {
+                    try {
+                        const result = await requestPushPermission();
+                        if (result.permission === 'granted') {
+                            showBrowserNotification('Welcome ' + player + '!', 'You will receive match updates and notifications.');
+                        }
+                    } catch (e) {
+                        console.log('Notification permission request failed');
+                    }
+                }
             };
 
             const loadData = useCallback(async () => {
