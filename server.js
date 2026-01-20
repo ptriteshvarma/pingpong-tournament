@@ -4486,6 +4486,16 @@ async function checkWeeklySummary() {
   }
 }
 
+// Vercel Cron Job endpoint for weekly summary (no auth required for cron)
+app.get('/api/notifications/weekly-summary', async (req, res) => {
+  try {
+    await checkWeeklySummary();
+    res.json({ success: true, message: 'Weekly summary cron executed' });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Start server (for local development)
 if (process.env.NODE_ENV !== 'production') {
   app.listen(PORT, () => {
