@@ -45,7 +45,7 @@ function initWebPush() {
 // Railway automatically provides POSTGRES_URL environment variable
 const pool = new Pool({
   connectionString: process.env.POSTGRES_URL,
-  ssl: process.env.POSTGRES_URL ? { rejectUnauthorized: false } : false
+      ssl: { rejectUnauthorized: false }
 });
 
 // Auto-initialize database tables on startup
