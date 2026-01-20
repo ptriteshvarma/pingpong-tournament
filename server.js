@@ -9,7 +9,12 @@ process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
-const ADMIN_PASSWORD = 'Username';
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'Username';
+
+// Security warning for production
+if (ADMIN_PASSWORD === 'Username' && process.env.NODE_ENV === 'production') {
+  console.warn('⚠️  WARNING: Using default admin password in production! Set ADMIN_PASSWORD environment variable.');
+}
 
 // VAPID keys for Web Push - lazy loaded to avoid build issues
 let webpush = null;
@@ -872,6 +877,42 @@ const distributeMatchesToWeeks = (matches, players, numWeeks) => {
   return weeks;
 };
 
+// Validate match distribution fairness
+const validateMatchDistribution = (schedule, players, numWeeks, groupName) => {
+  const gamesPerPlayer = {};
+  players.forEach(p => gamesPerPlayer[p.name] = 0);
+
+  // Count total games per player
+  schedule.forEach(week => {
+    week.forEach(match => {
+      if (!match.cancelled) {
+        if (gamesPerPlayer[match.player1] !== undefined) gamesPerPlayer[match.player1]++;
+        if (gamesPerPlayer[match.player2] !== undefined) gamesPerPlayer[match.player2]++;
+      }
+    });
+  });
+
+  const gameCounts = Object.values(gamesPerPlayer);
+  const minGames = Math.min(...gameCounts);
+  const maxGames = Math.max(...gameCounts);
+  const avgGames = gameCounts.reduce((a, b) => a + b, 0) / gameCounts.length;
+
+  const isFair = (maxGames - minGames) <= 2;
+
+  if (!isFair) {
+    console.warn(`⚠️  Group ${groupName} match distribution unfair: ${minGames}-${maxGames} games per player (avg: ${avgGames.toFixed(1)})`);
+  }
+
+  return {
+    fair: isFair,
+    minGames,
+    maxGames,
+    avgGames: parseFloat(avgGames.toFixed(1)),
+    variance: maxGames - minGames,
+    gamesPerPlayer
+  };
+};
+
 // Helper function to calculate mid-season review week
 const getMidSeasonWeek = (totalWeeks) => {
   // Mid-season review happens at week 3 of regular season
@@ -939,29 +980,80 @@ const generateSeason = (groupA, groupB, numWeeks = 10) => {
   };
 };
 
-// Sort standings by tiebreaker rules
+// Sort standings by tiebreaker rules (handles multi-way ties correctly)
 const sortStandings = (standings) => {
-  return Object.entries(standings)
-    .map(([name, stats]) => ({ name, ...stats }))
-    .sort((a, b) => {
-      // 1. Most match wins
-      if (b.wins !== a.wins) return b.wins - a.wins;
-      // 2. Head-to-head record (if tied on wins)
-      const h2hA = a.headToHead?.[b.name];
-      const h2hB = b.headToHead?.[a.name];
-      if (h2hA && h2hB) {
-        const h2hDiff = (h2hA.wins - h2hA.losses) - (h2hB.wins - h2hB.losses);
-        if (h2hDiff !== 0) return -h2hDiff; // Negative because we want winner first
+  const players = Object.entries(standings)
+    .map(([name, stats]) => ({ name, ...stats }));
+
+  // Group players by wins to identify ties
+  const winGroups = {};
+  players.forEach(p => {
+    if (!winGroups[p.wins]) winGroups[p.wins] = [];
+    winGroups[p.wins].push(p);
+  });
+
+  // Sort each win group separately
+  const sortedPlayers = [];
+  Object.keys(winGroups)
+    .sort((a, b) => b - a) // Descending by wins
+    .forEach(wins => {
+      const group = winGroups[wins];
+
+      if (group.length === 1) {
+        // No tie, just add the player
+        sortedPlayers.push(group[0]);
+      } else if (group.length === 2) {
+        // 2-way tie: use direct head-to-head
+        group.sort((a, b) => {
+          const h2hA = a.headToHead?.[b.name];
+          const h2hB = b.headToHead?.[a.name];
+          if (h2hA && h2hB) {
+            const h2hDiff = (h2hA.wins - h2hA.losses) - (h2hB.wins - h2hB.losses);
+            if (h2hDiff !== 0) return -h2hDiff;
+          }
+          // Fall through to point differential
+          const diffA = a.pointsFor - a.pointsAgainst;
+          const diffB = b.pointsFor - b.pointsAgainst;
+          if (diffB !== diffA) return diffB - diffA;
+          if (b.pointsFor !== a.pointsFor) return b.pointsFor - a.pointsFor;
+          return a.pointsAgainst - b.pointsAgainst;
+        });
+        sortedPlayers.push(...group);
+      } else {
+        // 3+ way tie: use head-to-head record against TIED players only
+        group.sort((a, b) => {
+          // Calculate h2h win% against other tied players
+          let h2hWinsA = 0, h2hLossesA = 0;
+          let h2hWinsB = 0, h2hLossesB = 0;
+
+          group.forEach(opponent => {
+            if (opponent.name !== a.name && a.headToHead?.[opponent.name]) {
+              h2hWinsA += a.headToHead[opponent.name].wins || 0;
+              h2hLossesA += a.headToHead[opponent.name].losses || 0;
+            }
+            if (opponent.name !== b.name && b.headToHead?.[opponent.name]) {
+              h2hWinsB += b.headToHead[opponent.name].wins || 0;
+              h2hLossesB += b.headToHead[opponent.name].losses || 0;
+            }
+          });
+
+          const h2hDiffA = h2hWinsA - h2hLossesA;
+          const h2hDiffB = h2hWinsB - h2hLossesB;
+
+          if (h2hDiffB !== h2hDiffA) return h2hDiffB - h2hDiffA;
+
+          // Fall through to point differential
+          const diffA = a.pointsFor - a.pointsAgainst;
+          const diffB = b.pointsFor - b.pointsAgainst;
+          if (diffB !== diffA) return diffB - diffA;
+          if (b.pointsFor !== a.pointsFor) return b.pointsFor - a.pointsFor;
+          return a.pointsAgainst - b.pointsAgainst;
+        });
+        sortedPlayers.push(...group);
       }
-      // 3. Point differential (games won minus games lost)
-      const diffA = a.pointsFor - a.pointsAgainst;
-      const diffB = b.pointsFor - b.pointsAgainst;
-      if (diffB !== diffA) return diffB - diffA;
-      // 4. Most total games won
-      if (b.pointsFor !== a.pointsFor) return b.pointsFor - a.pointsFor;
-      // 5. Fewest games lost
-      return a.pointsAgainst - b.pointsAgainst;
     });
+
+  return sortedPlayers;
 };
 
 // Generate wildcard round: Group A #5-6 vs Group B #5-6
@@ -2130,24 +2222,42 @@ app.post('/api/season/create', requireAdmin, async (req, res) => {
   try {
     const { groupA, groupB, numWeeks = 10, seasonName = 'Season 1' } = req.body;
 
-    if (!groupA || !groupB || groupA.length < 2 || groupB.length < 2) {
-      return res.status(400).json({ error: 'Need at least 2 players in each group' });
+    if (!groupA || !groupB) {
+      return res.status(400).json({ error: 'Both groups are required' });
     }
 
-    // Warn if groups are too small for full tournament features
-    const warnings = [];
-    if (groupA.length < 4 || groupB.length < 4) {
-      warnings.push('Groups with fewer than 4 players will have limited championship bracket');
-    }
+    // MINIMUM REQUIREMENTS for full tournament features
     if (groupA.length < 6 || groupB.length < 6) {
-      warnings.push('Groups with fewer than 6 players will skip wildcard round');
+      return res.status(400).json({
+        error: 'Minimum 6 players per group required for full tournament features',
+        details: {
+          groupA: groupA.length,
+          groupB: groupB.length,
+          minimum: 6
+        },
+        reason: 'Need 6+ players for mid-season swap (top/bottom 3), wildcard round (#5-6), and championship bracket (top 4)'
+      });
     }
-    if (groupA.length < 3 || groupB.length < 3) {
-      warnings.push('Groups with fewer than 3 players cannot perform mid-season swap');
+
+    // Additional warnings for suboptimal configurations
+    const warnings = [];
+    if (groupA.length < 8 || groupB.length < 8) {
+      warnings.push('Recommended: 8+ players per group for better schedule balance');
     }
 
     const season = generateSeason(groupA, groupB, numWeeks);
     season.name = seasonName;
+
+    // Validate match distribution fairness
+    const fairnessA = validateMatchDistribution(season.schedule.A, groupA, numWeeks, 'A');
+    const fairnessB = validateMatchDistribution(season.schedule.B, groupB, numWeeks, 'B');
+
+    if (!fairnessA.fair) {
+      warnings.push(`Group A match distribution: ${fairnessA.minGames}-${fairnessA.maxGames} games per player (variance: ${fairnessA.variance})`);
+    }
+    if (!fairnessB.fair) {
+      warnings.push(`Group B match distribution: ${fairnessB.minGames}-${fairnessB.maxGames} games per player (variance: ${fairnessB.variance})`);
+    }
 
     // Ensure season table exists
     await pool.query(`
@@ -2210,12 +2320,16 @@ app.post('/api/season/create', requireAdmin, async (req, res) => {
 
 // Record a league match result
 app.post('/api/season/match', async (req, res) => {
+  const client = await pool.connect();
   try {
+    await client.query('BEGIN');
+
     const { matchId, winner, loser, score1, score2 } = req.body;
 
     // Use SELECT FOR UPDATE to lock the row and prevent race conditions
-    const result = await pool.query('SELECT data, updated_at FROM season WHERE id = 1 FOR UPDATE');
+    const result = await client.query('SELECT data, updated_at FROM season WHERE id = 1 FOR UPDATE');
     if (result.rows.length === 0) {
+      await client.query('ROLLBACK');
       return res.status(400).json({ error: 'No active season' });
     }
 
@@ -2304,11 +2418,13 @@ app.post('/api/season/match', async (req, res) => {
     }
 
     if (!match) {
+      await client.query('ROLLBACK');
       return res.status(404).json({ error: 'Match not found' });
     }
 
     // SECURITY: Prevent re-submitting already completed matches
     if (match.completed) {
+      await client.query('ROLLBACK');
       return res.status(400).json({
         error: 'Match already completed',
         existingResult: {
@@ -2322,6 +2438,7 @@ app.post('/api/season/match', async (req, res) => {
     // SECURITY: Validate winner/loser are actual participants in this match
     const participants = [match.player1, match.player2].filter(Boolean);
     if (!participants.includes(winner) || !participants.includes(loser)) {
+      await client.query('ROLLBACK');
       return res.status(400).json({
         error: 'Winner and loser must be match participants',
         participants: participants
@@ -2330,11 +2447,13 @@ app.post('/api/season/match', async (req, res) => {
 
     // SECURITY: Winner and loser must be different
     if (winner === loser) {
+      await client.query('ROLLBACK');
       return res.status(400).json({ error: 'Winner and loser cannot be the same player' });
     }
 
     // SECURITY: Validate scores are non-negative integers
     if (!Number.isInteger(score1) || !Number.isInteger(score2) || score1 < 0 || score2 < 0) {
+      await client.query('ROLLBACK');
       return res.status(400).json({ error: 'Scores must be non-negative integers' });
     }
 
@@ -2342,6 +2461,7 @@ app.post('/api/season/match', async (req, res) => {
     const winnerScore = winner === match.player1 ? score1 : score2;
     const loserScore = winner === match.player1 ? score2 : score1;
     if (winnerScore <= loserScore) {
+      await client.query('ROLLBACK');
       return res.status(400).json({ error: 'Winner must have a higher score than loser' });
     }
 
@@ -2401,6 +2521,16 @@ app.post('/api/season/match', async (req, res) => {
             }
           }
         });
+
+        // VALIDATION: Ensure wildcard winners are actually from their assigned groups
+        if (wildcardWinnerForA && !season.standings.A[wildcardWinnerForA]) {
+          console.error(`⚠️  Wildcard validation failed: ${wildcardWinnerForA} not in Group A standings`);
+          wildcardWinnerForA = null; // Invalidate
+        }
+        if (wildcardWinnerForB && !season.standings.B[wildcardWinnerForB]) {
+          console.error(`⚠️  Wildcard validation failed: ${wildcardWinnerForB} not in Group B standings`);
+          wildcardWinnerForB = null; // Invalidate
+        }
 
         // Generate combined championship bracket (top 4 from each group)
         season.championship = generateChampionshipBracket(
@@ -2513,7 +2643,11 @@ app.post('/api/season/match', async (req, res) => {
       }
     }
 
-    // Update leaderboard too
+    // NOTE: Leaderboard is tracked separately in the leaderboard table for all-time stats
+    // Season standings are tracked in season JSONB for current season only
+    // Both are updated, but serve different purposes:
+    // - leaderboard table: persistent all-time stats, weekly reset
+    // - season standings: current season performance, used for playoffs seeding
     await updateLeaderboard(winner, loser);
 
     // Send notifications for match result
@@ -2652,23 +2786,32 @@ app.post('/api/season/match', async (req, res) => {
     }
 
     // Save updated season
-    await pool.query(`
+    await client.query(`
       UPDATE season SET data = $1, current_week = $2, status = $3, updated_at = CURRENT_TIMESTAMP WHERE id = 1
     `, [JSON.stringify(season), season.currentWeek, season.status]);
 
+    await client.query('COMMIT');
+
     res.json({ success: true, weekAdvanced, newWeek: season.currentWeek, midSeasonTriggered, wildcardStarted: season.status === 'wildcard' });
   } catch (error) {
+    await client.query('ROLLBACK');
     res.status(500).json({ error: error.message });
+  } finally {
+    client.release();
   }
 });
 
 // Correct/reverse a match result (admin only)
 app.post('/api/season/match/correct', requireAdmin, async (req, res) => {
+  const client = await pool.connect();
   try {
+    await client.query('BEGIN');
+
     const { matchId, newWinner, newLoser, newScore1, newScore2 } = req.body;
 
-    const result = await pool.query('SELECT data FROM season WHERE id = 1 FOR UPDATE');
+    const result = await client.query('SELECT data FROM season WHERE id = 1 FOR UPDATE');
     if (result.rows.length === 0) {
+      await client.query('ROLLBACK');
       return res.status(400).json({ error: 'No active season' });
     }
 
@@ -2693,26 +2836,31 @@ app.post('/api/season/match/correct', requireAdmin, async (req, res) => {
     }
 
     if (!match) {
+      await client.query('ROLLBACK');
       return res.status(404).json({ error: 'Match not found. Note: Only regular season matches can be corrected.' });
     }
 
     if (!match.completed) {
+      await client.query('ROLLBACK');
       return res.status(400).json({ error: 'Match has not been completed yet' });
     }
 
     // Validate new values
     const participants = [match.player1, match.player2].filter(Boolean);
     if (!participants.includes(newWinner) || !participants.includes(newLoser)) {
+      await client.query('ROLLBACK');
       return res.status(400).json({ error: 'Winner and loser must be match participants', participants });
     }
 
     if (!Number.isInteger(newScore1) || !Number.isInteger(newScore2) || newScore1 < 0 || newScore2 < 0) {
+      await client.query('ROLLBACK');
       return res.status(400).json({ error: 'Scores must be non-negative integers' });
     }
 
     const newWinnerScore = newWinner === match.player1 ? newScore1 : newScore2;
     const newLoserScore = newWinner === match.player1 ? newScore2 : newScore1;
     if (newWinnerScore <= newLoserScore) {
+      await client.query('ROLLBACK');
       return res.status(400).json({ error: 'Winner must have a higher score' });
     }
 
@@ -2781,9 +2929,11 @@ app.post('/api/season/match/correct', requireAdmin, async (req, res) => {
     match.score2 = newScore2;
     match.correction = correction;
 
-    await pool.query(`
+    await client.query(`
       UPDATE season SET data = $1, updated_at = CURRENT_TIMESTAMP WHERE id = 1
     `, [JSON.stringify(season)]);
+
+    await client.query('COMMIT');
 
     res.json({
       success: true,
@@ -2792,7 +2942,10 @@ app.post('/api/season/match/correct', requireAdmin, async (req, res) => {
       newResult: { winner: newWinner, loser: newLoser, score1: newScore1, score2: newScore2 }
     });
   } catch (error) {
+    await client.query('ROLLBACK');
     res.status(500).json({ error: error.message });
+  } finally {
+    client.release();
   }
 });
 
@@ -2806,6 +2959,9 @@ app.post('/api/season/wildcard', requireAdmin, async (req, res) => {
     }
 
     const season = result.rows[0].data;
+
+    // Create snapshot before starting wildcard
+    await createSeasonSnapshot(season, 'Before starting wildcard round', 'admin');
 
     // Generate wildcard round
     season.wildcard = generateWildcardRound(season.standings.A, season.standings.B);
@@ -2829,6 +2985,9 @@ app.post('/api/season/playoffs', requireAdmin, async (req, res) => {
     }
 
     const season = result.rows[0].data;
+
+    // Create snapshot before starting playoffs
+    await createSeasonSnapshot(season, 'Before starting championship playoffs', 'admin');
 
     // Check if wildcard round exists and determine winners
     // New logic: Winners go to their OWN group playoffs
@@ -2858,6 +3017,16 @@ app.post('/api/season/playoffs', requireAdmin, async (req, res) => {
       });
     }
 
+    // VALIDATION: Ensure wildcard winners are actually from their assigned groups
+    if (wildcardWinnerForA && !season.standings.A[wildcardWinnerForA]) {
+      console.error(`⚠️  Wildcard validation failed: ${wildcardWinnerForA} not in Group A standings`);
+      wildcardWinnerForA = null; // Invalidate
+    }
+    if (wildcardWinnerForB && !season.standings.B[wildcardWinnerForB]) {
+      console.error(`⚠️  Wildcard validation failed: ${wildcardWinnerForB} not in Group B standings`);
+      wildcardWinnerForB = null; // Invalidate
+    }
+
     // Generate combined championship bracket (top 4 from each group)
     season.championship = generateChampionshipBracket(
       season.standings.A,
@@ -2879,13 +3048,20 @@ app.post('/api/season/playoffs', requireAdmin, async (req, res) => {
 
 // Mid-season review - swap bottom 3 from Group A with top 3 from Group B
 app.post('/api/season/mid-review', requireAdmin, async (req, res) => {
+  const client = await pool.connect();
   try {
-    const result = await pool.query('SELECT data FROM season WHERE id = 1');
+    await client.query('BEGIN');
+
+    const result = await client.query('SELECT data FROM season WHERE id = 1 FOR UPDATE');
     if (result.rows.length === 0) {
+      await client.query('ROLLBACK');
       return res.status(400).json({ error: 'No active season' });
     }
 
     const season = result.rows[0].data;
+
+    // Create snapshot before mid-season swap
+    await createSeasonSnapshot(season, `Before mid-season swap (week ${season.currentWeek})`, 'admin');
 
     // Check if mid-season review already happened
     if (season.midSeasonReview?.completed) {
@@ -3039,6 +3215,32 @@ app.post('/api/season/mid-review', requireAdmin, async (req, res) => {
       }
     });
 
+    // Cancel bookings for cancelled matches AND tentative bookings for swapped players
+    await ensureBookingsTable();
+    let cancelledBookings = 0;
+
+    // Cancel bookings for cancelled matches
+    for (const matchId of cancelledMatches) {
+      const result = await client.query(
+        'UPDATE table_bookings SET status = $1, cancel_reason = $2 WHERE match_id = $3 AND status IN ($4, $5)',
+        ['cancelled', 'Mid-season group swap - match cancelled', matchId, 'booked', 'tentative']
+      );
+      cancelledBookings += result.rowCount;
+    }
+
+    // Cancel ALL tentative bookings for swapped players (even if match not cancelled)
+    const allSwappedPlayers = [...swaps.fromAtoB, ...swaps.fromBtoA];
+    for (const playerName of allSwappedPlayers) {
+      const result = await client.query(`
+        UPDATE table_bookings
+        SET status = 'cancelled', cancel_reason = 'Mid-season group swap - player changed groups'
+        WHERE (player1 = $1 OR player2 = $1)
+          AND status = 'tentative'
+          AND booking_date > CURRENT_DATE
+      `, [playerName]);
+      cancelledBookings += result.rowCount;
+    }
+
     // Record the mid-season review
     season.midSeasonReview = {
       completed: true,
@@ -3046,22 +3248,49 @@ app.post('/api/season/mid-review', requireAdmin, async (req, res) => {
       week: season.currentWeek,
       swaps: swaps,
       cancelledMatches: cancelledMatches,
-      newMatchesCreated: newMatches.A.length + newMatches.B.length
+      newMatchesCreated: newMatches.A.length + newMatches.B.length,
+      cancelledBookings: cancelledBookings
     };
 
-    await pool.query(`
+    await client.query(`
       UPDATE season SET data = $1, updated_at = CURRENT_TIMESTAMP WHERE id = 1
     `, [JSON.stringify(season)]);
+
+    await client.query('COMMIT');
+
+    // Notify swapped players
+    for (const playerName of swaps.fromBtoA) {
+      await createNotification(
+        playerName,
+        'mid_season_swap',
+        '🎉 Promoted to Group A!',
+        `Congratulations! You've been promoted to Group A (Seeded) based on your performance.`,
+        '#standings'
+      );
+    }
+    for (const playerName of swaps.fromAtoB) {
+      await createNotification(
+        playerName,
+        'mid_season_swap',
+        '📉 Moved to Group B',
+        `You've been moved to Group B (Unseeded) at mid-season review. Keep fighting!`,
+        '#standings'
+      );
+    }
 
     res.json({
       success: true,
       swaps,
       message: `Swapped ${swaps.fromAtoB.length} players from A→B and ${swaps.fromBtoA.length} players from B→A`,
       cancelledMatches: cancelledMatches.length,
-      newMatchesCreated: newMatches.A.length + newMatches.B.length
+      newMatchesCreated: newMatches.A.length + newMatches.B.length,
+      cancelledBookings
     });
   } catch (error) {
+    await client.query('ROLLBACK');
     res.status(500).json({ error: error.message });
+  } finally {
+    client.release();
   }
 });
 
@@ -3233,6 +3462,77 @@ app.post('/api/season/next-week', requireAdmin, async (req, res) => {
   }
 });
 
+// Force advance to next week (marks incomplete matches as cancelled/forfeit)
+app.post('/api/season/force-next-week', requireAdmin, async (req, res) => {
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+
+    const result = await client.query('SELECT data FROM season WHERE id = 1 FOR UPDATE');
+    if (result.rows.length === 0) {
+      await client.query('ROLLBACK');
+      return res.status(400).json({ error: 'No active season' });
+    }
+
+    const season = result.rows[0].data;
+    const { markIncompleteAs = 'cancelled' } = req.body; // 'cancelled' or 'forfeit'
+
+    if (!['cancelled', 'forfeit'].includes(markIncompleteAs)) {
+      await client.query('ROLLBACK');
+      return res.status(400).json({ error: 'markIncompleteAs must be "cancelled" or "forfeit"' });
+    }
+
+    // Create snapshot before forcing week advance
+    await createSeasonSnapshot(season, `Before force-advance from week ${season.currentWeek}`, 'admin');
+
+    // Mark all incomplete current week matches
+    let markedCount = 0;
+    ['A', 'B'].forEach(g => {
+      const weekSchedule = season.schedule[g][season.currentWeek - 1];
+      if (weekSchedule) {
+        weekSchedule.forEach(match => {
+          if (!match.completed && !match.cancelled) {
+            if (markIncompleteAs === 'cancelled') {
+              match.cancelled = true;
+              match.cancelReason = 'Admin force-advanced week';
+            } else {
+              match.completed = true;
+              match.winner = null;
+              match.loser = null;
+              match.forfeit = true;
+            }
+            markedCount++;
+          }
+        });
+      }
+    });
+
+    // Advance week
+    if (season.currentWeek < season.totalWeeks) {
+      season.currentWeek++;
+    }
+
+    await client.query(`
+      UPDATE season SET data = $1, current_week = $2, updated_at = CURRENT_TIMESTAMP WHERE id = 1
+    `, [JSON.stringify(season), season.currentWeek]);
+
+    await client.query('COMMIT');
+
+    res.json({
+      success: true,
+      currentWeek: season.currentWeek,
+      markedAs: markIncompleteAs,
+      matchesMarked: markedCount,
+      message: `Advanced to week ${season.currentWeek}. ${markedCount} incomplete matches marked as ${markIncompleteAs}.`
+    });
+  } catch (error) {
+    await client.query('ROLLBACK');
+    res.status(500).json({ error: error.message });
+  } finally {
+    client.release();
+  }
+});
+
 // Delete season (admin only) - use with caution
 app.delete('/api/season', requireAdmin, async (req, res) => {
   try {
@@ -3263,6 +3563,45 @@ const ensureArchiveTable = async () => {
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )
   `);
+};
+
+// Ensure season_snapshots table exists for rollback capability
+const ensureSnapshotsTable = async () => {
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS season_snapshots (
+      id SERIAL PRIMARY KEY,
+      season_id INTEGER NOT NULL DEFAULT 1,
+      snapshot_data JSONB NOT NULL,
+      reason VARCHAR(255) NOT NULL,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      created_by VARCHAR(255)
+    )
+  `);
+  await pool.query('CREATE INDEX IF NOT EXISTS idx_snapshots_season ON season_snapshots(season_id, created_at DESC)');
+};
+
+// Create snapshot before major season mutations
+const createSeasonSnapshot = async (season, reason, createdBy = 'system') => {
+  try {
+    await ensureSnapshotsTable();
+    await pool.query(`
+      INSERT INTO season_snapshots (season_id, snapshot_data, reason, created_by)
+      VALUES (1, $1, $2, $3)
+    `, [JSON.stringify(season), reason, createdBy]);
+
+    // Keep only last 20 snapshots
+    await pool.query(`
+      DELETE FROM season_snapshots
+      WHERE id NOT IN (
+        SELECT id FROM season_snapshots
+        WHERE season_id = 1
+        ORDER BY created_at DESC
+        LIMIT 20
+      ) AND season_id = 1
+    `);
+  } catch (e) {
+    console.error('Failed to create snapshot:', e.message);
+  }
 };
 
 // Archive current season (admin only) - call this before starting new season
@@ -3361,6 +3700,95 @@ app.get('/api/seasons/history/:seasonNumber', async (req, res) => {
     res.json(result.rows[0]);
   } catch (error) {
     res.status(500).json({ error: error.message });
+  }
+});
+
+// ============ SEASON SNAPSHOTS & ROLLBACK ============
+
+// Get all snapshots for current season (admin only)
+app.get('/api/season/snapshots', requireAdmin, async (req, res) => {
+  try {
+    await ensureSnapshotsTable();
+
+    const result = await pool.query(`
+      SELECT id, reason, created_at, created_by
+      FROM season_snapshots
+      WHERE season_id = 1
+      ORDER BY created_at DESC
+      LIMIT 20
+    `);
+
+    res.json(result.rows);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Rollback to a specific snapshot (admin only)
+app.post('/api/season/rollback/:snapshotId', requireAdmin, async (req, res) => {
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    await ensureSnapshotsTable();
+
+    const { snapshotId } = req.params;
+
+    // Get the snapshot
+    const snapshotResult = await client.query(
+      'SELECT snapshot_data, reason, created_at FROM season_snapshots WHERE id = $1 AND season_id = 1',
+      [snapshotId]
+    );
+
+    if (snapshotResult.rows.length === 0) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({ error: 'Snapshot not found' });
+    }
+
+    const snapshot = snapshotResult.rows[0];
+
+    // Create a snapshot of current state before rollback (for undo)
+    const currentResult = await client.query('SELECT data FROM season WHERE id = 1');
+    if (currentResult.rows.length > 0) {
+      await client.query(`
+        INSERT INTO season_snapshots (season_id, snapshot_data, reason, created_by)
+        VALUES (1, $1, $2, $3)
+      `, [
+        JSON.stringify(currentResult.rows[0].data),
+        `Before rollback to snapshot #${snapshotId}`,
+        'rollback_system'
+      ]);
+    }
+
+    // Restore the snapshot
+    const restoredSeason = snapshot.snapshot_data;
+
+    await client.query(`
+      UPDATE season SET
+        data = $1,
+        status = $2,
+        current_week = $3,
+        updated_at = CURRENT_TIMESTAMP
+      WHERE id = 1
+    `, [
+      JSON.stringify(restoredSeason),
+      restoredSeason.status,
+      restoredSeason.currentWeek
+    ]);
+
+    await client.query('COMMIT');
+
+    res.json({
+      success: true,
+      message: `Season rolled back to: ${snapshot.reason}`,
+      snapshotDate: snapshot.created_at,
+      restoredWeek: restoredSeason.currentWeek,
+      restoredStatus: restoredSeason.status
+    });
+  } catch (error) {
+    await client.query('ROLLBACK');
+    res.status(500).json({ error: error.message });
+  } finally {
+    client.release();
   }
 });
 
