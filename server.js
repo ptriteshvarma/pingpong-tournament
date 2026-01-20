@@ -42,10 +42,10 @@ function initWebPush() {
 }
 
 // PostgreSQL connection
-// Railway automatically provides DATABASE_URL environment variable
+// Railway automatically provides POSTGRES_URL environment variable
 const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: process.env.DATABASE_URL ? { rejectUnauthorized: false } : false
+  connectionString: process.env.POSTGRES_URL,
+  ssl: process.env.POSTGRES_URL ? { rejectUnauthorized: false } : false
 });
 
 // Auto-initialize database tables on startup
@@ -4483,7 +4483,7 @@ async function checkWeeklySummary() {
 // Start server
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
-  console.log(`Database: ${process.env.DATABASE_URL ? 'PostgreSQL' : 'Local development'}`);
+  console.log(`Database: ${process.env.POSTGRES_URL ? 'PostgreSQL' : 'Local development'}`);
 
   // Check for match reminders every 15 minutes
   setInterval(sendMatchReminders, 15 * 60 * 1000);
