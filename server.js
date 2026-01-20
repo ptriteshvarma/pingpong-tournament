@@ -3,6 +3,10 @@ const cors = require('cors');
 const path = require('path');
 const { Pool } = require('pg');
 
+// Disable SSL certificate validation for Supabase/Vercel
+// This is necessary because Vercel's serverless environment has issues with Supabase's SSL certificates
+process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
+
 const app = express();
 const PORT = process.env.PORT || 3000;
 const ADMIN_PASSWORD = 'Username';
