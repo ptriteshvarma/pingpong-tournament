@@ -43,10 +43,20 @@ function initWebPush() {
 
 // PostgreSQL connection
 // Supabase/Railway automatically provides POSTGRES_URL environment variable
-const pool = new Pool({
+const poolConfig = {
   connectionString: process.env.POSTGRES_URL,
-  ssl: process.env.POSTGRES_URL ? { rejectUnauthorized: false } : false
-});
+};
+
+// Only add SSL config if we have a database URL
+if (process.env.POSTGRES_URL) {
+  poolConfig.ssl = {
+    rejectUnauthorized: false,
+    // Explicitly allow self-signed certificates
+    checkServerIdentity: () => undefined
+  };
+}
+
+const pool = new Pool(poolConfig);
 
 // Auto-initialize database tables on startup
 async function initDatabase() {
