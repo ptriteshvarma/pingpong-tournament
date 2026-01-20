@@ -872,6 +872,13 @@ const distributeMatchesToWeeks = (matches, players, numWeeks) => {
   return weeks;
 };
 
+// Helper function to calculate mid-season review week
+const getMidSeasonWeek = (totalWeeks) => {
+  // Mid-season review happens at week 3 of regular season
+  // (before playoffs/qualifiers which happen in the final weeks)
+  return 3;
+};
+
 // Generate complete season
 const generateSeason = (groupA, groupB, numWeeks = 10) => {
   const groupAMatches = generateRoundRobinSchedule(groupA, true);
@@ -1878,7 +1885,7 @@ const getPlayerSwapZoneStatus = async (playerName) => {
     if (result.rows.length === 0) return null;
 
     const season = result.rows[0].data;
-    const midPoint = Math.floor(season.totalWeeks / 2);
+    const midPoint = getMidSeasonWeek(season.totalWeeks);
 
     // Only check during first half of regular season
     if (season.status !== 'regular' || season.currentWeek >= midPoint || season.midSeasonReview?.completed) {
@@ -1954,7 +1961,7 @@ app.post('/api/bookings', async (req, res) => {
     // If players are in swap zone and booking is after mid-season, mark as tentative
     const seasonResult = await pool.query('SELECT data FROM season WHERE id = 1');
     const season = seasonResult.rows[0]?.data;
-    const midPoint = season ? Math.floor(season.totalWeeks / 2) : 5;
+    const midPoint = season ? getMidSeasonWeek(season.totalWeeks) : 3;
     const bookingWeek = getWeekNumber(booking_date);
     const isTentative = swapZoneWarning && bookingWeek >= midPoint;
 
@@ -2086,7 +2093,29 @@ app.get('/api/season', async (req, res) => {
     if (result.rows.length === 0) {
       return res.json(null);
     }
-    res.json(result.rows[0].data);
+
+    const season = result.rows[0].data;
+
+    // Add rankings to standings for each group
+    if (season.standings) {
+      // Group A rankings
+      if (season.standings.A) {
+        const sortedA = sortStandings(season.standings.A);
+        sortedA.forEach((player, index) => {
+          season.standings.A[player.name].rank = index + 1;
+        });
+      }
+
+      // Group B rankings
+      if (season.standings.B) {
+        const sortedB = sortStandings(season.standings.B);
+        sortedB.forEach((player, index) => {
+          season.standings.B[player.name].rank = index + 1;
+        });
+      }
+    }
+
+    res.json(season);
   } catch (error) {
     // Table might not exist yet
     if (error.code === '42P01') {
@@ -2570,8 +2599,8 @@ app.post('/api/season/match', async (req, res) => {
           }
         }
 
-        // Check if we just hit mid-season (week 5 for 10-week season)
-        const midPoint = Math.floor(season.totalWeeks / 2);
+        // Check if we just hit mid-season (week 3)
+        const midPoint = getMidSeasonWeek(season.totalWeeks);
         if (season.currentWeek === midPoint && !season.midSeasonReview?.completed) {
           // Flag that mid-season review is now available
           season.midSeasonPending = true;
@@ -2863,8 +2892,8 @@ app.post('/api/season/mid-review', requireAdmin, async (req, res) => {
       return res.status(400).json({ error: 'Mid-season review already completed' });
     }
 
-    // Check if we're at mid-season (week 5 or later for 10-week season)
-    const midPoint = Math.floor(season.totalWeeks / 2);
+    // Check if we're at mid-season (week 3 or later)
+    const midPoint = getMidSeasonWeek(season.totalWeeks);
     if (season.currentWeek < midPoint) {
       return res.status(400).json({ error: `Mid-season review available from week ${midPoint}` });
     }
@@ -3045,7 +3074,7 @@ app.get('/api/season/swap-zone', async (req, res) => {
     }
 
     const season = result.rows[0].data;
-    const midPoint = Math.floor(season.totalWeeks / 2);
+    const midPoint = getMidSeasonWeek(season.totalWeeks);
 
     // Swap zone only active during first half of regular season
     if (season.status !== 'regular' || season.currentWeek >= midPoint || season.midSeasonReview?.completed) {
@@ -3120,7 +3149,7 @@ app.get('/api/season/swap-zone', async (req, res) => {
       promotionZone,
       bubble: [...bubbleA, ...bubbleB],
       swapRules: [
-        'At Week 5 mid-season review:',
+        'At Week 3 mid-season review:',
         '• Bottom 3 from Group A (Seeded) move DOWN to Group B',
         '• Top 3 from Group B (Unseeded) move UP to Group A',
         'Win now to secure your position!'
@@ -3148,7 +3177,7 @@ app.get('/api/season/mid-review/preview', async (req, res) => {
       });
     }
 
-    const midPoint = Math.floor(season.totalWeeks / 2);
+    const midPoint = getMidSeasonWeek(season.totalWeeks);
     const sortedA = sortStandings(season.standings.A);
     const sortedB = sortStandings(season.standings.B);
 
