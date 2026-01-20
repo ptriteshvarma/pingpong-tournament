@@ -4480,16 +4480,21 @@ async function checkWeeklySummary() {
   }
 }
 
-// Start server
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
-  console.log(`Database: ${process.env.POSTGRES_URL ? 'PostgreSQL' : 'Local development'}`);
+// Start server (for local development)
+if (process.env.NODE_ENV !== 'production') {
+  app.listen(PORT, () => {
+    console.log(`Server running on port ${PORT}`);
+    console.log(`Database: ${process.env.POSTGRES_URL ? 'PostgreSQL' : 'Local development'}`);
 
-  // Check for match reminders every 15 minutes
-  setInterval(sendMatchReminders, 15 * 60 * 1000);
-  console.log('Match reminder scheduler started (checks every 15 minutes)');
+    // Check for match reminders every 15 minutes
+    setInterval(sendMatchReminders, 15 * 60 * 1000);
+    console.log('Match reminder scheduler started (checks every 15 minutes)');
 
-  // Check for weekly summary every 15 minutes (will only send on Monday 9 AM)
-  setInterval(checkWeeklySummary, 15 * 60 * 1000);
-  console.log('Weekly summary scheduler started (sends Monday 9 AM)');
-});
+    // Check for weekly summary every 15 minutes (will only send on Monday 9 AM)
+    setInterval(checkWeeklySummary, 15 * 60 * 1000);
+    console.log('Weekly summary scheduler started (sends Monday 9 AM)');
+  });
+}
+
+// Export for Vercel serverless deployment
+module.exports = app;
