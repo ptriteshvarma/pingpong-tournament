@@ -42,21 +42,13 @@ function initWebPush() {
 }
 
 // PostgreSQL connection
-// Supabase/Railway automatically provides POSTGRES_URL environment variable
-const poolConfig = {
-  connectionString: process.env.POSTGRES_URL,
-};
+// Use POSTGRES_PRISMA_URL for Vercel/Supabase (has pgbouncer), fallback to POSTGRES_URL
+const connectionString = process.env.POSTGRES_PRISMA_URL || process.env.POSTGRES_URL;
 
-// Only add SSL config if we have a database URL
-if (process.env.POSTGRES_URL) {
-  poolConfig.ssl = {
-    rejectUnauthorized: false,
-    // Explicitly allow self-signed certificates
-    checkServerIdentity: () => undefined
-  };
-}
-
-const pool = new Pool(poolConfig);
+const pool = new Pool({
+  connectionString: connectionString,
+  // Don't use SSL config - let pg library handle it from connection string
+});
 
 // Auto-initialize database tables on startup
 async function initDatabase() {
