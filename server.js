@@ -4060,6 +4060,75 @@ app.post('/api/notifications/broadcast', requireAdmin, async (req, res) => {
   }
 });
 
+// Send manual notification (admin-triggered)
+app.post('/api/notifications/send-manual', requireAdmin, async (req, res) => {
+  try {
+    await ensureNotificationsTable();
+
+    const { recipient, title, message } = req.body;
+
+    if (!title || !message) {
+      return res.status(400).json({ error: 'Title and message required' });
+    }
+
+    if (!recipient) {
+      return res.status(400).json({ error: 'Recipient required' });
+    }
+
+    let recipientCount = 0;
+
+    if (recipient === 'all') {
+      // Send to everyone
+      await createNotification(null, 'manual', title, message, null);
+
+      // Count all players with push subscriptions
+      const countResult = await pool.query('SELECT COUNT(DISTINCT player_name) as count FROM push_subscriptions');
+      recipientCount = countResult.rows[0]?.count || 0;
+
+    } else if (recipient === 'groupA' || recipient === 'groupB') {
+      // Send to specific group
+      const seasonResult = await pool.query('SELECT data FROM season WHERE id = 1');
+
+      if (seasonResult.rows.length === 0) {
+        return res.status(400).json({ error: 'No active season found' });
+      }
+
+      const season = seasonResult.rows[0].data;
+      const group = recipient === 'groupA' ? 'A' : 'B';
+      const players = Object.keys(season.standings?.[group] || {});
+
+      if (players.length === 0) {
+        return res.status(400).json({ error: `Group ${group} has no players` });
+      }
+
+      // Send notification to each player in the group
+      for (const playerName of players) {
+        await createNotification(playerName, 'manual', title, message, null);
+      }
+
+      recipientCount = players.length;
+
+    } else {
+      // Send to specific player
+      await createNotification(recipient, 'manual', title, message, null);
+      recipientCount = 1;
+    }
+
+    res.json({
+      success: true,
+      message: 'Manual notification sent',
+      recipientCount,
+      recipient: recipient === 'all' ? 'all players' :
+                 recipient === 'groupA' ? 'Group A' :
+                 recipient === 'groupB' ? 'Group B' : recipient
+    });
+
+  } catch (error) {
+    console.error('Manual notification error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // ============ LEAGUE REGISTRATION SYSTEM ============
 
 // Ensure registration tables exist
