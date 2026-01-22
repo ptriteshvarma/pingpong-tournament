@@ -57,6 +57,9 @@ const connectionString = process.env.POSTGRES_PRISMA_URL || process.env.POSTGRES
 const pool = new Pool({
   connectionString: connectionString,
   // Don't use SSL config - let pg library handle it from connection string
+  connectionTimeoutMillis: 5000, // 5 second timeout for connection
+  idleTimeoutMillis: 30000, // Close idle clients after 30 seconds
+  max: 10 // Maximum 10 connections in pool
 });
 
 // Auto-initialize database tables on startup
@@ -2966,12 +2969,207 @@ app.post('/api/season/match', async (req, res) => {
           }
         }
 
-        // Check if we just hit mid-season (week 3)
+        // Check if we just hit mid-season (week 3) - AUTO-EXECUTE SWAP
         const midPoint = getMidSeasonWeek(season.totalWeeks);
         if (season.currentWeek === midPoint && !season.midSeasonReview?.completed) {
-          // Flag that mid-season review is now available
-          season.midSeasonPending = true;
-          midSeasonTriggered = true;
+          // AUTO-EXECUTE MID-SEASON SWAP
+          console.log(`🔄 Auto-executing mid-season swap at week ${season.currentWeek}`);
+
+          const sortedA = sortStandings(season.standings.A);
+          const sortedB = sortStandings(season.standings.B);
+
+          // Only proceed if both groups have at least 3 players
+          if (sortedA.length >= 3 && sortedB.length >= 3) {
+            const bottomA = sortedA.slice(-3);
+            const topB = sortedB.slice(0, 3);
+
+            const swaps = {
+              fromAtoB: bottomA.map(p => p.name),
+              fromBtoA: topB.map(p => p.name)
+            };
+
+            // Update groups
+            const newGroupAPlayers = season.groups.A.players.filter(p => !swaps.fromAtoB.includes(p.name));
+            const newGroupBPlayers = season.groups.B.players.filter(p => !swaps.fromBtoA.includes(p.name));
+
+            swaps.fromBtoA.forEach(name => {
+              const player = season.groups.B.players.find(p => p.name === name);
+              if (player) newGroupAPlayers.push({ ...player, promotedMidSeason: true });
+            });
+            swaps.fromAtoB.forEach(name => {
+              const player = season.groups.A.players.find(p => p.name === name);
+              if (player) newGroupBPlayers.push({ ...player, relegatedMidSeason: true });
+            });
+
+            season.groups.A.players = newGroupAPlayers;
+            season.groups.B.players = newGroupBPlayers;
+
+            // Move standings data (with stats reset - always true for fairness)
+            const resetStats = true;
+
+            swaps.fromAtoB.forEach(name => {
+              const oldStats = season.standings.A[name];
+              const baseStats = resetStats ? {
+                wins: 0, losses: 0, points: 0,
+                pointsFor: 0, pointsAgainst: 0,
+                streak: 0, lastResults: [],
+                headToHead: {}
+              } : { ...oldStats };
+
+              season.standings.B[name] = {
+                ...baseStats,
+                initialSeed: oldStats.initialSeed,
+                relegatedFrom: 'A',
+                preSwapStats: { ...oldStats }
+              };
+              delete season.standings.A[name];
+            });
+
+            swaps.fromBtoA.forEach(name => {
+              const oldStats = season.standings.B[name];
+              const baseStats = resetStats ? {
+                wins: 0, losses: 0, points: 0,
+                pointsFor: 0, pointsAgainst: 0,
+                streak: 0, lastResults: [],
+                headToHead: {}
+              } : { ...oldStats };
+
+              season.standings.A[name] = {
+                ...baseStats,
+                initialSeed: oldStats.initialSeed,
+                promotedFrom: 'B',
+                preSwapStats: { ...oldStats }
+              };
+              delete season.standings.B[name];
+            });
+
+            // Cancel old matches
+            const cancelledMatches = [];
+            ['A', 'B'].forEach(group => {
+              const swappedPlayers = group === 'A' ? swaps.fromAtoB : swaps.fromBtoA;
+              season.schedule[group].forEach((week, weekIdx) => {
+                if (weekIdx + 1 > season.currentWeek) {
+                  week.forEach(match => {
+                    if (!match.completed && (swappedPlayers.includes(match.player1) || swappedPlayers.includes(match.player2))) {
+                      match.cancelled = true;
+                      match.cancelReason = 'Auto mid-season group swap';
+                      cancelledMatches.push(match.id);
+                    }
+                  });
+                }
+              });
+            });
+
+            // Generate new priority-matched games
+            const remainingWeeks = season.totalWeeks - season.currentWeek;
+            const newMatches = { A: [], B: [] };
+
+            const getPriorityOpponents = (playerName, newGroup, swappedPlayers, oldRank) => {
+              const allOpponents = season.groups[newGroup].players
+                .filter(p => p.name !== playerName && !swappedPlayers.includes(p.name))
+                .map(p => ({ name: p.name, stats: season.standings[newGroup][p.name] }));
+
+              const sortedOpponents = sortStandings(
+                Object.fromEntries(allOpponents.map(o => [o.name, o.stats]))
+              );
+
+              let priorityOpponents = [];
+              let secondaryOpponents = [];
+
+              if (oldRank >= 6) {
+                priorityOpponents = sortedOpponents.slice(3);
+                secondaryOpponents = sortedOpponents.slice(0, 3);
+              } else if (oldRank <= 3) {
+                priorityOpponents = sortedOpponents.slice(0, 4);
+                secondaryOpponents = sortedOpponents.slice(4);
+              } else {
+                priorityOpponents = sortedOpponents;
+                secondaryOpponents = [];
+              }
+
+              return [...priorityOpponents, ...secondaryOpponents];
+            };
+
+            swaps.fromBtoA.forEach((playerName, swapIdx) => {
+              const oldRank = swapIdx + 1;
+              const opponents = getPriorityOpponents(playerName, 'A', swaps.fromBtoA, oldRank);
+
+              opponents.forEach((opp, idx) => {
+                if (idx < remainingWeeks) {
+                  const weekNum = season.currentWeek + 1 + idx;
+                  const matchId = `A-W${weekNum}-SWAP-${playerName.replace(/\s/g, '')}-${opp.name.replace(/\s/g, '')}`;
+                  newMatches.A.push({
+                    id: matchId, week: weekNum, player1: playerName, player2: opp.name,
+                    group: 'A', completed: false, winner: null, loser: null,
+                    score1: null, score2: null, isSwapMatch: true,
+                    priorityMatch: idx < Math.ceil(remainingWeeks * 0.6)
+                  });
+                }
+              });
+            });
+
+            swaps.fromAtoB.forEach((playerName, swapIdx) => {
+              const oldRank = sortedA.length - 2 + swapIdx;
+              const opponents = getPriorityOpponents(playerName, 'B', swaps.fromAtoB, oldRank);
+
+              opponents.forEach((opp, idx) => {
+                if (idx < remainingWeeks) {
+                  const weekNum = season.currentWeek + 1 + idx;
+                  const matchId = `B-W${weekNum}-SWAP-${playerName.replace(/\s/g, '')}-${opp.name.replace(/\s/g, '')}`;
+                  newMatches.B.push({
+                    id: matchId, week: weekNum, player1: playerName, player2: opp.name,
+                    group: 'B', completed: false, winner: null, loser: null,
+                    score1: null, score2: null, isSwapMatch: true,
+                    priorityMatch: idx < Math.ceil(remainingWeeks * 0.6)
+                  });
+                }
+              });
+            });
+
+            // Add new matches to schedule
+            newMatches.A.forEach(match => {
+              const weekIdx = match.week - 1;
+              if (season.schedule.A[weekIdx]) season.schedule.A[weekIdx].push(match);
+            });
+            newMatches.B.forEach(match => {
+              const weekIdx = match.week - 1;
+              if (season.schedule.B[weekIdx]) season.schedule.B[weekIdx].push(match);
+            });
+
+            // Record the auto mid-season review
+            season.midSeasonReview = {
+              completed: true,
+              completedAt: new Date().toISOString(),
+              week: season.currentWeek,
+              swaps: swaps,
+              cancelledMatches: cancelledMatches,
+              newMatchesCreated: newMatches.A.length + newMatches.B.length,
+              statsReset: resetStats,
+              priorityMatching: true,
+              automatic: true
+            };
+
+            // Notify swapped players
+            for (const playerName of swaps.fromBtoA) {
+              await createNotification(
+                playerName, 'mid_season_swap', '🎉 Promoted to Group A!',
+                `Congratulations! You've been promoted to Group A (Seeded). Your stats have been reset and you'll face top-tier opponents.`,
+                '#standings'
+              );
+            }
+            for (const playerName of swaps.fromAtoB) {
+              await createNotification(
+                playerName, 'mid_season_swap', '📉 Moved to Group B',
+                `You've been moved to Group B (Unseeded) at mid-season review. Your stats have been reset - fresh start against similar-level opponents!`,
+                '#standings'
+              );
+            }
+
+            midSeasonTriggered = true;
+            console.log(`✅ Auto mid-season swap complete: ${swaps.fromAtoB.length} relegated, ${swaps.fromBtoA.length} promoted`);
+          } else {
+            console.log(`⚠️  Skipping auto mid-season swap - insufficient players (A: ${sortedA.length}, B: ${sortedB.length})`);
+          }
         }
       }
 
@@ -3316,7 +3514,14 @@ app.post('/api/season/mid-review', requireAdmin, async (req, res) => {
 
     // Check if mid-season review already happened
     if (season.midSeasonReview?.completed) {
-      return res.status(400).json({ error: 'Mid-season review already completed' });
+      return res.status(400).json({
+        error: 'Mid-season review already completed',
+        automatic: season.midSeasonReview.automatic || false,
+        completedAt: season.midSeasonReview.completedAt,
+        message: season.midSeasonReview.automatic
+          ? 'Mid-season swap was automatically executed when week 3 completed'
+          : 'Mid-season swap was manually triggered by admin'
+      });
     }
 
     // Check if we're at mid-season (week 3 or later)
@@ -4504,8 +4709,20 @@ app.put('/api/registration/config', requireAdmin, async (req, res) => {
 
 // Register a player (public)
 app.post('/api/registration/register', async (req, res) => {
+  const startTime = Date.now();
+  console.log('📝 Registration attempt started:', req.body.playerName);
+
   try {
+    // Set a response timeout
+    const timeoutId = setTimeout(() => {
+      if (!res.headersSent) {
+        console.error('⏰ Registration timeout after 25 seconds');
+        res.status(504).json({ error: 'Registration timeout. Please try again.' });
+      }
+    }, 25000); // 25 second timeout (Vercel has 30s limit)
+
     await ensureRegistrationTables();
+    console.log('✓ Tables ensured, took:', Date.now() - startTime, 'ms');
 
     // Check if registration is open
     const configResult = await pool.query('SELECT * FROM league_config WHERE id = 1');
