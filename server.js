@@ -4276,7 +4276,17 @@ app.post('/api/registration/register', async (req, res) => {
       [trimmedName]
     );
     if (existingReg.rows.length > 0) {
-      return res.status(400).json({ error: 'This name is already registered' });
+      const reg = existingReg.rows[0];
+      return res.json({
+        success: true,
+        registration: reg,
+        alreadyRegistered: true,
+        isRanked: reg.is_ranked,
+        matchedPlayer: reg.suggested_seed ? { seed: reg.suggested_seed } : null,
+        message: reg.is_ranked
+          ? `Welcome back! You're already registered with previous seed #${reg.suggested_seed}. Your status: ${reg.registration_status}.`
+          : `Welcome back! You're already registered for the league. Your status: ${reg.registration_status}.`
+      });
     }
 
     // Check if matches a ranked player (case-insensitive fuzzy match)
