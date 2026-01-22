@@ -1457,12 +1457,28 @@ app.post('/api/players/register', async (req, res) => {
 
     // Check if player already exists
     const existing = await pool.query(
-      'SELECT id FROM players WHERE LOWER(name) = LOWER($1)',
+      'SELECT id, name, seed FROM players WHERE LOWER(name) = LOWER($1)',
       [cleanName]
     );
 
     if (existing.rows.length > 0) {
-      return res.status(409).json({ error: 'A player with this name already exists' });
+      // Player already exists - return success with friendly message
+      const player = existing.rows[0];
+
+      // Log the re-registration attempt
+      await pool.query(
+        `INSERT INTO activity_log (event_type, player_name, details) VALUES ($1, $2, $3)`,
+        ['player_re_registered', cleanName, JSON.stringify({ email: email || null, alreadyExists: true, registeredAt: new Date().toISOString() })]
+      );
+
+      return res.json({
+        success: true,
+        player: player,
+        alreadyRegistered: true,
+        message: player.seed
+          ? `Welcome back ${cleanName}! You're already registered with seed #${player.seed}. You'll be included in upcoming seasons.`
+          : `Welcome back ${cleanName}! You're already registered. You'll be included in upcoming seasons.`
+      });
     }
 
     // Add new player (no seed - they'll be in Group B)
