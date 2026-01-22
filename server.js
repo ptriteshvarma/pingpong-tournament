@@ -4712,14 +4712,15 @@ app.post('/api/registration/register', async (req, res) => {
   const startTime = Date.now();
   console.log('📝 Registration attempt started:', req.body.playerName);
 
+  // Set a response timeout (declared outside try so catch can clear it)
+  const timeoutId = setTimeout(() => {
+    if (!res.headersSent) {
+      console.error('⏰ Registration timeout after 25 seconds');
+      res.status(504).json({ error: 'Registration timeout. Please try again.' });
+    }
+  }, 25000); // 25 second timeout (Vercel has 30s limit)
+
   try {
-    // Set a response timeout
-    const timeoutId = setTimeout(() => {
-      if (!res.headersSent) {
-        console.error('⏰ Registration timeout after 25 seconds');
-        res.status(504).json({ error: 'Registration timeout. Please try again.' });
-      }
-    }, 25000); // 25 second timeout (Vercel has 30s limit)
 
     await ensureRegistrationTables();
     console.log('✓ Tables ensured, took:', Date.now() - startTime, 'ms');
@@ -4729,22 +4730,26 @@ app.post('/api/registration/register', async (req, res) => {
     const config = configResult.rows[0];
 
     if (!config?.registration_open) {
+      clearTimeout(timeoutId);
       return res.status(400).json({ error: 'Registration is currently closed' });
     }
 
     if (config.registration_close_date && new Date(config.registration_close_date) < new Date()) {
+      clearTimeout(timeoutId);
       return res.status(400).json({ error: 'Registration deadline has passed' });
     }
 
     // Check max players
     const countResult = await pool.query('SELECT COUNT(*) as count FROM league_registration');
     if (parseInt(countResult.rows[0].count) >= config.max_players) {
+      clearTimeout(timeoutId);
       return res.status(400).json({ error: 'Maximum number of players reached' });
     }
 
     const { playerName, email } = req.body;
 
     if (!playerName || playerName.trim().length < 2) {
+      clearTimeout(timeoutId);
       return res.status(400).json({ error: 'Player name is required (minimum 2 characters)' });
     }
 
@@ -4756,6 +4761,7 @@ app.post('/api/registration/register', async (req, res) => {
       [trimmedName]
     );
     if (existingReg.rows.length > 0) {
+      clearTimeout(timeoutId);
       const reg = existingReg.rows[0];
       return res.json({
         success: true,
@@ -4802,6 +4808,10 @@ app.post('/api/registration/register', async (req, res) => {
       ON CONFLICT (name) DO UPDATE SET seed = COALESCE(players.seed, EXCLUDED.seed)
     `, [trimmedName, matchedPlayer?.seed || null]);
 
+    clearTimeout(timeoutId); // Clear timeout on success
+
+    console.log('✅ Registration successful:', trimmedName, 'took:', Date.now() - startTime, 'ms');
+
     res.json({
       success: true,
       registration: insertResult.rows[0],
@@ -4812,11 +4822,13 @@ app.post('/api/registration/register', async (req, res) => {
         : 'Registration successful! You will be placed in the unseeded group.'
     });
   } catch (error) {
+    clearTimeout(timeoutId); // Clear timeout on error
+
     console.error('❌ Registration error:', {
       code: error.code,
       message: error.message,
       detail: error.detail,
-      playerName: trimmedName
+      playerName: req.body.playerName
     });
 
     if (error.code === '23505') { // unique violation - player already in league_registration
