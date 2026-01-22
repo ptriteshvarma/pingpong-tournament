@@ -4332,8 +4332,13 @@ app.post('/api/registration/register', async (req, res) => {
         : 'Registration successful! You will be placed in the unseeded group.'
     });
   } catch (error) {
-    if (error.code === '23505') { // unique violation
-      return res.status(400).json({ error: 'This name is already registered' });
+    if (error.code === '23505') { // unique violation - player already in league_registration
+      // This shouldn't happen since we check above, but handle gracefully
+      return res.json({
+        success: true,
+        alreadyRegistered: true,
+        message: 'Welcome back! You\'re already registered for the league.'
+      });
     }
     res.status(500).json({ error: error.message });
   }
