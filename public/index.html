@@ -1518,7 +1518,7 @@
                 try {
                     const res = await fetch(`${API_BASE}/registration/${id}`, {
                         method: 'PUT',
-                        headers: { 'Content-Type': 'application/json', 'X-Admin-Password': 'Username' },
+                        headers: { 'Content-Type': 'application/json', 'X-Admin-Password': localStorage.getItem('adminPassword') || '' },
                         body: JSON.stringify({ registration_status: status, final_seed: seed ? parseInt(seed) : null })
                     });
                     if (!res.ok) {
@@ -1537,7 +1537,7 @@
                 try {
                     const res = await fetch(`${API_BASE}/registration/${id}`, {
                         method: 'DELETE',
-                        headers: { 'X-Admin-Password': 'Username' }
+                        headers: { 'X-Admin-Password': localStorage.getItem('adminPassword') || '' }
                     });
                     if (!res.ok) {
                         const err = await res.json();
@@ -1552,7 +1552,7 @@
                 try {
                     await fetch(`${API_BASE}/registration/config`, {
                         method: 'PUT',
-                        headers: { 'Content-Type': 'application/json', 'X-Admin-Password': 'Username' },
+                        headers: { 'Content-Type': 'application/json', 'X-Admin-Password': localStorage.getItem('adminPassword') || '' },
                         body: JSON.stringify({
                             registration_open: config.registration_open,
                             registration_close_date: closeDate ? new Date(closeDate).toISOString() : null
@@ -1567,7 +1567,7 @@
                 try {
                     const res = await fetch(`${API_BASE}/registration/generate-bracket`, {
                         method: 'POST',
-                        headers: { 'X-Admin-Password': 'Username' }
+                        headers: { 'X-Admin-Password': localStorage.getItem('adminPassword') || '' }
                     });
                     const data = await res.json();
                     if (res.ok) {
@@ -3727,7 +3727,7 @@
                 try {
                     const res = await fetch(`${API_BASE}/season/create`, {
                         method: 'POST',
-                        headers: { 'Content-Type': 'application/json', 'X-Admin-Password': 'Username' },
+                        headers: { 'Content-Type': 'application/json', 'X-Admin-Password': localStorage.getItem('adminPassword') || '' },
                         body: JSON.stringify({ groupA, groupB, numWeeks: 10 })
                     });
                     if (res.ok) {
@@ -3756,7 +3756,7 @@
                 try {
                     await fetch(`${API_BASE}/season/wildcard`, {
                         method: 'POST',
-                        headers: { 'X-Admin-Password': 'Username' }
+                        headers: { 'X-Admin-Password': localStorage.getItem('adminPassword') || '' }
                     });
                     await loadData();
                 } catch (e) {
@@ -3768,7 +3768,7 @@
                 try {
                     await fetch(`${API_BASE}/season/playoffs`, {
                         method: 'POST',
-                        headers: { 'X-Admin-Password': 'Username' }
+                        headers: { 'X-Admin-Password': localStorage.getItem('adminPassword') || '' }
                     });
                     await loadData();
                 } catch (e) {
@@ -3781,7 +3781,7 @@
                 try {
                     const res = await fetch(`${API_BASE}/season/mid-review`, {
                         method: 'POST',
-                        headers: { 'X-Admin-Password': 'Username' }
+                        headers: { 'X-Admin-Password': localStorage.getItem('adminPassword') || '' }
                     });
                     const data = await res.json();
                     if (res.ok) {
@@ -3806,7 +3806,7 @@
                 try {
                     const res = await fetch(`${API_BASE}/season/archive`, {
                         method: 'POST',
-                        headers: { 'X-Admin-Password': 'Username' }
+                        headers: { 'X-Admin-Password': localStorage.getItem('adminPassword') || '' }
                     });
                     const data = await res.json();
                     if (res.ok) {
@@ -3829,7 +3829,7 @@
                 try {
                     const res = await fetch(`${API_BASE}/season`, {
                         method: 'DELETE',
-                        headers: { 'X-Admin-Password': 'Username' }
+                        headers: { 'X-Admin-Password': localStorage.getItem('adminPassword') || '' }
                     });
                     if (res.ok) {
                         alert('Season deleted.');
@@ -3844,7 +3844,7 @@
                 try {
                     const res = await fetch(`${API_BASE}/players`, {
                         method: 'POST',
-                        headers: { 'Content-Type': 'application/json', 'X-Admin-Password': 'Username' },
+                        headers: { 'Content-Type': 'application/json', 'X-Admin-Password': localStorage.getItem('adminPassword') || '' },
                         body: JSON.stringify([{ name, seed }])
                     });
                     if (res.ok) {
@@ -3864,13 +3864,13 @@
                     // First update players list
                     await fetch(`${API_BASE}/players`, {
                         method: 'POST',
-                        headers: { 'Content-Type': 'application/json', 'X-Admin-Password': 'Username' },
+                        headers: { 'Content-Type': 'application/json', 'X-Admin-Password': localStorage.getItem('adminPassword') || '' },
                         body: JSON.stringify(bracketPlayers)
                     });
                     // Then generate bracket
                     const res = await fetch(`${API_BASE}/bracket/generate`, {
                         method: 'POST',
-                        headers: { 'X-Admin-Password': 'Username' }
+                        headers: { 'X-Admin-Password': localStorage.getItem('adminPassword') || '' }
                     });
                     if (res.ok) {
                         await loadData();
