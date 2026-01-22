@@ -3714,6 +3714,7 @@
                     if (res.ok) {
                         setIsAdmin(true);
                         localStorage.setItem('pingpong_isAdmin', 'true');
+                        localStorage.setItem('adminPassword', password); // Save password for API calls
                     } else {
                         alert('Invalid password');
                     }
@@ -3797,6 +3798,7 @@
             const handleLogout = () => {
                 setIsAdmin(false);
                 localStorage.removeItem('pingpong_isAdmin');
+                localStorage.removeItem('adminPassword'); // Clear password on logout
             };
 
             const handleArchiveSeason = async () => {
