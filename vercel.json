@@ -10,7 +10,7 @@
     },
     {
       "path": "/api/notifications/send-reminders",
-      "schedule": "*/15 * * * *"
+      "schedule": "0 0 * * *"
     },
     {
       "path": "/api/notifications/weekly-summary",
