@@ -3300,6 +3300,9 @@ app.post('/api/season/mid-review', requireAdmin, async (req, res) => {
   try {
     await client.query('BEGIN');
 
+    // Get options from request body
+    const { resetStats = false } = req.body; // Option to reset stats for swapped players
+
     const result = await client.query('SELECT data FROM season WHERE id = 1 FOR UPDATE');
     if (result.rows.length === 0) {
       await client.query('ROLLBACK');
@@ -3363,20 +3366,38 @@ app.post('/api/season/mid-review', requireAdmin, async (req, res) => {
     season.groups.A.players = newGroupAPlayers;
     season.groups.B.players = newGroupBPlayers;
 
-    // Move standings data
+    // Move standings data (with optional stats reset)
     swaps.fromAtoB.forEach(name => {
+      const oldStats = season.standings.A[name];
+      const baseStats = resetStats ? {
+        wins: 0, losses: 0, points: 0,
+        pointsFor: 0, pointsAgainst: 0,
+        streak: 0, lastResults: [],
+        headToHead: {}
+      } : { ...oldStats };
+
       season.standings.B[name] = {
-        ...season.standings.A[name],
-        promotedFrom: 'A',
-        preSwapStats: { ...season.standings.A[name] }
+        ...baseStats,
+        initialSeed: oldStats.initialSeed, // Keep original seed for tiebreaker
+        relegatedFrom: 'A',
+        preSwapStats: { ...oldStats } // Always keep record of old stats
       };
       delete season.standings.A[name];
     });
     swaps.fromBtoA.forEach(name => {
+      const oldStats = season.standings.B[name];
+      const baseStats = resetStats ? {
+        wins: 0, losses: 0, points: 0,
+        pointsFor: 0, pointsAgainst: 0,
+        streak: 0, lastResults: [],
+        headToHead: {}
+      } : { ...oldStats };
+
       season.standings.A[name] = {
-        ...season.standings.B[name],
+        ...baseStats,
+        initialSeed: oldStats.initialSeed, // Keep original seed for tiebreaker
         promotedFrom: 'B',
-        preSwapStats: { ...season.standings.B[name] }
+        preSwapStats: { ...oldStats } // Always keep record of old stats
       };
       delete season.standings.B[name];
     });
@@ -3399,12 +3420,54 @@ app.post('/api/season/mid-review', requireAdmin, async (req, res) => {
     });
 
     // Generate new matches for swapped players in their new groups
+    // PRIORITY MATCHING: Match swapped players against similarly-ranked opponents
     const remainingWeeks = season.totalWeeks - season.currentWeek;
     const newMatches = { A: [], B: [] };
 
-    // For each swapped player, create matches against their new group members
-    swaps.fromBtoA.forEach(playerName => {
-      const opponents = season.groups.A.players.filter(p => p.name !== playerName && !swaps.fromBtoA.includes(p.name));
+    // Helper: Get rank-prioritized opponents for a swapped player
+    const getPriorityOpponents = (playerName, newGroup, swappedPlayers, oldRank) => {
+      // Get all potential opponents (excluding other swapped players)
+      const allOpponents = season.groups[newGroup].players
+        .filter(p => p.name !== playerName && !swappedPlayers.includes(p.name))
+        .map(p => ({
+          name: p.name,
+          stats: season.standings[newGroup][p.name]
+        }));
+
+      // Sort opponents by current standings to get their ranks
+      const sortedOpponents = sortStandings(
+        Object.fromEntries(allOpponents.map(o => [o.name, o.stats]))
+      );
+
+      // Priority tiers based on old rank
+      // If player was bottom 3 (ranks 6-8), prioritize mid-bottom tier opponents (ranks 4-8)
+      // If player was top 3 (ranks 1-3), prioritize top-mid tier opponents (ranks 1-4)
+      let priorityOpponents = [];
+      let secondaryOpponents = [];
+
+      if (oldRank >= 6) {
+        // Relegated player - prioritize lower-ranked opponents in new group
+        priorityOpponents = sortedOpponents.slice(3); // Ranks 4+ in new group
+        secondaryOpponents = sortedOpponents.slice(0, 3); // Top 3 in new group
+      } else if (oldRank <= 3) {
+        // Promoted player - prioritize higher-ranked opponents in new group
+        priorityOpponents = sortedOpponents.slice(0, 4); // Top 4 in new group
+        secondaryOpponents = sortedOpponents.slice(4); // Ranks 5+ in new group
+      } else {
+        // Mid-tier swap - mix evenly
+        priorityOpponents = sortedOpponents;
+        secondaryOpponents = [];
+      }
+
+      // Combine: priority first, then secondary
+      return [...priorityOpponents, ...secondaryOpponents];
+    };
+
+    // Create matches for promoted players (from B to A)
+    swaps.fromBtoA.forEach((playerName, swapIdx) => {
+      const oldRank = swapIdx + 1; // They were B#1, B#2, or B#3
+      const opponents = getPriorityOpponents(playerName, 'A', swaps.fromBtoA, oldRank);
+
       opponents.forEach((opp, idx) => {
         if (idx < remainingWeeks) {
           const weekNum = season.currentWeek + 1 + idx;
@@ -3420,14 +3483,18 @@ app.post('/api/season/mid-review', requireAdmin, async (req, res) => {
             loser: null,
             score1: null,
             score2: null,
-            isSwapMatch: true
+            isSwapMatch: true,
+            priorityMatch: idx < Math.ceil(remainingWeeks * 0.6) // First 60% are priority
           });
         }
       });
     });
 
-    swaps.fromAtoB.forEach(playerName => {
-      const opponents = season.groups.B.players.filter(p => p.name !== playerName && !swaps.fromAtoB.includes(p.name));
+    // Create matches for relegated players (from A to B)
+    swaps.fromAtoB.forEach((playerName, swapIdx) => {
+      const oldRank = sortedA.length - 2 + swapIdx; // They were A#(n-2), A#(n-1), or A#n
+      const opponents = getPriorityOpponents(playerName, 'B', swaps.fromAtoB, oldRank);
+
       opponents.forEach((opp, idx) => {
         if (idx < remainingWeeks) {
           const weekNum = season.currentWeek + 1 + idx;
@@ -3443,7 +3510,8 @@ app.post('/api/season/mid-review', requireAdmin, async (req, res) => {
             loser: null,
             score1: null,
             score2: null,
-            isSwapMatch: true
+            isSwapMatch: true,
+            priorityMatch: idx < Math.ceil(remainingWeeks * 0.6) // First 60% are priority
           });
         }
       });
@@ -3497,7 +3565,9 @@ app.post('/api/season/mid-review', requireAdmin, async (req, res) => {
       swaps: swaps,
       cancelledMatches: cancelledMatches,
       newMatchesCreated: newMatches.A.length + newMatches.B.length,
-      cancelledBookings: cancelledBookings
+      cancelledBookings: cancelledBookings,
+      statsReset: resetStats, // Whether stats were reset for swapped players
+      priorityMatching: true // Priority matching system enabled
     };
 
     await client.query(`
@@ -3512,7 +3582,9 @@ app.post('/api/season/mid-review', requireAdmin, async (req, res) => {
         playerName,
         'mid_season_swap',
         '🎉 Promoted to Group A!',
-        `Congratulations! You've been promoted to Group A (Seeded) based on your performance.`,
+        resetStats
+          ? `Congratulations! You've been promoted to Group A (Seeded). Your stats have been reset and you'll face top-tier opponents.`
+          : `Congratulations! You've been promoted to Group A (Seeded). You'll be matched against top-tier opponents based on your rank.`,
         '#standings'
       );
     }
@@ -3521,7 +3593,9 @@ app.post('/api/season/mid-review', requireAdmin, async (req, res) => {
         playerName,
         'mid_season_swap',
         '📉 Moved to Group B',
-        `You've been moved to Group B (Unseeded) at mid-season review. Keep fighting!`,
+        resetStats
+          ? `You've been moved to Group B (Unseeded) at mid-season review. Your stats have been reset - fresh start against similar-level opponents!`
+          : `You've been moved to Group B (Unseeded) at mid-season review. You'll face similar-level opponents. Keep fighting!`,
         '#standings'
       );
     }
@@ -3532,7 +3606,14 @@ app.post('/api/season/mid-review', requireAdmin, async (req, res) => {
       message: `Swapped ${swaps.fromAtoB.length} players from A→B and ${swaps.fromBtoA.length} players from B→A`,
       cancelledMatches: cancelledMatches.length,
       newMatchesCreated: newMatches.A.length + newMatches.B.length,
-      cancelledBookings
+      cancelledBookings,
+      statsReset: resetStats,
+      priorityMatching: {
+        enabled: true,
+        description: resetStats
+          ? 'Swapped players start fresh (0-0) and are matched against similarly-ranked opponents'
+          : 'Swapped players keep their stats and are matched against similarly-ranked opponents'
+      }
     });
   } catch (error) {
     await client.query('ROLLBACK');
@@ -4514,6 +4595,13 @@ app.post('/api/registration/register', async (req, res) => {
         : 'Registration successful! You will be placed in the unseeded group.'
     });
   } catch (error) {
+    console.error('❌ Registration error:', {
+      code: error.code,
+      message: error.message,
+      detail: error.detail,
+      playerName: trimmedName
+    });
+
     if (error.code === '23505') { // unique violation - player already in league_registration
       // Race condition or whitespace mismatch - fetch their actual registration
       try {
@@ -4544,7 +4632,13 @@ app.post('/api/registration/register', async (req, res) => {
         message: 'Welcome back! You\'re already registered for the league.'
       });
     }
-    res.status(500).json({ error: error.message });
+
+    // Return detailed error for debugging
+    res.status(500).json({
+      error: error.message,
+      code: error.code,
+      detail: error.detail || 'Check server logs for details'
+    });
   }
 });
 
