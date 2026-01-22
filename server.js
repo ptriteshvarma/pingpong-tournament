@@ -4367,10 +4367,15 @@ app.get('/api/registration/list', async (req, res) => {
   try {
     await ensureRegistrationTables();
 
+    // Allow showing all including rejected with ?includeRejected=true
+    const includeRejected = req.query.includeRejected === 'true';
+
+    const whereClause = includeRejected ? '' : "WHERE registration_status != 'rejected'";
+
     const result = await pool.query(`
       SELECT id, player_name, is_ranked, registration_status, final_seed, suggested_seed, created_at
       FROM league_registration
-      WHERE registration_status != 'rejected'
+      ${whereClause}
       ORDER BY
         CASE WHEN final_seed IS NOT NULL THEN final_seed ELSE 9999 END ASC,
         is_ranked DESC,
