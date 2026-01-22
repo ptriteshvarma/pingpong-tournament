@@ -4333,7 +4333,29 @@ app.post('/api/registration/register', async (req, res) => {
     });
   } catch (error) {
     if (error.code === '23505') { // unique violation - player already in league_registration
-      // This shouldn't happen since we check above, but handle gracefully
+      // Race condition or whitespace mismatch - fetch their actual registration
+      try {
+        const existingReg = await pool.query(
+          'SELECT * FROM league_registration WHERE LOWER(player_name) = LOWER($1)',
+          [trimmedName]
+        );
+        if (existingReg.rows.length > 0) {
+          const reg = existingReg.rows[0];
+          return res.json({
+            success: true,
+            registration: reg,
+            alreadyRegistered: true,
+            isRanked: reg.is_ranked,
+            matchedPlayer: reg.suggested_seed ? { seed: reg.suggested_seed } : null,
+            message: reg.is_ranked
+              ? `Welcome back! You're already registered with previous seed #${reg.suggested_seed}. Your status: ${reg.registration_status}.`
+              : `Welcome back! You're already registered for the league. Your status: ${reg.registration_status}.`
+          });
+        }
+      } catch (fetchError) {
+        console.error('Error fetching existing registration:', fetchError);
+      }
+      // Fallback if we can't fetch
       return res.json({
         success: true,
         alreadyRegistered: true,
