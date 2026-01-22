@@ -1000,7 +1000,8 @@ const generateSeason = (groupA, groupB, numWeeks = 10) => {
       wins: 0, losses: 0, points: 0,
       pointsFor: 0, pointsAgainst: 0,
       streak: 0, lastResults: [],
-      headToHead: {} // Track head-to-head record vs each opponent
+      headToHead: {}, // Track head-to-head record vs each opponent
+      initialSeed: p.seed || null // Save initial seed for tiebreaker
     };
   });
 
@@ -1009,7 +1010,8 @@ const generateSeason = (groupA, groupB, numWeeks = 10) => {
       wins: 0, losses: 0, points: 0,
       pointsFor: 0, pointsAgainst: 0,
       streak: 0, lastResults: [],
-      headToHead: {} // Track head-to-head record vs each opponent
+      headToHead: {}, // Track head-to-head record vs each opponent
+      initialSeed: p.seed || null // Save initial seed for tiebreaker
     };
   });
 
@@ -1054,7 +1056,7 @@ const sortStandings = (standings) => {
         // No tie, just add the player
         sortedPlayers.push(group[0]);
       } else if (group.length === 2) {
-        // 2-way tie: use direct head-to-head
+        // 2-way tie: use direct head-to-head, then initial seed
         group.sort((a, b) => {
           const h2hA = a.headToHead?.[b.name];
           const h2hB = b.headToHead?.[a.name];
@@ -1062,16 +1064,14 @@ const sortStandings = (standings) => {
             const h2hDiff = (h2hA.wins - h2hA.losses) - (h2hB.wins - h2hB.losses);
             if (h2hDiff !== 0) return -h2hDiff;
           }
-          // Fall through to point differential
-          const diffA = a.pointsFor - a.pointsAgainst;
-          const diffB = b.pointsFor - b.pointsAgainst;
-          if (diffB !== diffA) return diffB - diffA;
-          if (b.pointsFor !== a.pointsFor) return b.pointsFor - a.pointsFor;
-          return a.pointsAgainst - b.pointsAgainst;
+          // Use initial seed as final tiebreaker (lower seed number = better rank)
+          const seedA = a.initialSeed || 9999;
+          const seedB = b.initialSeed || 9999;
+          return seedA - seedB;
         });
         sortedPlayers.push(...group);
       } else {
-        // 3+ way tie: use head-to-head record against TIED players only
+        // 3+ way tie: use head-to-head record against TIED players only, then initial seed
         group.sort((a, b) => {
           // Calculate h2h win% against other tied players
           let h2hWinsA = 0, h2hLossesA = 0;
@@ -1093,12 +1093,10 @@ const sortStandings = (standings) => {
 
           if (h2hDiffB !== h2hDiffA) return h2hDiffB - h2hDiffA;
 
-          // Fall through to point differential
-          const diffA = a.pointsFor - a.pointsAgainst;
-          const diffB = b.pointsFor - b.pointsAgainst;
-          if (diffB !== diffA) return diffB - diffA;
-          if (b.pointsFor !== a.pointsFor) return b.pointsFor - a.pointsFor;
-          return a.pointsAgainst - b.pointsAgainst;
+          // Use initial seed as final tiebreaker (lower seed number = better rank)
+          const seedA = a.initialSeed || 9999;
+          const seedB = b.initialSeed || 9999;
+          return seedA - seedB;
         });
         sortedPlayers.push(...group);
       }
@@ -1193,21 +1191,57 @@ const generateChampionshipBracket = (standingsA, standingsB, wildcardWinnerA = n
   const b3 = { name: sortedB[2]?.name || null, group: 'B', seed: 3 };
   const b4 = { name: sortedB[3]?.name || null, group: 'B', seed: 4 };
 
-  // Wildcard winners can replace #4 seed
+  // FAIRNESS FIX: Wildcard winners must BEAT #4 seeds in play-in games to earn playoff spots
+  // Instead of directly replacing #4, we create play-in matches
+  const playInGames = [];
   let finalA4 = a4, finalB4 = b4;
-  if (wildcardWinnerA) {
+
+  if (wildcardWinnerA && a4.name) {
+    // Create play-in game: Wildcard winner vs #4 seed
+    playInGames.push({
+      id: 'PLAYIN-A',
+      round: 'playin',
+      matchName: 'Play-In: Group A',
+      player1: a4.name, // #4 seed (earned their spot)
+      player2: wildcardWinnerA, // Wildcard winner (must prove themselves)
+      player1Seed: 'A#4',
+      player2Seed: 'A#WC',
+      group: 'A',
+      description: '#4 seed defends their playoff spot against wildcard winner',
+      winner: null, loser: null, score1: null, score2: null, completed: false
+    });
+  } else if (wildcardWinnerA) {
+    // No #4 seed exists, wildcard winner automatically gets spot
     finalA4 = { name: wildcardWinnerA, group: 'A', seed: 'WC', isWildcard: true };
   }
-  if (wildcardWinnerB) {
+
+  if (wildcardWinnerB && b4.name) {
+    // Create play-in game: Wildcard winner vs #4 seed
+    playInGames.push({
+      id: 'PLAYIN-B',
+      round: 'playin',
+      matchName: 'Play-In: Group B',
+      player1: b4.name, // #4 seed (earned their spot)
+      player2: wildcardWinnerB, // Wildcard winner (must prove themselves)
+      player1Seed: 'B#4',
+      player2Seed: 'B#WC',
+      group: 'B',
+      description: '#4 seed defends their playoff spot against wildcard winner',
+      winner: null, loser: null, score1: null, score2: null, completed: false
+    });
+  } else if (wildcardWinnerB) {
+    // No #4 seed exists, wildcard winner automatically gets spot
     finalB4 = { name: wildcardWinnerB, group: 'B', seed: 'WC', isWildcard: true };
   }
 
   return {
     format: 'combined',
-    description: 'Top 4 from each group compete for championship',
+    description: 'Top 4 from each group compete for championship (with play-in games if wildcard winners exist)',
     seeds: { a1, a2, a3, a4: finalA4, b1, b2, b3, b4: finalB4 },
+    playInGames: playInGames.length > 0 ? playInGames : null,
     // Quarterfinals: Cross-group matchups with traditional seeding
     // #1 seeds face #4 from other group, #2 seeds face #3 from other group
+    // If play-in games exist, QF opponents are TBD until play-in completes
     quarterfinals: [
       {
         id: 'CHAMP-QF1',
@@ -1215,12 +1249,13 @@ const generateChampionshipBracket = (standingsA, standingsB, wildcardWinnerA = n
         matchNum: 1,
         matchName: 'Quarterfinal 1',
         player1: a1.name,
-        player2: finalB4.name,
+        player2: playInGames.find(p => p.group === 'B') ? null : finalB4.name, // TBD if play-in exists
         player1Group: 'A',
         player2Group: 'B',
         seed1: 'A#1',
-        seed2: finalB4.isWildcard ? 'B#WC' : 'B#4',
+        seed2: playInGames.find(p => p.group === 'B') ? 'PLAYIN-B Winner' : (finalB4.isWildcard ? 'B#WC' : 'B#4'),
         advancesTo: 'SF1',
+        feedsFromPlayIn: playInGames.find(p => p.group === 'B') ? 'PLAYIN-B' : null,
         winner: null, loser: null, score1: null, score2: null, completed: false
       },
       {
@@ -1257,12 +1292,13 @@ const generateChampionshipBracket = (standingsA, standingsB, wildcardWinnerA = n
         matchNum: 4,
         matchName: 'Quarterfinal 4',
         player1: b1.name,
-        player2: finalA4.name,
+        player2: playInGames.find(p => p.group === 'A') ? null : finalA4.name, // TBD if play-in exists
         player1Group: 'B',
         player2Group: 'A',
         seed1: 'B#1',
-        seed2: finalA4.isWildcard ? 'A#WC' : 'A#4',
+        seed2: playInGames.find(p => p.group === 'A') ? 'PLAYIN-A Winner' : (finalA4.isWildcard ? 'A#WC' : 'A#4'),
         advancesTo: 'SF2',
+        feedsFromPlayIn: playInGames.find(p => p.group === 'A') ? 'PLAYIN-A' : null,
         winner: null, loser: null, score1: null, score2: null, completed: false
       }
     ],
@@ -1684,6 +1720,23 @@ app.post('/api/bracket/match', async (req, res) => {
       return res.status(404).json({ error: 'Match not found' });
     }
 
+    // Validate scores are non-negative integers
+    if (!Number.isInteger(score1) || !Number.isInteger(score2) || score1 < 0 || score2 < 0) {
+      return res.status(400).json({ error: 'Scores must be non-negative integers' });
+    }
+
+    // Validate score ceiling (max 11 points per game)
+    if (score1 > 11 || score2 > 11) {
+      return res.status(400).json({ error: 'Scores cannot exceed 11 points' });
+    }
+
+    // Winner's score must be higher than loser's score
+    const winnerScore = winner === match.player1 ? score1 : score2;
+    const loserScore = winner === match.player1 ? score2 : score1;
+    if (winnerScore <= loserScore) {
+      return res.status(400).json({ error: 'Winner must have a higher score than loser' });
+    }
+
     match.winner = winner;
     match.loser = loser;
     match.score1 = score1;
@@ -2100,6 +2153,24 @@ app.post('/api/bookings', async (req, res) => {
     const p2SwapStatus = await getPlayerSwapZoneStatus(player2);
     const swapZoneWarning = p1SwapStatus || p2SwapStatus;
 
+    // Get season info for mid-season check
+    const seasonResult = await pool.query('SELECT data FROM season WHERE id = 1');
+    const season = seasonResult.rows[0]?.data;
+    const midPoint = season ? getMidSeasonWeek(season.totalWeeks) : 3;
+    const currentWeek = season?.currentWeek || 1;
+    const midSeasonCompleted = season?.midSeasonReview?.completed || false;
+
+    // BLOCK bookings near mid-season swap for players in swap zone
+    if (swapZoneWarning && !midSeasonCompleted && currentWeek >= 2 && currentWeek <= midPoint) {
+      return res.status(403).json({
+        error: 'Bookings blocked during mid-season swap period for players in swap zone',
+        reason: `You or your opponent is in the swap zone (${p1SwapStatus ? player1 : player2}). Bookings are temporarily blocked to prevent scheduling conflicts during the mid-season swap.`,
+        canBookAfter: `Week ${midPoint + 1} (after mid-season swap is complete)`,
+        currentWeek: currentWeek,
+        swapPlayers: [p1SwapStatus, p2SwapStatus].filter(Boolean)
+      });
+    }
+
     // Calculate end time (30 min match)
     const [hours, mins] = start_time.split(':').map(Number);
     const endHours = mins >= 30 ? hours + 1 : hours;
@@ -2116,12 +2187,9 @@ app.post('/api/bookings', async (req, res) => {
       return res.status(409).json({ error: 'Time slot already booked' });
     }
 
-    // If players are in swap zone and booking is after mid-season, mark as tentative
-    const seasonResult = await pool.query('SELECT data FROM season WHERE id = 1');
-    const season = seasonResult.rows[0]?.data;
-    const midPoint = season ? getMidSeasonWeek(season.totalWeeks) : 3;
+    // Bookings after mid-season swap no longer need tentative marking since we block them above
     const bookingWeek = getWeekNumber(booking_date);
-    const isTentative = swapZoneWarning && bookingWeek >= midPoint;
+    const isTentative = false; // Removed tentative logic - we now block entirely
 
     const result = await pool.query(
       `INSERT INTO table_bookings (match_id, player1, player2, booking_date, start_time, end_time, group_name, created_by, status)
@@ -2481,6 +2549,16 @@ app.post('/api/season/match', async (req, res) => {
         match = season.championship.final;
         group = 'championship';
       }
+      // Play-in games
+      if (!match && season.championship.playInGames) {
+        for (const playIn of season.championship.playInGames) {
+          if (playIn.id === matchId) {
+            match = playIn;
+            group = 'championship';
+            break;
+          }
+        }
+      }
     }
 
     if (!match) {
@@ -2521,6 +2599,12 @@ app.post('/api/season/match', async (req, res) => {
     if (!Number.isInteger(score1) || !Number.isInteger(score2) || score1 < 0 || score2 < 0) {
       await client.query('ROLLBACK');
       return res.status(400).json({ error: 'Scores must be non-negative integers' });
+    }
+
+    // SECURITY: Validate score ceiling (max 11 points per game)
+    if (score1 > 11 || score2 > 11) {
+      await client.query('ROLLBACK');
+      return res.status(400).json({ error: 'Scores cannot exceed 11 points' });
     }
 
     // SECURITY: Winner's score must be higher than loser's score
@@ -2605,27 +2689,110 @@ app.post('/api/season/match', async (req, res) => {
           wildcardWinnerForA,
           wildcardWinnerForB
         );
-        season.status = 'playoffs';
-        console.log('Auto-started combined championship bracket after wildcard complete');
+        // If play-in games exist, set status to 'playin', otherwise 'playoffs'
+        season.status = season.championship.playInGames ? 'playin' : 'playoffs';
+        console.log(season.championship.playInGames
+          ? 'Auto-started play-in games after wildcard complete'
+          : 'Auto-started combined championship bracket after wildcard complete');
 
-        // Notify all championship bracket participants
-        if (season.championship?.quarterfinals) {
-          for (const qf of season.championship.quarterfinals) {
-            if (qf.player1 && qf.player2) {
-              await createNotification(
-                qf.player1,
-                'playoffs',
-                '🏆 Championship Bracket!',
-                `You're in the playoffs! ${qf.matchName}: vs ${qf.player2}`,
-                '#standings'
-              );
-              await createNotification(
-                qf.player2,
-                'playoffs',
-                '🏆 Championship Bracket!',
-                `You're in the playoffs! ${qf.matchName}: vs ${qf.player1}`,
-                '#standings'
-              );
+        // Notify play-in game participants if they exist
+        if (season.championship?.playInGames) {
+          for (const playIn of season.championship.playInGames) {
+            await createNotification(
+              playIn.player1,
+              'playoffs',
+              '⚔️ Play-In Game!',
+              `You must defend your #4 seed against ${playIn.player2} (wildcard winner) to advance to the Championship Bracket`,
+              '#standings'
+            );
+            await createNotification(
+              playIn.player2,
+              'playoffs',
+              '⚔️ Play-In Game!',
+              `You won the wildcard! Now beat ${playIn.player1} (#4 seed) to advance to the Championship Bracket`,
+              '#standings'
+            );
+          }
+        } else {
+          // No play-in games, notify championship bracket participants directly
+          if (season.championship?.quarterfinals) {
+            for (const qf of season.championship.quarterfinals) {
+              if (qf.player1 && qf.player2) {
+                await createNotification(
+                  qf.player1,
+                  'playoffs',
+                  '🏆 Championship Bracket!',
+                  `You're in the playoffs! ${qf.matchName}: vs ${qf.player2}`,
+                  '#standings'
+                );
+                await createNotification(
+                  qf.player2,
+                  'playoffs',
+                  '🏆 Championship Bracket!',
+                  `You're in the playoffs! ${qf.matchName}: vs ${qf.player1}`,
+                  '#standings'
+                );
+              }
+            }
+          }
+        }
+      }
+    }
+
+    // Handle play-in game completion - advance winner to championship quarterfinals
+    if (season.championship?.playInGames && match.round === 'playin') {
+      const playInMatch = season.championship.playInGames.find(p => p.id === matchId);
+      if (playInMatch && playInMatch.completed) {
+        // Find the quarterfinal that this play-in feeds into
+        const feedsIntoQF = season.championship.quarterfinals.find(qf => qf.feedsFromPlayIn === matchId);
+        if (feedsIntoQF) {
+          // Insert winner as player2 (the #4 seed position)
+          feedsIntoQF.player2 = winner;
+          feedsIntoQF.seed2 = playInMatch.group === 'A' ? 'A#4' : 'B#4';
+          console.log(`Play-in winner ${winner} advanced to ${feedsIntoQF.id}`);
+
+          // Notify play-in winner
+          await createNotification(
+            winner,
+            'playoffs',
+            '🎉 Play-In Victory!',
+            `You won the play-in game and advanced to the Championship Quarterfinals! Next up: ${feedsIntoQF.matchName} vs ${feedsIntoQF.player1}`,
+            '#standings'
+          );
+
+          // Notify play-in loser
+          await createNotification(
+            loser,
+            'playoffs',
+            '💔 Play-In Loss',
+            `Your season has ended. ${winner} advances to the Championship Bracket.`,
+            '#standings'
+          );
+
+          // Check if all play-in games are complete
+          const allPlayInsComplete = season.championship.playInGames.every(p => p.completed);
+          if (allPlayInsComplete) {
+            season.status = 'playoffs';
+            console.log('All play-in games complete - Championship bracket ready');
+
+            // Notify all QF participants now that brackets are set
+            for (const qf of season.championship.quarterfinals) {
+              if (qf.player1 && qf.player2) {
+                await createNotification(
+                  qf.player1,
+                  'playoffs',
+                  '🏆 Championship Bracket Set!',
+                  `${qf.matchName}: vs ${qf.player2}`,
+                  '#standings'
+                );
+                await createNotification(
+                  qf.player2,
+                  'playoffs',
+                  '🏆 Championship Bracket Set!',
+                  `${qf.matchName}: vs ${qf.player1}`,
+                  '#standings'
+                );
+              }
             }
           }
         }
@@ -2883,6 +3050,15 @@ app.post('/api/season/match/correct', requireAdmin, async (req, res) => {
 
     const season = result.rows[0].data;
 
+    // BLOCK: Prevent corrections after playoffs have started
+    if (season.status !== 'regular') {
+      await client.query('ROLLBACK');
+      return res.status(403).json({
+        error: `Match corrections are not allowed after playoffs have started. Current season status: ${season.status}`,
+        reason: 'Correcting regular season matches during playoffs could invalidate playoff seeding and brackets'
+      });
+    }
+
     // Find the match in regular season
     let match = null;
     let group = null;
@@ -2921,6 +3097,12 @@ app.post('/api/season/match/correct', requireAdmin, async (req, res) => {
     if (!Number.isInteger(newScore1) || !Number.isInteger(newScore2) || newScore1 < 0 || newScore2 < 0) {
       await client.query('ROLLBACK');
       return res.status(400).json({ error: 'Scores must be non-negative integers' });
+    }
+
+    // Validate score ceiling (max 11 points per game)
+    if (newScore1 > 11 || newScore2 > 11) {
+      await client.query('ROLLBACK');
+      return res.status(400).json({ error: 'Scores cannot exceed 11 points' });
     }
 
     const newWinnerScore = newWinner === match.player1 ? newScore1 : newScore2;
@@ -4380,6 +4562,68 @@ app.get('/api/registration/all', requireAdmin, async (req, res) => {
 
     res.json(result.rows);
   } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Admin: Manually add player to registration
+app.post('/api/registration/admin-add', requireAdmin, async (req, res) => {
+  try {
+    await ensureRegistrationTables();
+
+    const { playerName, email } = req.body;
+
+    if (!playerName || playerName.trim().length < 2) {
+      return res.status(400).json({ error: 'Player name is required' });
+    }
+
+    const trimmedName = playerName.trim();
+
+    // Check if already registered
+    const existingReg = await pool.query(
+      'SELECT * FROM league_registration WHERE LOWER(player_name) = LOWER($1)',
+      [trimmedName]
+    );
+
+    if (existingReg.rows.length > 0) {
+      return res.json({
+        success: true,
+        alreadyRegistered: true,
+        registration: existingReg.rows[0],
+        message: `${trimmedName} is already registered`
+      });
+    }
+
+    // Check if player exists in players table
+    const playerResult = await pool.query(
+      'SELECT id, name, seed FROM players WHERE LOWER(name) = LOWER($1)',
+      [trimmedName]
+    );
+
+    const isRanked = playerResult.rows.length > 0;
+    const matchedPlayer = playerResult.rows[0];
+
+    // Insert into league_registration
+    const insertResult = await pool.query(`
+      INSERT INTO league_registration (player_name, email, is_ranked, matched_player_id, suggested_seed, registration_status)
+      VALUES ($1, $2, $3, $4, $5, 'approved')
+      RETURNING *
+    `, [
+      trimmedName,
+      email || null,
+      isRanked,
+      matchedPlayer?.id || null,
+      matchedPlayer?.seed || null
+    ]);
+
+    res.json({
+      success: true,
+      registration: insertResult.rows[0],
+      message: `${trimmedName} added to registration successfully`
+    });
+
+  } catch (error) {
+    console.error('Admin add registration error:', error);
     res.status(500).json({ error: error.message });
   }
 });
