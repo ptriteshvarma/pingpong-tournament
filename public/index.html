@@ -3681,7 +3681,10 @@
                 }
             };
 
+            // Lazy load data only when needed
             const loadData = useCallback(async () => {
+                if (season && players.length > 0) return; // Already loaded
+
                 try {
                     const [seasonRes, playersRes, swapZoneRes] = await Promise.all([
                         fetch(`${API_BASE}/season`),
@@ -3700,9 +3703,17 @@
                     console.error('Error loading:', e);
                 }
                 setLoading(false);
-            }, []);
+            }, [season, players]);
 
-            useEffect(() => { loadData(); }, [loadData]);
+            // Only load data for tabs that need it
+            useEffect(() => {
+                const needsData = ['league', 'standings', 'schedule', 'mygames', 'playoffs', 'admin'];
+                if (needsData.includes(view)) {
+                    loadData();
+                } else {
+                    setLoading(false); // No data needed for this tab
+                }
+            }, [view, loadData]);
 
             const handleLogin = async (password) => {
                 try {
