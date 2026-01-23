@@ -57,9 +57,10 @@ const connectionString = process.env.POSTGRES_PRISMA_URL || process.env.POSTGRES
 const pool = new Pool({
   connectionString: connectionString,
   // Don't use SSL config - let pg library handle it from connection string
-  connectionTimeoutMillis: 5000, // 5 second timeout for connection
+  connectionTimeoutMillis: 15000, // 15 second timeout for connection (Vercel cold starts need more time)
   idleTimeoutMillis: 30000, // Close idle clients after 30 seconds
-  max: 10 // Maximum 10 connections in pool
+  max: 10, // Maximum 10 connections in pool
+  statement_timeout: 10000 // 10 second query timeout
 });
 
 // Auto-initialize database tables on startup
@@ -246,15 +247,21 @@ function scheduleDailyBackups() {
   console.log(`✓ Daily backups scheduled (next backup at midnight)`);
 }
 
-initDatabase().then(() => {
-  // Create initial backup on startup (except on Vercel - handled by cron)
-  if (!process.env.VERCEL) {
-    createBackup();
-    scheduleDailyBackups();
-  } else {
-    console.log('✓ Vercel environment detected - skipping initial backup');
-  }
-});
+initDatabase()
+  .then(() => {
+    // Create initial backup on startup (except on Vercel - handled by cron)
+    if (!process.env.VERCEL) {
+      createBackup();
+      scheduleDailyBackups();
+    } else {
+      console.log('✓ Vercel environment detected - skipping initial backup');
+    }
+  })
+  .catch((err) => {
+    console.error('❌ Database initialization error:', err.message);
+    console.log('⚠️  Server will continue - tables will be created on first request');
+    // Don't crash - tables will be created by ensure* functions on first API call
+  });
 
 // Middleware
 app.use(cors());
