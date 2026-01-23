@@ -1,0 +1,2 @@
+# Don't exclude dist - we need it for static assets
+!dist
