@@ -1,4 +1,5 @@
 const express = require('express');
+const compression = require('compression');
 const cors = require('cors');
 const path = require('path');
 const { Pool } = require('pg');
@@ -264,9 +265,19 @@ initDatabase()
   });
 
 // Middleware
+app.use(compression()); // Enable gzip compression for all responses
 app.use(cors());
 app.use(express.json({ limit: '10mb' }));
-app.use(express.static(path.join(__dirname, 'public')));
+app.use(express.static(path.join(__dirname, 'public'), {
+  maxAge: '1h', // Cache static files for 1 hour
+  etag: true
+}));
+
+// Cache middleware for API responses
+const cacheResponse = (seconds) => (req, res, next) => {
+  res.set('Cache-Control', `public, max-age=${seconds}`);
+  next();
+};
 
 // Check if request is from Vercel Cron
 const isVercelCron = (req) => {
@@ -1481,7 +1492,7 @@ app.post('/api/admin/login', (req, res) => {
 });
 
 // Get players
-app.get('/api/players', async (req, res) => {
+app.get('/api/players', cacheResponse(30), async (req, res) => {
   try {
     const result = await pool.query('SELECT name, seed, avatar FROM players ORDER BY seed NULLS LAST, name');
     res.json(result.rows);
@@ -2323,7 +2334,7 @@ app.post('/api/bookings/:id/complete', async (req, res) => {
 // ============== SEASON API ROUTES ==============
 
 // Get current season
-app.get('/api/season', async (req, res) => {
+app.get('/api/season', cacheResponse(30), async (req, res) => {
   try {
     const result = await pool.query('SELECT data FROM season WHERE id = 1');
     if (result.rows.length === 0) {
@@ -4661,7 +4672,7 @@ const ensureRegistrationTables = async () => {
 };
 
 // Get registration config and status
-app.get('/api/registration/config', async (req, res) => {
+app.get('/api/registration/config', cacheResponse(60), async (req, res) => {
   try {
     await ensureRegistrationTables();
 
@@ -4959,7 +4970,7 @@ app.post('/api/registration/admin-add', requireAdmin, async (req, res) => {
 });
 
 // Get public registration list (includes id for admin actions)
-app.get('/api/registration/list', async (req, res) => {
+app.get('/api/registration/list', cacheResponse(30), async (req, res) => {
   try {
     await ensureRegistrationTables();
 
