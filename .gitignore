@@ -65,4 +65,5 @@ temp/
 *.sqlite3
 
 # Data directory
+data/*.backup
 data/
