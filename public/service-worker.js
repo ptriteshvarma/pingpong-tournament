@@ -1,16 +1,27 @@
 // Service Worker for Ping Pong Tournament Push Notifications
-const CACHE_NAME = 'pingpong-v1';
+const CACHE_NAME = 'pingpong-v2';
 
-// Install event
+// Install event - force update by skipping waiting
 self.addEventListener('install', (event) => {
-  console.log('[Service Worker] Installing...');
-  self.skipWaiting();
+  console.log('[Service Worker] Installing v2...');
+  self.skipWaiting(); // Activate immediately
 });
 
-// Activate event
+// Activate event - clear old caches
 self.addEventListener('activate', (event) => {
-  console.log('[Service Worker] Activated');
-  event.waitUntil(clients.claim());
+  console.log('[Service Worker] Activated v2');
+  event.waitUntil(
+    caches.keys().then(cacheNames => {
+      return Promise.all(
+        cacheNames.map(cacheName => {
+          if (cacheName !== CACHE_NAME) {
+            console.log('[Service Worker] Deleting old cache:', cacheName);
+            return caches.delete(cacheName);
+          }
+        })
+      );
+    }).then(() => clients.claim())
+  );
 });
 
 // Push event - receives push notifications even when app is closed
