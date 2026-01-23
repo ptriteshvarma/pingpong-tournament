@@ -268,7 +268,7 @@ initDatabase()
 app.use(compression()); // Enable gzip compression for all responses
 app.use(cors());
 app.use(express.json({ limit: '10mb' }));
-app.use(express.static(path.join(__dirname, 'public'), {
+app.use(express.static(path.join(__dirname, 'dist'), {
   maxAge: '1h', // Cache static files for 1 hour
   etag: true
 }));
@@ -5422,7 +5422,7 @@ app.get('/api/table/availability/:date', async (req, res) => {
 
 // Serve the main HTML file
 app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+  res.sendFile(path.join(__dirname, 'dist', 'index.html'));
 });
 
 // ============ WEB PUSH NOTIFICATIONS ============
@@ -5766,6 +5766,11 @@ app.get('/api/notifications/weekly-summary', async (req, res) => {
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
+});
+
+// SPA fallback - serve index.html for all non-API routes
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, 'dist', 'index.html'));
 });
 
 // Start server (for local development)
