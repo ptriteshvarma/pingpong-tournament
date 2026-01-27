@@ -5192,10 +5192,11 @@ app.post('/api/registration/generate-bracket', requireAdmin, async (req, res) =>
       });
     });
 
+    // Unseeded players don't get seed numbers
     unseededPlayers.forEach(p => {
       finalPlayers.push({
         name: p.player_name,
-        seed: seedNum++,
+        seed: null, // No seed for unseeded players
         isRanked: false
       });
     });

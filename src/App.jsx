@@ -4558,11 +4558,15 @@ const API_BASE = '/api';
                                                                             : 'bg-gray-100'
                                                                     }`}>
                                                                         <div className="flex items-center gap-2">
-                                                                            {match.seed1 && (
+                                                                            {match.seed1 ? (
                                                                                 <span className="text-xs bg-purple-200 text-purple-700 px-1.5 py-0.5 rounded font-semibold">
                                                                                     #{match.seed1}
                                                                                 </span>
-                                                                            )}
+                                                                            ) : match.player1 && match.player1 !== 'BYE' && match.player1 !== 'TBD' ? (
+                                                                                <span className="text-xs bg-gray-200 text-gray-600 px-1.5 py-0.5 rounded text-[10px]">
+                                                                                    Unseeded
+                                                                                </span>
+                                                                            ) : null}
                                                                             <span className={match.player1 === 'BYE' ? 'text-gray-400 italic' : match.player1 === currentPlayer ? 'font-bold text-blue-700' : ''}>
                                                                                 {match.player1 === currentPlayer && '👤 '}
                                                                                 {match.player1 || 'TBD'}
@@ -4585,11 +4589,15 @@ const API_BASE = '/api';
                                                                             : 'bg-gray-100'
                                                                     }`}>
                                                                         <div className="flex items-center gap-2">
-                                                                            {match.seed2 && (
+                                                                            {match.seed2 ? (
                                                                                 <span className="text-xs bg-purple-200 text-purple-700 px-1.5 py-0.5 rounded font-semibold">
                                                                                     #{match.seed2}
                                                                                 </span>
-                                                                            )}
+                                                                            ) : match.player2 && match.player2 !== 'BYE' && match.player2 !== 'TBD' ? (
+                                                                                <span className="text-xs bg-gray-200 text-gray-600 px-1.5 py-0.5 rounded text-[10px]">
+                                                                                    Unseeded
+                                                                                </span>
+                                                                            ) : null}
                                                                             <span className={match.player2 === 'BYE' ? 'text-gray-400 italic' : match.player2 === currentPlayer ? 'font-bold text-blue-700' : ''}>
                                                                                 {match.player2 === currentPlayer && '👤 '}
                                                                                 {match.player2 || 'TBD'}
