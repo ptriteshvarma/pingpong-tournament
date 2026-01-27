@@ -2323,6 +2323,8 @@ const API_BASE = '/api';
         function AdminPanel({ players, onCreateSeason, isAdmin, onLogin, onAddPlayer, onCreateBracket, season, onArchiveSeason, onClearSeason }) {
             const [groupA, setGroupA] = useState([]);
             const [groupB, setGroupB] = useState([]);
+            const [gamesPerPlayerA, setGamesPerPlayerA] = useState('');
+            const [gamesPerPlayerB, setGamesPerPlayerB] = useState('');
             const [newPlayer, setNewPlayer] = useState('');
             const [newPlayerSeed, setNewPlayerSeed] = useState('');
             const [password, setPassword] = useState('');
@@ -2725,6 +2727,59 @@ const API_BASE = '/api';
                                     ))}
                                 </div>
                             </div>
+                        </div>
+
+                        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+                            <h3 className="text-sm font-semibold text-blue-900 mb-3">Games Per Player (Optional)</h3>
+                            <p className="text-xs text-blue-700 mb-3">
+                                Leave blank for full round-robin. Set a number to limit games (useful for large groups).
+                            </p>
+                            <div className="grid md:grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block text-xs text-gray-600 mb-1">
+                                        Group A: Seeded
+                                        <span className="text-gray-400 ml-1">
+                                            (Full: {groupA.length > 0 ? groupA.length - 1 : 0} games)
+                                        </span>
+                                    </label>
+                                    <input
+                                        type="number"
+                                        min="1"
+                                        max={groupA.length > 0 ? groupA.length - 1 : 100}
+                                        value={gamesPerPlayerA}
+                                        onChange={e => setGamesPerPlayerA(e.target.value)}
+                                        placeholder={`Default: ${groupA.length > 0 ? groupA.length - 1 : 'auto'}`}
+                                        className="w-full bg-white border border-gray-300 rounded-lg px-3 py-2 text-sm"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-xs text-gray-600 mb-1">
+                                        Group B: Unseeded
+                                        <span className="text-gray-400 ml-1">
+                                            (Full: {groupB.length > 0 ? groupB.length - 1 : 0} games)
+                                        </span>
+                                    </label>
+                                    <input
+                                        type="number"
+                                        min="1"
+                                        max={groupB.length > 0 ? groupB.length - 1 : 100}
+                                        value={gamesPerPlayerB}
+                                        onChange={e => setGamesPerPlayerB(e.target.value)}
+                                        placeholder={`Default: ${groupB.length > 0 ? groupB.length - 1 : 'auto'}`}
+                                        className="w-full bg-white border border-gray-300 rounded-lg px-3 py-2 text-sm"
+                                    />
+                                </div>
+                            </div>
+                            {gamesPerPlayerA && groupA.length > 0 && parseInt(gamesPerPlayerA) < groupA.length - 1 && (
+                                <p className="text-xs text-orange-600 mt-2">
+                                    ⚠️ Group A: Partial schedule - not all players will face each other
+                                </p>
+                            )}
+                            {gamesPerPlayerB && groupB.length > 0 && parseInt(gamesPerPlayerB) < groupB.length - 1 && (
+                                <p className="text-xs text-orange-600 mt-2">
+                                    ⚠️ Group B: Partial schedule - not all players will face each other
+                                </p>
+                            )}
                         </div>
 
                         <button onClick={() => onCreateSeason(groupA, groupB)} disabled={groupA.length < 2 || groupB.length < 2} className="w-full bg-emerald-600 hover:bg-emerald-500 disabled:bg-gray-200 disabled:text-gray-500 py-3 rounded-lg font-semibold">
@@ -3689,7 +3744,13 @@ const API_BASE = '/api';
                     const res = await fetch(`${API_BASE}/season/create`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json', 'X-Admin-Password': localStorage.getItem('adminPassword') || '' },
-                        body: JSON.stringify({ groupA, groupB, numWeeks: 10 })
+                        body: JSON.stringify({
+                            groupA,
+                            groupB,
+                            numWeeks: 10,
+                            gamesPerPlayerA: gamesPerPlayerA ? parseInt(gamesPerPlayerA) : undefined,
+                            gamesPerPlayerB: gamesPerPlayerB ? parseInt(gamesPerPlayerB) : undefined
+                        })
                     });
                     if (res.ok) {
                         await loadData();

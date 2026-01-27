@@ -823,6 +823,87 @@ const loadBracketFromDB = async () => {
 
 // ============== LEAGUE SEASON SYSTEM ==============
 
+// Generate partial round robin schedule with limited games per player
+const generatePartialRoundRobinSchedule = (players, gamesPerPlayer) => {
+  const n = players.length;
+  const matches = [];
+
+  // Calculate max possible games in full round-robin (each plays everyone once)
+  const maxPossibleGames = n - 1;
+
+  // If requested games >= max possible, just do full round-robin
+  if (gamesPerPlayer >= maxPossibleGames) {
+    return generateRoundRobinSchedule(players, false);
+  }
+
+  // Generate all possible matchups
+  const allMatchups = [];
+  for (let i = 0; i < n; i++) {
+    for (let j = i + 1; j < n; j++) {
+      allMatchups.push({
+        player1: players[i].name,
+        player2: players[j].name
+      });
+    }
+  }
+
+  // Shuffle matchups for fairness
+  for (let i = allMatchups.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [allMatchups[i], allMatchups[j]] = [allMatchups[j], allMatchups[i]];
+  }
+
+  // Track games per player
+  const playerGames = {};
+  players.forEach(p => playerGames[p.name] = 0);
+
+  // Greedy selection: add matches where both players have capacity
+  for (const matchup of allMatchups) {
+    const p1 = matchup.player1;
+    const p2 = matchup.player2;
+
+    if (playerGames[p1] < gamesPerPlayer && playerGames[p2] < gamesPerPlayer) {
+      matches.push(matchup);
+      playerGames[p1]++;
+      playerGames[p2]++;
+    }
+
+    // Stop if everyone has their games
+    if (Object.values(playerGames).every(g => g >= gamesPerPlayer)) {
+      break;
+    }
+  }
+
+  // Fill remaining slots if some players need more games
+  // This ensures everyone gets exactly gamesPerPlayer (or as close as possible)
+  for (const matchup of allMatchups) {
+    const p1 = matchup.player1;
+    const p2 = matchup.player2;
+
+    // Check if this matchup already exists
+    const exists = matches.some(m =>
+      (m.player1 === p1 && m.player2 === p2) ||
+      (m.player1 === p2 && m.player2 === p1)
+    );
+
+    if (!exists && playerGames[p1] < gamesPerPlayer && playerGames[p2] < gamesPerPlayer) {
+      matches.push(matchup);
+      playerGames[p1]++;
+      playerGames[p2]++;
+    }
+  }
+
+  console.log(`📊 Partial round-robin for ${n} players: ${gamesPerPlayer} games each`);
+  console.log(`   Generated ${matches.length} matches`);
+  Object.entries(playerGames).forEach(([name, games]) => {
+    if (games !== gamesPerPlayer) {
+      console.warn(`   ⚠️  ${name}: ${games} games (target: ${gamesPerPlayer})`);
+    }
+  });
+
+  return matches;
+};
+
 // Generate round robin schedule for a group
 const generateRoundRobinSchedule = (players, doubleRoundRobin = true) => {
   const n = players.length;
@@ -993,9 +1074,27 @@ const getMidSeasonWeek = (totalWeeks) => {
 };
 
 // Generate complete season
-const generateSeason = (groupA, groupB, numWeeks = 10) => {
-  const groupAMatches = generateRoundRobinSchedule(groupA, true);
-  const groupBMatches = generateRoundRobinSchedule(groupB, true);
+const generateSeason = (groupA, groupB, numWeeks = 10, options = {}) => {
+  const { gamesPerPlayerA, gamesPerPlayerB } = options;
+
+  // Determine scheduling strategy for each group
+  let groupAMatches, groupBMatches;
+
+  if (gamesPerPlayerA && gamesPerPlayerA < (groupA.length - 1)) {
+    // Partial round-robin for Group A
+    groupAMatches = generatePartialRoundRobinSchedule(groupA, gamesPerPlayerA);
+  } else {
+    // Full round-robin for Group A (everyone plays everyone once)
+    groupAMatches = generateRoundRobinSchedule(groupA, false);
+  }
+
+  if (gamesPerPlayerB && gamesPerPlayerB < (groupB.length - 1)) {
+    // Partial round-robin for Group B
+    groupBMatches = generatePartialRoundRobinSchedule(groupB, gamesPerPlayerB);
+  } else {
+    // Full round-robin for Group B (everyone plays everyone once)
+    groupBMatches = generateRoundRobinSchedule(groupB, false);
+  }
 
   const groupAWeeks = distributeMatchesToWeeks(groupAMatches, groupA, numWeeks);
   const groupBWeeks = distributeMatchesToWeeks(groupBMatches, groupB, numWeeks);
@@ -2375,7 +2474,7 @@ app.get('/api/season', cacheResponse(30), async (req, res) => {
 // Create new season (admin only)
 app.post('/api/season/create', requireAdmin, async (req, res) => {
   try {
-    const { groupA, groupB, numWeeks = 10, seasonName = 'Season 1' } = req.body;
+    const { groupA, groupB, numWeeks = 10, seasonName = 'Season 1', gamesPerPlayerA, gamesPerPlayerB } = req.body;
 
     if (!groupA || !groupB) {
       return res.status(400).json({ error: 'Both groups are required' });
@@ -2400,7 +2499,7 @@ app.post('/api/season/create', requireAdmin, async (req, res) => {
       warnings.push('Recommended: 8+ players per group for better schedule balance');
     }
 
-    const season = generateSeason(groupA, groupB, numWeeks);
+    const season = generateSeason(groupA, groupB, numWeeks, { gamesPerPlayerA, gamesPerPlayerB });
     season.name = seasonName;
 
     // Validate match distribution fairness
