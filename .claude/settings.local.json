@@ -56,7 +56,11 @@
       "Bash(powershell \"Stop-Process -Id 4412 -Force\")",
       "Bash(npm run build:*)",
       "Bash(cmd.exe /c \"taskkill /PID 22576 /F\")",
-      "Bash(powershell.exe -Command \"Stop-Process -Id 22576 -Force\")"
+      "Bash(powershell.exe -Command \"Stop-Process -Id 22576 -Force\")",
+      "Bash(if [ -f .env ])",
+      "Bash(then grep ADMIN .env)",
+      "Bash(else echo \"No .env file found\")",
+      "Bash(fi)"
     ]
   }
 }

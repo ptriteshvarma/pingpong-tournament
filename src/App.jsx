@@ -1115,12 +1115,12 @@ const API_BASE = '/api';
                 return `${h12}:${m} ${ampm}`;
             };
 
-            // Generate week dates
+            // Generate 2 weeks of dates
             const weekDates = useMemo(() => {
                 const dates = [];
                 const start = new Date();
                 start.setDate(start.getDate() - start.getDay()); // Start from Sunday
-                for (let i = 0; i < 7; i++) {
+                for (let i = 0; i < 14; i++) { // Changed from 7 to 14 for 2 weeks
                     const d = new Date(start);
                     d.setDate(start.getDate() + i);
                     dates.push(d.toISOString().split('T')[0]);
@@ -1227,26 +1227,32 @@ const API_BASE = '/api';
 
                     {/* My Availability Grid */}
                     <div className="bg-white shadow-sm border border-gray-200 rounded-xl p-4">
-                        <h3 className="text-lg font-bold mb-3">Set My Availability</h3>
+                        <h3 className="text-lg font-bold mb-3">Set My Availability (2 Weeks)</h3>
                         <p className="text-sm text-gray-500 mb-4">Tap slots when you're free to play. Your opponents will see when you overlap!</p>
                         <div className="overflow-x-auto">
                             <table className="w-full text-sm">
                                 <thead>
                                     <tr>
                                         <th className="p-1 text-left text-gray-500">Time</th>
-                                        {weekDates.map((date, i) => (
-                                            <th key={date} className="p-1 text-center">
-                                                <div className="text-gray-500 text-xs">{dayNames[i]}</div>
-                                                <div>{new Date(date + 'T12:00').getDate()}</div>
-                                            </th>
-                                        ))}
+                                        {weekDates.map((date, i) => {
+                                            const d = new Date(date + 'T12:00');
+                                            const isSecondWeek = i >= 7;
+                                            return (
+                                                <th key={date} className={`p-1 text-center ${isSecondWeek ? 'bg-blue-50' : ''} ${i === 7 ? 'border-l-2 border-blue-300' : ''}`}>
+                                                    <div className="text-gray-500 text-xs">{dayNames[d.getDay()]}</div>
+                                                    <div className="font-semibold">{d.getDate()}</div>
+                                                    {i === 0 && <div className="text-[10px] text-purple-600">Week 1</div>}
+                                                    {i === 7 && <div className="text-[10px] text-blue-600">Week 2</div>}
+                                                </th>
+                                            );
+                                        })}
                                     </tr>
                                 </thead>
                                 <tbody>
                                     {timeSlots.map(slot => (
                                         <tr key={slot}>
                                             <td className="p-1 text-gray-500 text-xs">{formatTime(slot)}</td>
-                                            {weekDates.map(date => {
+                                            {weekDates.map((date, i) => {
                                                 const isAvailable = myAvailability[currentPlayer]?.[date]?.includes(slot);
                                                 const existingBooking = tableBookings.find(b =>
                                                     b.booking_date?.split('T')[0] === date &&
@@ -1256,8 +1262,9 @@ const API_BASE = '/api';
                                                 const isTableBooked = !!existingBooking;
                                                 const myBooking = existingBooking && (existingBooking.player1 === currentPlayer || existingBooking.player2 === currentPlayer);
                                                 const bookingGroup = existingBooking?.group_name;
+                                                const isSecondWeek = i >= 7;
                                                 return (
-                                                    <td key={date} className="p-1">
+                                                    <td key={date} className={`p-1 ${isSecondWeek ? 'bg-blue-50/30' : ''} ${i === 7 ? 'border-l-2 border-blue-300' : ''}`}>
                                                         <button
                                                             onClick={() => !isTableBooked && toggleMyAvailability(date, slot)}
                                                             disabled={isTableBooked && !myBooking}
