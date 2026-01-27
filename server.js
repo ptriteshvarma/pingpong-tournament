@@ -418,7 +418,7 @@ const generateBracket = (players) => {
   let prevRoundMatches = ubRound1.length;
   for (let round = 2; round <= numRounds; round++) {
     const roundMatches = [];
-    const numMatches = prevRoundMatches / 2;
+    const numMatches = Math.floor(prevRoundMatches / 2);
     for (let i = 0; i < numMatches; i++) {
       roundMatches.push({
         id: `UB-R${round}-M${i + 1}`,
@@ -490,7 +490,7 @@ const generateBracket = (players) => {
         });
       }
     } else {
-      const newMatchCount = lbMatchCount / 2;
+      const newMatchCount = Math.floor(lbMatchCount / 2);
       for (let i = 0; i < newMatchCount; i++) {
         roundMatches.push({
           id: `LB-R${lbRound}-M${i + 1}`,
@@ -916,7 +916,7 @@ const generateRoundRobinSchedule = (players, doubleRoundRobin = true) => {
 
   const numPlayers = playerList.length;
   const numRounds = numPlayers - 1;
-  const halfSize = numPlayers / 2;
+  const halfSize = Math.floor(numPlayers / 2);
 
   const playerIndices = playerList.map((_, i) => i);
   const fixedPlayer = playerIndices.shift();
@@ -5197,7 +5197,7 @@ app.post('/api/registration/generate-bracket', requireAdmin, async (req, res) =>
 
     // Create matches with byes for top seeds
     const round1Matches = [];
-    for (let i = 0; i < bracketSize / 2; i++) {
+    for (let i = 0; i < Math.floor(bracketSize / 2); i++) {
       const seed1 = bracketOrder[i * 2];
       const seed2 = bracketOrder[i * 2 + 1];
 
