@@ -2294,22 +2294,34 @@ app.post('/api/bookings', async (req, res) => {
     const p2SwapStatus = await getPlayerSwapZoneStatus(player2);
     const swapZoneWarning = p1SwapStatus || p2SwapStatus;
 
-    // Get season info for mid-season check
+    // Get season info for game-based mid-season check
     const seasonResult = await pool.query('SELECT data FROM season WHERE id = 1');
     const season = seasonResult.rows[0]?.data;
-    const midPoint = season ? getMidSeasonWeek(season.totalWeeks) : 3;
-    const currentWeek = season?.currentWeek || 1;
     const midSeasonCompleted = season?.midSeasonReview?.completed || false;
 
-    // BLOCK bookings near mid-season swap for players in swap zone
-    if (swapZoneWarning && !midSeasonCompleted && currentWeek >= 2 && currentWeek <= midPoint) {
-      return res.status(403).json({
-        error: 'Bookings blocked during mid-season swap period for players in swap zone',
-        reason: `You or your opponent is in the swap zone (${p1SwapStatus ? player1 : player2}). Bookings are temporarily blocked to prevent scheduling conflicts during the mid-season swap.`,
-        canBookAfter: `Week ${midPoint + 1} (after mid-season swap is complete)`,
-        currentWeek: currentWeek,
-        swapPlayers: [p1SwapStatus, p2SwapStatus].filter(Boolean)
-      });
+    // NEW: Game-based booking block
+    // Block bookings for players who have 4+ games completed (until swap happens)
+    if (season && !midSeasonCompleted) {
+      const player1Stats = season.standings?.A?.[player1] || season.standings?.B?.[player1];
+      const player2Stats = season.standings?.A?.[player2] || season.standings?.B?.[player2];
+
+      const player1Games = player1Stats ? (player1Stats.wins + player1Stats.losses) : 0;
+      const player2Games = player2Stats ? (player2Stats.wins + player2Stats.losses) : 0;
+
+      // Block if either player has >= 4 games completed
+      if (player1Games >= 4 || player2Games >= 4) {
+        const blockedPlayer = player1Games >= 4 ? player1 : player2;
+        const blockedPlayerGames = player1Games >= 4 ? player1Games : player2Games;
+
+        return res.status(403).json({
+          error: 'Bookings blocked - Waiting for mid-season swap',
+          reason: `${blockedPlayer} has completed ${blockedPlayerGames} games. Players who have reached 4 games cannot book more until ALL players reach 4 games and the mid-season swap is completed.`,
+          blockedPlayer,
+          playerGames: blockedPlayerGames,
+          requiresSwap: true,
+          message: 'This ensures fair evaluation for the mid-season swap - everyone must play 4 games before swapping groups.'
+        });
+      }
     }
 
     // Calculate end time (30 min match)
@@ -3975,19 +3987,54 @@ app.get('/api/season/swap-zone', async (req, res) => {
     }
 
     const season = result.rows[0].data;
-    const midPoint = getMidSeasonWeek(season.totalWeeks);
 
-    // Swap zone only active during first half of regular season
-    if (season.status !== 'regular' || season.currentWeek >= midPoint || season.midSeasonReview?.completed) {
+    // NEW: Game-based swap trigger instead of week-based
+    // Count players who have completed >= 4 games
+    const allPlayers = [...Object.entries(season.standings.A), ...Object.entries(season.standings.B)];
+    const totalPlayers = allPlayers.length;
+    const playersAt4Games = allPlayers.filter(([name, stats]) => (stats.wins + stats.losses) >= 4).length;
+    const allPlayersReady = playersAt4Games === totalPlayers;
+
+    // Swap zone only active during regular season before swap is completed
+    if (season.status !== 'regular' || season.midSeasonReview?.completed) {
       return res.json({
         active: false,
         reason: season.midSeasonReview?.completed ? 'Mid-season swap already completed' :
-                season.status !== 'regular' ? 'Not in regular season' : 'Past mid-season point'
+                'Not in regular season'
       });
     }
 
     const sortedA = sortStandings(season.standings.A);
     const sortedB = sortStandings(season.standings.B);
+
+    // If not all players have 4 games yet, show progress without triggering swap
+    if (!allPlayersReady) {
+      return res.json({
+        active: true,
+        swapReady: false,
+        playersReady: playersAt4Games,
+        totalPlayers,
+        gamesRequired: 4,
+        message: `${playersAt4Games}/${totalPlayers} players have completed 4 games`,
+        progressMessage: `Waiting for all players to reach 4 games before mid-season swap`,
+        relegationZone: sortedA.slice(-3).map((p, i) => ({
+          name: p.name,
+          rank: sortedA.length - 2 + i,
+          group: 'A',
+          wins: p.wins,
+          losses: p.losses,
+          gamesPlayed: p.wins + p.losses
+        })),
+        promotionZone: sortedB.slice(0, 3).map((p, i) => ({
+          name: p.name,
+          rank: i + 1,
+          group: 'B',
+          wins: p.wins,
+          losses: p.losses,
+          gamesPlayed: p.wins + p.losses
+        }))
+      });
+    }
 
     // Bottom 3 of Group A = RELEGATION ZONE (danger)
     // Top 3 of Group B = PROMOTION ZONE (opportunity)
@@ -4036,24 +4083,23 @@ app.get('/api/season/swap-zone', async (req, res) => {
       message: `#4 in Group B - One win away from promotion zone!`
     }] : [];
 
-    const weeksRemaining = midPoint - season.currentWeek;
-
+    // All players have 4+ games - SWAP IS READY!
     res.json({
       active: true,
-      currentWeek: season.currentWeek,
-      midSeasonWeek: midPoint,
-      weeksRemaining,
-      urgencyMessage: weeksRemaining <= 2 ?
-        `⚠️ SWAP ZONE CRITICAL: Only ${weeksRemaining} week(s) until mid-season review!` :
-        `${weeksRemaining} weeks until mid-season swap`,
+      swapReady: true,
+      playersReady: totalPlayers,
+      totalPlayers,
+      gamesRequired: 4,
+      message: 'All players have completed 4 games - Ready for mid-season swap!',
+      urgencyMessage: '⚠️ SWAP READY: All players have reached 4 games. Admin can now trigger the mid-season swap!',
       relegationZone,
       promotionZone,
       bubble: [...bubbleA, ...bubbleB],
       swapRules: [
-        'At Week 3 mid-season review:',
+        'When all players complete 4 games:',
         '• Bottom 3 from Group A (Seeded) move DOWN to Group B',
         '• Top 3 from Group B (Unseeded) move UP to Group A',
-        'Win now to secure your position!'
+        'Players with 4+ games cannot book more until swap completes!'
       ]
     });
   } catch (error) {

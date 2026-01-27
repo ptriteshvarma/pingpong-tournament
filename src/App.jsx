@@ -177,9 +177,11 @@ const API_BASE = '/api';
                             <div className="text-amber-600"><SwapIcons.Warning /></div>
                         </div>
                         <div className="text-left sm:text-right">
-                            <div className="text-xs sm:text-sm text-gray-500">Week {swapZone.currentWeek} of {swapZone.midSeasonWeek * 2}</div>
-                            <div className={`font-bold text-sm sm:text-base ${swapZone.weeksRemaining <= 2 ? 'text-red-500 animate-pulse' : 'text-amber-600'}`}>
-                                {swapZone.weeksRemaining} week(s) until swap!
+                            <div className="text-xs sm:text-sm text-gray-500">
+                                {swapZone.playersReady}/{swapZone.totalPlayers} players ready
+                            </div>
+                            <div className={`font-bold text-sm sm:text-base ${swapZone.swapReady ? 'text-green-500 animate-pulse' : swapZone.playersReady >= swapZone.totalPlayers * 0.7 ? 'text-amber-500' : 'text-gray-600'}`}>
+                                {swapZone.swapReady ? '✓ Swap Ready!' : `${swapZone.totalPlayers - swapZone.playersReady} players need 4 games`}
                             </div>
                         </div>
                     </div>
@@ -200,7 +202,10 @@ const API_BASE = '/api';
                                             <PlayerAvatar name={player.name} size="sm" />
                                             <span className="text-xs sm:text-sm text-white truncate max-w-[80px] sm:max-w-none">{player.name}</span>
                                         </div>
-                                        <span className="text-[10px] sm:text-xs text-rose-300">{player.wins}W-{player.losses}L</span>
+                                        <span className="text-[10px] sm:text-xs text-rose-300">
+                                            {player.wins}W-{player.losses}L
+                                            {player.gamesPlayed !== undefined && <span className="ml-1 opacity-70">({player.gamesPlayed}g)</span>}
+                                        </span>
                                     </div>
                                 ))}
                             </div>
@@ -221,7 +226,10 @@ const API_BASE = '/api';
                                             <PlayerAvatar name={player.name} size="sm" />
                                             <span className="text-xs sm:text-sm text-white truncate max-w-[80px] sm:max-w-none">{player.name}</span>
                                         </div>
-                                        <span className="text-[10px] sm:text-xs text-emerald-300">{player.wins}W-{player.losses}L</span>
+                                        <span className="text-[10px] sm:text-xs text-emerald-300">
+                                            {player.wins}W-{player.losses}L
+                                            {player.gamesPlayed !== undefined && <span className="ml-1 opacity-70">({player.gamesPlayed}g)</span>}
+                                        </span>
                                     </div>
                                 ))}
                             </div>
