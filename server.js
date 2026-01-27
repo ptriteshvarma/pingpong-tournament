@@ -5257,6 +5257,26 @@ app.post('/api/registration/generate-bracket', requireAdmin, async (req, res) =>
       ]);
     }
 
+    // Generate all subsequent rounds with TBD placeholders
+    const numRounds = Math.log2(bracketSize);
+    let currentRoundMatches = Math.floor(bracketSize / 2);
+
+    for (let round = 2; round <= numRounds; round++) {
+      currentRoundMatches = Math.floor(currentRoundMatches / 2);
+
+      for (let matchNum = 1; matchNum <= currentRoundMatches; matchNum++) {
+        await pool.query(`
+          INSERT INTO league_matches (round, match_number, player1, player2, is_bye, completed)
+          VALUES ($1, $2, $3, $4, FALSE, FALSE)
+        `, [
+          round,
+          matchNum,
+          null, // TBD
+          null  // TBD
+        ]);
+      }
+    }
+
     // Close registration
     await pool.query(`
       UPDATE league_config SET registration_open = FALSE, updated_at = CURRENT_TIMESTAMP WHERE id = 1

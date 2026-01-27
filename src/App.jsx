@@ -915,6 +915,15 @@ const API_BASE = '/api';
             const [bookingToMove, setBookingToMove] = useState(null);
             const [newDate, setNewDate] = useState('');
             const [newSlot, setNewSlot] = useState('');
+            const [leagueMatches, setLeagueMatches] = useState([]);
+
+            // Fetch league matches
+            useEffect(() => {
+                fetch(`${API_BASE}/league/matches`)
+                    .then(r => r.json())
+                    .then(data => setLeagueMatches(data || []))
+                    .catch(() => setLeagueMatches([]));
+            }, []);
 
             // Get all players from both groups
             const allPlayers = useMemo(() => {
@@ -926,24 +935,52 @@ const API_BASE = '/api';
 
             // Get current player's upcoming matches
             const myMatches = useMemo(() => {
-                if (!season || !currentPlayer) return [];
+                if (!currentPlayer) return [];
                 const matches = [];
-                ['A', 'B'].forEach(group => {
-                    season.schedule?.[group]?.forEach((week, weekIdx) => {
-                        week.forEach(match => {
-                            if (!match.completed && (match.player1 === currentPlayer || match.player2 === currentPlayer)) {
-                                matches.push({
-                                    ...match,
-                                    weekNum: weekIdx + 1,
-                                    opponent: match.player1 === currentPlayer ? match.player2 : match.player1,
-                                    group
-                                });
-                            }
+
+                // Add season matches
+                if (season) {
+                    ['A', 'B'].forEach(group => {
+                        season.schedule?.[group]?.forEach((week, weekIdx) => {
+                            week.forEach(match => {
+                                if (!match.completed && (match.player1 === currentPlayer || match.player2 === currentPlayer)) {
+                                    matches.push({
+                                        ...match,
+                                        weekNum: weekIdx + 1,
+                                        opponent: match.player1 === currentPlayer ? match.player2 : match.player1,
+                                        group,
+                                        type: 'season'
+                                    });
+                                }
+                            });
                         });
                     });
+                }
+
+                // Add league bracket matches
+                leagueMatches.forEach(match => {
+                    if (!match.completed &&
+                        (match.player1 === currentPlayer || match.player2 === currentPlayer) &&
+                        match.player1 && match.player2 &&
+                        match.player1 !== 'BYE' && match.player2 !== 'BYE') {
+                        const opponent = match.player1 === currentPlayer ? match.player2 : match.player1;
+                        matches.push({
+                            id: match.id,
+                            player1: match.player1,
+                            player2: match.player2,
+                            completed: match.completed,
+                            weekNum: null,
+                            opponent: opponent,
+                            group: 'League',
+                            type: 'league',
+                            round: match.round,
+                            matchNumber: match.match_number
+                        });
+                    }
                 });
-                return matches.slice(0, 4); // Next 4 matches
-            }, [season, currentPlayer]);
+
+                return matches.slice(0, 6); // Next 6 matches
+            }, [season, currentPlayer, leagueMatches]);
 
             // Load all data
             const loadData = useCallback(async () => {
@@ -4323,26 +4360,46 @@ const API_BASE = '/api';
                                 {/* Schedule Content */}
                                 {view === 'schedule' && (
                             <div className="space-y-4">
-                                <div className="flex gap-2 items-center flex-wrap">
-                                    <span className="text-gray-500">Week:</span>
-                                    {Array.from({ length: season.totalWeeks }, (_, i) => (
-                                        <button key={i} onClick={() => setSelectedWeek(i + 1)} className={`w-8 h-8 rounded-lg text-sm ${selectedWeek === i + 1 ? 'bg-purple-600' : 'bg-gray-100 hover:bg-gray-200'}`}>
-                                            {i + 1}
-                                        </button>
-                                    ))}
-                                </div>
                                 <div className="flex gap-2">
                                     <button onClick={() => setSelectedGroup('A')} className={`px-4 py-2 rounded-lg ${selectedGroup === 'A' ? 'bg-emerald-600' : 'bg-gray-100'}`}>Group A</button>
                                     <button onClick={() => setSelectedGroup('B')} className={`px-4 py-2 rounded-lg ${selectedGroup === 'B' ? 'bg-amber-600' : 'bg-gray-100'}`}>Group B</button>
                                 </div>
-                                <div className="bg-white shadow-sm border border-gray-200 rounded-xl p-4">
-                                    <h3 className="text-lg font-bold mb-3">Week {selectedWeek} - Group {selectedGroup}</h3>
-                                    {weekMatches.filter(m => !m.cancelled).length > 0 ? (
-                                        <WeeklyMatches matches={weekMatches.filter(m => !m.cancelled)} week={selectedWeek} onRecordResult={handleRecordResult} />
-                                    ) : (
-                                        <p className="text-gray-500">No matches scheduled for this week.</p>
-                                    )}
-                                </div>
+
+                                {/* Multi-Week Schedule Display */}
+                                {(() => {
+                                    const currentWeek = season.currentWeek || 1;
+                                    const swapWeek = 3;
+                                    // Show weeks 1-4 initially, then all remaining weeks after swap
+                                    const weeksToShow = currentWeek <= swapWeek
+                                        ? Array.from({ length: Math.min(4, season.totalWeeks) }, (_, i) => i + 1)
+                                        : Array.from({ length: season.totalWeeks }, (_, i) => i + 1);
+
+                                    return weeksToShow.map(weekNum => {
+                                        const matches = season?.schedule?.[selectedGroup]?.[weekNum - 1] || [];
+                                        const activeMatches = matches.filter(m => !m.cancelled);
+
+                                        if (activeMatches.length === 0) return null;
+
+                                        return (
+                                            <div key={weekNum} className="bg-white shadow-sm border border-gray-200 rounded-xl p-4">
+                                                <div className="flex items-center justify-between mb-3">
+                                                    <h3 className="text-lg font-bold">Week {weekNum} - Group {selectedGroup}</h3>
+                                                    {weekNum === currentWeek && (
+                                                        <span className="bg-purple-100 text-purple-700 px-3 py-1 rounded-full text-xs font-semibold">
+                                                            Current Week
+                                                        </span>
+                                                    )}
+                                                    {weekNum === swapWeek && currentWeek < swapWeek && (
+                                                        <span className="bg-amber-100 text-amber-700 px-3 py-1 rounded-full text-xs font-semibold">
+                                                            Swap Week
+                                                        </span>
+                                                    )}
+                                                </div>
+                                                <WeeklyMatches matches={activeMatches} week={weekNum} onRecordResult={handleRecordResult} />
+                                            </div>
+                                        );
+                                    });
+                                })()}
 
                                 {/* Mid-Season Review Panel */}
                                 {isAdmin && season?.status === 'regular' && season.currentWeek >= Math.floor(season.totalWeeks / 2) && !season.midSeasonReview?.completed && (
