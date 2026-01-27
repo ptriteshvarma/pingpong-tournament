@@ -5338,6 +5338,149 @@ app.post('/api/registration/:id/unseeded', requireAdmin, async (req, res) => {
   }
 });
 
+// Fix specific player to unseeded and regenerate bracket (admin)
+app.post('/api/registration/fix-unseeded/:playerName', requireAdmin, async (req, res) => {
+  try {
+    const { playerName } = req.params;
+
+    console.log(`[Fix Unseeded] Setting ${playerName} to unseeded...`);
+
+    // Update player to unseeded
+    const updateResult = await pool.query(`
+      UPDATE league_registration
+      SET final_seed = NULL,
+          is_ranked = FALSE,
+          admin_approved = TRUE,
+          updated_at = CURRENT_TIMESTAMP
+      WHERE player_name = $1
+      RETURNING id, player_name, final_seed, is_ranked
+    `, [playerName]);
+
+    if (updateResult.rows.length === 0) {
+      return res.status(404).json({ error: `Player ${playerName} not found` });
+    }
+
+    console.log(`[Fix Unseeded] Updated:`, updateResult.rows[0]);
+
+    // Now regenerate bracket automatically
+    console.log(`[Fix Unseeded] Regenerating bracket...`);
+
+    await ensureRegistrationTables();
+
+    const players = await pool.query(`
+      SELECT player_name, final_seed, is_ranked
+      FROM league_registration
+      WHERE registration_status = 'approved' AND admin_approved = TRUE
+      ORDER BY
+        CASE WHEN final_seed IS NOT NULL THEN final_seed ELSE 9999 END ASC,
+        player_name ASC
+    `);
+
+    const n = players.rows.length;
+    if (n < 4) {
+      return res.status(400).json({ error: 'Need at least 4 approved players to generate bracket' });
+    }
+
+    // Separate seeded and unseeded players
+    const seededPlayers = players.rows.filter(p => p.is_ranked && p.final_seed !== null);
+    const unseededPlayers = players.rows.filter(p => !p.is_ranked || p.final_seed === null);
+
+    const bracketSize = Math.pow(2, Math.ceil(Math.log2(n)));
+    const numByes = bracketSize - n;
+
+    const finalPlayers = [];
+    seededPlayers.forEach(p => {
+      finalPlayers.push({
+        name: p.player_name,
+        seed: p.final_seed,
+        isRanked: true
+      });
+    });
+
+    unseededPlayers.forEach(p => {
+      finalPlayers.push({
+        name: p.player_name,
+        seed: null,
+        isRanked: false
+      });
+    });
+
+    function fillBracket(low, high, arr) {
+      if (low === high) {
+        arr.push(low);
+      } else {
+        const mid = Math.floor((low + high) / 2);
+        fillBracket(low, mid, arr);
+        fillBracket(mid + 1, high, arr);
+      }
+    }
+
+    const bracketOrder = [];
+    fillBracket(1, bracketSize, bracketOrder);
+
+    const round1Matches = [];
+    for (let i = 0; i < Math.floor(bracketSize / 2); i++) {
+      const seed1 = bracketOrder[i * 2];
+      const seed2 = bracketOrder[i * 2 + 1];
+      const player1 = finalPlayers[seed1 - 1] || null;
+      const player2 = finalPlayers[seed2 - 1] || null;
+      const isBye = !player1 || !player2;
+      const winner = isBye ? (player1?.name || player2?.name) : null;
+
+      round1Matches.push({
+        matchNumber: i + 1,
+        player1: player1?.name || 'BYE',
+        player2: player2?.name || 'BYE',
+        seed1: player1?.seed || null,
+        seed2: player2?.seed || null,
+        isBye,
+        winner
+      });
+    }
+
+    await pool.query('DELETE FROM league_matches');
+
+    for (const match of round1Matches) {
+      await pool.query(`
+        INSERT INTO league_matches (round, match_number, player1, player2, seed1, seed2, winner, is_bye, completed)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+      `, [1, match.matchNumber, match.player1, match.player2, match.seed1, match.seed2, match.winner, match.isBye, match.isBye]);
+    }
+
+    const numRounds = Math.log2(bracketSize);
+    let currentRoundMatches = Math.floor(bracketSize / 2);
+
+    for (let round = 2; round <= numRounds; round++) {
+      currentRoundMatches = Math.floor(currentRoundMatches / 2);
+      for (let matchNum = 1; matchNum <= currentRoundMatches; matchNum++) {
+        await pool.query(`
+          INSERT INTO league_matches (round, match_number, player1, player2, is_bye, completed)
+          VALUES ($1, $2, $3, $4, FALSE, FALSE)
+        `, [round, matchNum, null, null]);
+      }
+    }
+
+    await pool.query(`
+      UPDATE league_config SET registration_open = FALSE, updated_at = CURRENT_TIMESTAMP WHERE id = 1
+    `);
+
+    console.log(`[Fix Unseeded] Success! Bracket regenerated.`);
+
+    res.json({
+      success: true,
+      message: `${playerName} set to unseeded and bracket regenerated`,
+      bracketSize,
+      numPlayers: n,
+      numByes,
+      seededCount: seededPlayers.length,
+      unseededCount: unseededPlayers.length
+    });
+  } catch (error) {
+    console.error('[Fix Unseeded Error]', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Clear all registrations (admin)
 app.delete('/api/registration/all', requireAdmin, async (req, res) => {
   try {
