@@ -120,12 +120,12 @@ const API_BASE = '/api';
             };
 
             return (
-                <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4" onClick={onClose}>
-                    <div className="bg-gray-100 rounded-xl p-4 sm:p-6 max-w-md w-full mx-4" onClick={e => e.stopPropagation()}>
-                        <h3 className="text-base sm:text-lg font-bold mb-2 text-center">Choose Avatar</h3>
-                        <p className="text-xs sm:text-sm text-gray-500 text-center mb-3 sm:mb-4 truncate">{playerName}</p>
+                <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50" onClick={onClose}>
+                    <div className="bg-gray-100 rounded-xl p-6 max-w-md w-full mx-4" onClick={e => e.stopPropagation()}>
+                        <h3 className="text-lg font-bold mb-2 text-center">Choose Avatar</h3>
+                        <p className="text-sm text-gray-500 text-center mb-4">{playerName}</p>
 
-                        <div className="grid grid-cols-5 sm:grid-cols-6 gap-2 sm:gap-3 mb-3 sm:mb-4">
+                        <div className="grid grid-cols-6 gap-3 mb-4">
                             {avatarIconList.map(iconName => {
                                 const IconComponent = AvatarIcons[iconName];
                                 const isSelected = currentAvatar === iconName;
@@ -133,7 +133,7 @@ const API_BASE = '/api';
                                     <button
                                         key={iconName}
                                         onClick={() => handleSelect(iconName)}
-                                        className={`w-10 h-10 sm:w-12 sm:h-12 ${colors[colorIndex]} rounded-full flex items-center justify-center text-white transition-all ${isSelected ? 'ring-2 ring-white scale-110' : 'hover:scale-105'}`}
+                                        className={`w-12 h-12 ${colors[colorIndex]} rounded-full flex items-center justify-center text-white transition-all ${isSelected ? 'ring-2 ring-white scale-110' : 'hover:scale-105'}`}
                                         title={iconName}
                                     >
                                         <IconComponent />
@@ -143,10 +143,10 @@ const API_BASE = '/api';
                         </div>
 
                         <div className="flex gap-2">
-                            <button onClick={handleClear} className="flex-1 py-2 bg-gray-200 hover:bg-gray-300 rounded-lg text-xs sm:text-sm">
+                            <button onClick={handleClear} className="flex-1 py-2 bg-gray-200 hover:bg-gray-300 rounded-lg text-sm">
                                 Use Initials
                             </button>
-                            <button onClick={onClose} className="flex-1 py-2 bg-purple-600 hover:bg-purple-700 rounded-lg text-xs sm:text-sm">
+                            <button onClick={onClose} className="flex-1 py-2 bg-purple-600 hover:bg-purple-700 rounded-lg text-sm">
                                 Done
                             </button>
                         </div>
@@ -169,40 +169,40 @@ const API_BASE = '/api';
             if (!swapZone?.active) return null;
 
             return (
-                <div className="bg-gradient-to-r from-red-100 via-gray-100 to-green-100 border border-gray-300 rounded-xl p-2 sm:p-4 mb-4 sm:mb-6 animate-slideIn">
-                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-2 sm:mb-3 gap-2">
-                        <div className="flex items-center gap-2 sm:gap-3">
+                <div className="bg-gradient-to-r from-red-100 via-gray-100 to-green-100 border border-gray-300 rounded-xl p-4 mb-6 animate-slideIn">
+                    <div className="flex items-center justify-between mb-3">
+                        <div className="flex items-center gap-3">
                             <div className="text-amber-600"><SwapIcons.ArrowsUpDown /></div>
-                            <h3 className="text-sm sm:text-lg font-bold text-white">MID-SEASON SWAP ZONE</h3>
+                            <h3 className="text-lg font-bold text-white">MID-SEASON SWAP ZONE</h3>
                             <div className="text-amber-600"><SwapIcons.Warning /></div>
                         </div>
-                        <div className="text-left sm:text-right">
-                            <div className="text-xs sm:text-sm text-gray-500">
+                        <div className="text-right">
+                            <div className="text-sm text-gray-500">
                                 {swapZone.playersReady}/{swapZone.totalPlayers} players ready
                             </div>
-                            <div className={`font-bold text-sm sm:text-base ${swapZone.swapReady ? 'text-green-500 animate-pulse' : swapZone.playersReady >= swapZone.totalPlayers * 0.7 ? 'text-amber-500' : 'text-gray-600'}`}>
+                            <div className={`font-bold ${swapZone.swapReady ? 'text-green-500 animate-pulse' : swapZone.playersReady >= swapZone.totalPlayers * 0.7 ? 'text-amber-500' : 'text-gray-600'}`}>
                                 {swapZone.swapReady ? '✓ Swap Ready!' : `${swapZone.totalPlayers - swapZone.playersReady} players need 4 games`}
                             </div>
                         </div>
                     </div>
 
-                    <div className="grid sm:grid-cols-2 gap-2 sm:gap-4">
+                    <div className="grid md:grid-cols-2 gap-4">
                         {/* Relegation Zone */}
-                        <div className="bg-rose-900/30 border border-rose-600/50 rounded-lg p-2 sm:p-3">
-                            <div className="flex items-center gap-1 sm:gap-2 mb-1 sm:mb-2">
+                        <div className="bg-rose-900/30 border border-rose-600/50 rounded-lg p-3">
+                            <div className="flex items-center gap-2 mb-2">
                                 <div className="text-red-500"><SwapIcons.ArrowDown /></div>
-                                <span className="font-bold text-red-500 uppercase tracking-wide text-xs sm:text-sm">RELEGATION ZONE</span>
+                                <span className="font-bold text-red-500 uppercase tracking-wide text-sm">RELEGATION ZONE</span>
                             </div>
-                            <p className="text-[10px] sm:text-xs text-rose-300/70 mb-1 sm:mb-2">Bottom 3 of Group A move DOWN to Group B</p>
+                            <p className="text-xs text-rose-300/70 mb-2">Bottom 3 of Group A move DOWN to Group B</p>
                             <div className="space-y-1">
                                 {swapZone.relegationZone?.map(player => (
-                                    <div key={player.name} className="flex items-center justify-between bg-rose-900/40 rounded px-1.5 sm:px-2 py-0.5 sm:py-1">
-                                        <div className="flex items-center gap-1 sm:gap-2">
-                                            <span className="text-red-500 font-bold text-xs sm:text-sm">#{player.rank}</span>
+                                    <div key={player.name} className="flex items-center justify-between bg-rose-900/40 rounded px-2 py-1">
+                                        <div className="flex items-center gap-2">
+                                            <span className="text-red-500 font-bold">#{player.rank}</span>
                                             <PlayerAvatar name={player.name} size="sm" />
-                                            <span className="text-xs sm:text-sm text-white truncate max-w-[80px] sm:max-w-none">{player.name}</span>
+                                            <span className="text-sm text-white">{player.name}</span>
                                         </div>
-                                        <span className="text-[10px] sm:text-xs text-rose-300">
+                                        <span className="text-xs text-rose-300">
                                             {player.wins}W-{player.losses}L
                                             {player.gamesPlayed !== undefined && <span className="ml-1 opacity-70">({player.gamesPlayed}g)</span>}
                                         </span>
@@ -212,21 +212,21 @@ const API_BASE = '/api';
                         </div>
 
                         {/* Promotion Zone */}
-                        <div className="bg-emerald-900/30 border border-emerald-600/50 rounded-lg p-2 sm:p-3">
-                            <div className="flex items-center gap-1 sm:gap-2 mb-1 sm:mb-2">
+                        <div className="bg-emerald-900/30 border border-emerald-600/50 rounded-lg p-3">
+                            <div className="flex items-center gap-2 mb-2">
                                 <div className="text-green-600"><SwapIcons.ArrowUp /></div>
-                                <span className="font-bold text-green-600 uppercase tracking-wide text-xs sm:text-sm">PROMOTION ZONE</span>
+                                <span className="font-bold text-green-600 uppercase tracking-wide text-sm">PROMOTION ZONE</span>
                             </div>
-                            <p className="text-[10px] sm:text-xs text-emerald-300/70 mb-1 sm:mb-2">Top 3 of Group B move UP to Group A</p>
+                            <p className="text-xs text-emerald-300/70 mb-2">Top 3 of Group B move UP to Group A</p>
                             <div className="space-y-1">
                                 {swapZone.promotionZone?.map(player => (
-                                    <div key={player.name} className="flex items-center justify-between bg-emerald-900/40 rounded px-1.5 sm:px-2 py-0.5 sm:py-1">
-                                        <div className="flex items-center gap-1 sm:gap-2">
-                                            <span className="text-green-600 font-bold text-xs sm:text-sm">#{player.rank}</span>
+                                    <div key={player.name} className="flex items-center justify-between bg-emerald-900/40 rounded px-2 py-1">
+                                        <div className="flex items-center gap-2">
+                                            <span className="text-green-600 font-bold">#{player.rank}</span>
                                             <PlayerAvatar name={player.name} size="sm" />
-                                            <span className="text-xs sm:text-sm text-white truncate max-w-[80px] sm:max-w-none">{player.name}</span>
+                                            <span className="text-sm text-white">{player.name}</span>
                                         </div>
-                                        <span className="text-[10px] sm:text-xs text-emerald-300">
+                                        <span className="text-xs text-emerald-300">
                                             {player.wins}W-{player.losses}L
                                             {player.gamesPlayed !== undefined && <span className="ml-1 opacity-70">({player.gamesPlayed}g)</span>}
                                         </span>
@@ -238,17 +238,17 @@ const API_BASE = '/api';
 
                     {/* Bubble Players */}
                     {swapZone.bubble?.length > 0 && (
-                        <div className="mt-2 sm:mt-3 pt-2 sm:pt-3 border-t border-gray-300">
-                            <div className="flex items-center gap-1 sm:gap-2 mb-1 sm:mb-2">
+                        <div className="mt-3 pt-3 border-t border-gray-300">
+                            <div className="flex items-center gap-2 mb-2">
                                 <div className="text-amber-600"><SwapIcons.Bolt /></div>
-                                <span className="text-xs sm:text-sm font-semibold text-amber-600">ON THE BUBBLE</span>
+                                <span className="text-sm font-semibold text-amber-600">ON THE BUBBLE</span>
                             </div>
-                            <div className="flex flex-wrap gap-1 sm:gap-2">
+                            <div className="flex flex-wrap gap-2">
                                 {swapZone.bubble.map(player => (
-                                    <div key={player.name} className="flex items-center gap-1 sm:gap-2 bg-amber-900/30 border border-amber-600/50 rounded px-1.5 sm:px-2 py-0.5 sm:py-1 text-xs sm:text-sm">
+                                    <div key={player.name} className="flex items-center gap-2 bg-amber-900/30 border border-amber-600/50 rounded px-2 py-1 text-sm">
                                         <span className="text-amber-600">#{player.rank} G{player.group}</span>
-                                        <span className="text-white truncate max-w-[80px] sm:max-w-none">{player.name}</span>
-                                        <span className="text-[10px] sm:text-xs text-amber-300 hidden sm:inline">- {player.message}</span>
+                                        <span className="text-white">{player.name}</span>
+                                        <span className="text-xs text-amber-300">- {player.message}</span>
                                     </div>
                                 ))}
                             </div>
@@ -279,49 +279,49 @@ const API_BASE = '/api';
             }, [standings]);
 
             return (
-                <div className="bg-white rounded-xl p-2 sm:p-4 shadow-sm border border-gray-200">
-                    <h3 className="text-base sm:text-lg font-bold mb-2 sm:mb-3 flex items-center gap-2 text-gray-900">
+                <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-200">
+                    <h3 className="text-lg font-bold mb-3 flex items-center gap-2 text-gray-900">
                         <span className={groupName === 'A' ? 'text-purple-600' : 'text-amber-500'}>●</span>
-                        <span className="truncate">Group {groupName}: {groupLabel}</span>
+                        Group {groupName}: {groupLabel}
                     </h3>
-                    <div className="overflow-x-auto -mx-2 sm:mx-0">
-                        <table className="w-full text-xs sm:text-sm">
+                    <div className="overflow-x-auto">
+                        <table className="w-full text-sm">
                             <thead>
                                 <tr className="text-gray-500 border-b border-gray-200 bg-gray-50">
-                                    <th className="text-left py-1 sm:py-2 px-1 sm:px-2">#</th>
-                                    <th className="text-left py-1 sm:py-2 px-1 sm:px-2">Player</th>
-                                    <th className="text-center py-1 sm:py-2 px-1 sm:px-2">W</th>
-                                    <th className="text-center py-1 sm:py-2 px-1 sm:px-2">L</th>
-                                    <th className="text-center py-1 sm:py-2 px-1 sm:px-2 hidden sm:table-cell">PF</th>
-                                    <th className="text-center py-1 sm:py-2 px-1 sm:px-2 hidden sm:table-cell">PA</th>
-                                    <th className="text-center py-1 sm:py-2 px-1 sm:px-2">Diff</th>
-                                    <th className="text-center py-1 sm:py-2 px-1 sm:px-2 hidden md:table-cell">Streak</th>
+                                    <th className="text-left py-2 px-2">#</th>
+                                    <th className="text-left py-2 px-2">Player</th>
+                                    <th className="text-center py-2 px-2">W</th>
+                                    <th className="text-center py-2 px-2">L</th>
+                                    <th className="text-center py-2 px-2">PF</th>
+                                    <th className="text-center py-2 px-2">PA</th>
+                                    <th className="text-center py-2 px-2">Diff</th>
+                                    <th className="text-center py-2 px-2">Streak</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {sorted.map((player, idx) => (
                                     <tr key={player.name} className={`border-b border-gray-100 ${idx < 4 ? 'bg-purple-50' : ''}`}>
-                                        <td className="py-1 sm:py-2 px-1 sm:px-2">
+                                        <td className="py-2 px-2">
                                             <span className={idx < 4 ? 'text-purple-600 font-bold' : 'text-gray-400'}>{idx + 1}</span>
                                         </td>
-                                        <td className="py-1 sm:py-2 px-1 sm:px-2">
-                                            <div className="flex items-center gap-1 sm:gap-2">
+                                        <td className="py-2 px-2">
+                                            <div className="flex items-center gap-2">
                                                 <PlayerAvatar name={player.name} size="sm" />
-                                                <span className="font-medium text-gray-900 truncate max-w-[100px] sm:max-w-none">{player.name}</span>
-                                                {player.promotedFrom === 'B' && <span className="text-xs bg-green-100 text-green-700 px-1 rounded hidden sm:inline" title="Promoted from Group B">⬆️</span>}
-                                                {player.promotedFrom === 'A' && <span className="text-xs bg-red-100 text-red-700 px-1 rounded hidden sm:inline" title="Moved from Group A">⬇️</span>}
+                                                <span className="font-medium text-gray-900">{player.name}</span>
+                                                {player.promotedFrom === 'B' && <span className="text-xs bg-green-100 text-green-700 px-1 rounded" title="Promoted from Group B">⬆️</span>}
+                                                {player.promotedFrom === 'A' && <span className="text-xs bg-red-100 text-red-700 px-1 rounded" title="Moved from Group A">⬇️</span>}
                                             </div>
                                         </td>
-                                        <td className="text-center py-1 sm:py-2 px-1 sm:px-2 text-green-600 font-semibold">{player.wins}</td>
-                                        <td className="text-center py-1 sm:py-2 px-1 sm:px-2 text-red-500">{player.losses}</td>
-                                        <td className="text-center py-1 sm:py-2 px-1 sm:px-2 text-gray-700 hidden sm:table-cell">{player.pointsFor}</td>
-                                        <td className="text-center py-1 sm:py-2 px-1 sm:px-2 text-gray-700 hidden sm:table-cell">{player.pointsAgainst}</td>
-                                        <td className="text-center py-1 sm:py-2 px-1 sm:px-2">
+                                        <td className="text-center py-2 px-2 text-green-600 font-semibold">{player.wins}</td>
+                                        <td className="text-center py-2 px-2 text-red-500">{player.losses}</td>
+                                        <td className="text-center py-2 px-2 text-gray-700">{player.pointsFor}</td>
+                                        <td className="text-center py-2 px-2 text-gray-700">{player.pointsAgainst}</td>
+                                        <td className="text-center py-2 px-2">
                                             <span className={player.pointsFor - player.pointsAgainst >= 0 ? 'text-green-600' : 'text-red-500'}>
                                                 {player.pointsFor - player.pointsAgainst >= 0 ? '+' : ''}{player.pointsFor - player.pointsAgainst}
                                             </span>
                                         </td>
-                                        <td className="text-center py-1 sm:py-2 px-1 sm:px-2 hidden md:table-cell">
+                                        <td className="text-center py-2 px-2">
                                             {player.streak > 0 && <span className="text-green-600">W{player.streak}</span>}
                                             {player.streak < 0 && <span className="text-red-500">L{Math.abs(player.streak)}</span>}
                                             {player.streak === 0 && <span className="text-gray-400">-</span>}
@@ -331,7 +331,7 @@ const API_BASE = '/api';
                             </tbody>
                         </table>
                     </div>
-                    <p className="text-[10px] sm:text-xs text-gray-500 mt-2">Top 4 advance to playoffs</p>
+                    <p className="text-xs text-gray-500 mt-2">Top 4 advance to playoffs</p>
                 </div>
             );
         }
@@ -394,28 +394,28 @@ const API_BASE = '/api';
                                 <h3 className="text-lg font-bold mb-4 text-center">Record Result</h3>
                                 <p className="text-center text-gray-500 mb-4">{selectedMatch.player1} vs {selectedMatch.player2}</p>
 
-                                <div className="mb-3 sm:mb-4">
-                                    <p className="text-xs sm:text-sm text-gray-500 mb-2">Who won?</p>
+                                <div className="mb-4">
+                                    <p className="text-sm text-gray-500 mb-2">Who won?</p>
                                     <div className="grid grid-cols-2 gap-2">
                                         {[selectedMatch.player1, selectedMatch.player2].map(p => (
-                                            <button key={p} onClick={() => setWinner(p)} className={`p-2 sm:p-3 rounded-lg transition ${winner === p ? 'bg-emerald-600' : 'bg-gray-200 hover:bg-gray-300'}`}>
+                                            <button key={p} onClick={() => setWinner(p)} className={`p-3 rounded-lg transition ${winner === p ? 'bg-emerald-600' : 'bg-gray-200 hover:bg-gray-300'}`}>
                                                 <PlayerAvatar name={p} size="sm" />
-                                                <div className="mt-1 text-xs sm:text-sm font-medium truncate">{p}</div>
+                                                <div className="mt-1 text-sm font-medium">{p}</div>
                                             </button>
                                         ))}
                                     </div>
                                 </div>
 
-                                <div className="mb-3 sm:mb-4">
-                                    <p className="text-xs sm:text-sm text-gray-500 mb-2">Score (Best of 3: 2-0 or 2-1)</p>
-                                    <div className="flex items-center justify-center gap-3 sm:gap-4">
-                                        <input type="number" min="0" max="2" value={score1} onChange={e => setScore1(e.target.value)} className="w-12 sm:w-16 bg-gray-200 text-center text-lg sm:text-xl rounded-lg p-2" placeholder="0" />
-                                        <span className="text-gray-500 text-sm sm:text-base">-</span>
-                                        <input type="number" min="0" max="2" value={score2} onChange={e => setScore2(e.target.value)} className="w-12 sm:w-16 bg-gray-200 text-center text-lg sm:text-xl rounded-lg p-2" placeholder="0" />
+                                <div className="mb-4">
+                                    <p className="text-sm text-gray-500 mb-2">Score (Best of 3: 2-0 or 2-1)</p>
+                                    <div className="flex items-center justify-center gap-4">
+                                        <input type="number" min="0" max="2" value={score1} onChange={e => setScore1(e.target.value)} className="w-16 bg-gray-200 text-center text-xl rounded-lg p-2" placeholder="0" />
+                                        <span className="text-gray-500">-</span>
+                                        <input type="number" min="0" max="2" value={score2} onChange={e => setScore2(e.target.value)} className="w-16 bg-gray-200 text-center text-xl rounded-lg p-2" placeholder="0" />
                                     </div>
                                 </div>
 
-                                <button onClick={handleSubmit} disabled={!winner} className="w-full py-2 sm:py-3 bg-emerald-600 hover:bg-emerald-500 disabled:bg-gray-200 disabled:text-gray-500 rounded-lg font-semibold text-sm sm:text-base">
+                                <button onClick={handleSubmit} disabled={!winner} className="w-full py-3 bg-emerald-600 hover:bg-emerald-500 disabled:bg-gray-200 disabled:text-gray-500 rounded-lg font-semibold">
                                     Save Result
                                 </button>
                             </div>
@@ -452,40 +452,40 @@ const API_BASE = '/api';
                 const canPlay = match.player1 && match.player2 && !match.completed;
 
                 return (
-                    <div className="bg-gray-100 rounded-lg p-2 sm:p-3 w-36 sm:w-48">
-                        <div className="text-[10px] sm:text-xs text-gray-500 mb-1 sm:mb-2">{label}</div>
-                        <div className={`flex items-center gap-1 sm:gap-2 mb-1 ${match.winner === match.player1 ? 'text-green-600' : ''}`}>
-                            {match.player1 ? <><PlayerAvatar name={match.player1} size="sm" /><span className="text-xs sm:text-sm truncate">{match.player1}</span></> : <span className="text-gray-500 italic text-xs sm:text-sm">TBD</span>}
-                            {match.seed1 && <span className="text-[10px] sm:text-xs text-gray-500">#{match.seed1}</span>}
+                    <div className="bg-gray-100 rounded-lg p-3 w-48">
+                        <div className="text-xs text-gray-500 mb-2">{label}</div>
+                        <div className={`flex items-center gap-2 mb-1 ${match.winner === match.player1 ? 'text-green-600' : ''}`}>
+                            {match.player1 ? <><PlayerAvatar name={match.player1} size="sm" /><span className="text-sm truncate">{match.player1}</span></> : <span className="text-gray-500 italic text-sm">TBD</span>}
+                            {match.seed1 && <span className="text-xs text-gray-500">#{match.seed1}</span>}
                         </div>
-                        <div className={`flex items-center gap-1 sm:gap-2 ${match.winner === match.player2 ? 'text-green-600' : ''}`}>
-                            {match.player2 ? <><PlayerAvatar name={match.player2} size="sm" /><span className="text-xs sm:text-sm truncate">{match.player2}</span></> : <span className="text-gray-500 italic text-xs sm:text-sm">TBD</span>}
-                            {match.seed2 && <span className="text-[10px] sm:text-xs text-gray-500">#{match.seed2}</span>}
+                        <div className={`flex items-center gap-2 ${match.winner === match.player2 ? 'text-green-600' : ''}`}>
+                            {match.player2 ? <><PlayerAvatar name={match.player2} size="sm" /><span className="text-sm truncate">{match.player2}</span></> : <span className="text-gray-500 italic text-sm">TBD</span>}
+                            {match.seed2 && <span className="text-xs text-gray-500">#{match.seed2}</span>}
                         </div>
                         {match.completed ? (
-                            <div className="mt-1 sm:mt-2 text-center text-green-600 font-semibold text-xs sm:text-sm">{match.score1} - {match.score2}</div>
+                            <div className="mt-2 text-center text-green-600 font-semibold text-sm">{match.score1} - {match.score2}</div>
                         ) : canPlay ? (
-                            <button onClick={() => setShowModal(true)} className="mt-1 sm:mt-2 w-full text-[10px] sm:text-xs bg-purple-600 hover:bg-purple-700 py-0.5 sm:py-1 rounded">Record</button>
+                            <button onClick={() => setShowModal(true)} className="mt-2 w-full text-xs bg-purple-600 hover:bg-purple-700 py-1 rounded">Record</button>
                         ) : null}
 
                         {showModal && (
-                            <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4" onClick={() => setShowModal(false)}>
-                                <div className="bg-gray-100 rounded-xl p-4 sm:p-6 max-w-sm w-full mx-4" onClick={e => e.stopPropagation()}>
-                                    <h3 className="text-base sm:text-lg font-bold mb-3 sm:mb-4 text-center">{label}</h3>
-                                    <div className="grid grid-cols-2 gap-2 mb-3 sm:mb-4">
+                            <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50" onClick={() => setShowModal(false)}>
+                                <div className="bg-gray-100 rounded-xl p-6 max-w-sm w-full" onClick={e => e.stopPropagation()}>
+                                    <h3 className="text-lg font-bold mb-4 text-center">{label}</h3>
+                                    <div className="grid grid-cols-2 gap-2 mb-4">
                                         {[match.player1, match.player2].map(p => (
-                                            <button key={p} onClick={() => setWinner(p)} className={`p-2 sm:p-3 rounded-lg ${winner === p ? 'bg-emerald-600' : 'bg-gray-200'}`}>
-                                                <PlayerAvatar name={p} size="sm" /><div className="mt-1 text-xs sm:text-sm truncate">{p}</div>
+                                            <button key={p} onClick={() => setWinner(p)} className={`p-3 rounded-lg ${winner === p ? 'bg-emerald-600' : 'bg-gray-200'}`}>
+                                                <PlayerAvatar name={p} size="sm" /><div className="mt-1 text-sm">{p}</div>
                                             </button>
                                         ))}
                                     </div>
-                                    <p className="text-xs sm:text-sm text-gray-500 mb-2 text-center">Score (Best of 3: 2-0 or 2-1)</p>
-                                    <div className="flex items-center justify-center gap-3 sm:gap-4 mb-3 sm:mb-4">
-                                        <input type="number" min="0" max="2" value={score1} onChange={e => setScore1(e.target.value)} className="w-12 sm:w-16 bg-gray-200 text-center text-lg sm:text-xl rounded-lg p-2" placeholder="0" />
-                                        <span className="text-sm sm:text-base">-</span>
-                                        <input type="number" min="0" max="2" value={score2} onChange={e => setScore2(e.target.value)} className="w-12 sm:w-16 bg-gray-200 text-center text-lg sm:text-xl rounded-lg p-2" placeholder="0" />
+                                    <p className="text-sm text-gray-500 mb-2 text-center">Score (Best of 3: 2-0 or 2-1)</p>
+                                    <div className="flex items-center justify-center gap-4 mb-4">
+                                        <input type="number" min="0" max="2" value={score1} onChange={e => setScore1(e.target.value)} className="w-16 bg-gray-200 text-center text-xl rounded-lg p-2" placeholder="0" />
+                                        <span>-</span>
+                                        <input type="number" min="0" max="2" value={score2} onChange={e => setScore2(e.target.value)} className="w-16 bg-gray-200 text-center text-xl rounded-lg p-2" placeholder="0" />
                                     </div>
-                                    <button onClick={handleSubmit} disabled={!winner} className="w-full py-2 sm:py-3 bg-emerald-600 disabled:bg-gray-200 rounded-lg font-semibold text-sm sm:text-base">Save</button>
+                                    <button onClick={handleSubmit} disabled={!winner} className="w-full py-3 bg-emerald-600 disabled:bg-gray-200 rounded-lg font-semibold">Save</button>
                                 </div>
                             </div>
                         )}
@@ -500,48 +500,48 @@ const API_BASE = '/api';
             const colors = groupColors[groupName] || groupColors.A;
 
             return (
-                <div className={`bg-white shadow-sm border border-gray-200 rounded-xl p-3 sm:p-6 border ${colors.border} shadow-lg ${colors.glow}`}>
-                    <div className="flex items-center gap-2 sm:gap-3 mb-4 sm:mb-6">
-                        <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full ${colors.bg} border ${colors.border} flex items-center justify-center font-bold ${colors.accent} text-sm sm:text-base`}>
+                <div className={`bg-white shadow-sm border border-gray-200 rounded-xl p-6 border ${colors.border} shadow-lg ${colors.glow}`}>
+                    <div className="flex items-center gap-3 mb-6">
+                        <div className={`w-10 h-10 rounded-full ${colors.bg} border ${colors.border} flex items-center justify-center font-bold ${colors.accent}`}>
                             {groupName}
                         </div>
                         <div>
-                            <h3 className="text-base sm:text-xl font-bold">Group {groupName} Playoffs</h3>
-                            <p className="text-[10px] sm:text-xs text-gray-500">Single elimination bracket</p>
+                            <h3 className="text-xl font-bold">Group {groupName} Playoffs</h3>
+                            <p className="text-xs text-gray-500">Single elimination bracket</p>
                         </div>
                     </div>
-                    <div className="flex gap-3 sm:gap-6 items-center overflow-x-auto pb-4 -mx-3 sm:mx-0 px-3 sm:px-0">
+                    <div className="flex gap-6 items-center overflow-x-auto pb-4">
                         {/* Semifinals Column */}
-                        <div className="flex flex-col gap-3 sm:gap-6 relative">
-                            <div className={`text-[10px] sm:text-xs ${colors.accent} font-semibold text-center uppercase tracking-wide mb-1 sm:mb-2`}>Semifinals</div>
+                        <div className="flex flex-col gap-6 relative">
+                            <div className={`text-xs ${colors.accent} font-semibold text-center uppercase tracking-wide mb-2`}>Semifinals</div>
                             {playoff.semifinals.map((sf, i) => {
                                 const seed1Label = sf.seed1 === 'WC' ? 'WC' : `#${sf.seed1}`;
                                 const seed2Label = sf.seed2 === 'WC' ? 'WC' : `#${sf.seed2}`;
                                 return <MatchCard key={sf.id} match={sf} label={`${seed1Label} vs ${seed2Label}`} />;
                             })}
                             {/* Connector lines */}
-                            <div className="absolute right-0 top-12 sm:top-16 h-16 sm:h-24 w-6 sm:w-8 border-r-2 border-t-2 border-b-2 border-gray-400 rounded-r-lg hidden sm:block"></div>
+                            <div className="absolute right-0 top-16 h-24 w-8 border-r-2 border-t-2 border-b-2 border-gray-400 rounded-r-lg"></div>
                         </div>
 
                         {/* Arrow */}
-                        <div className={`${colors.accent} px-1 sm:px-2`}>
-                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor" className="w-5 h-5 sm:w-8 sm:h-8">
+                        <div className={`${colors.accent} px-2`}>
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor" className="w-8 h-8">
                                 <path strokeLinecap="round" strokeLinejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
                             </svg>
                         </div>
 
                         {/* Finals Column */}
                         <div className="flex flex-col items-center">
-                            <div className={`text-[10px] sm:text-xs ${colors.accent} font-semibold text-center uppercase tracking-wide mb-1 sm:mb-2`}>Final</div>
+                            <div className={`text-xs ${colors.accent} font-semibold text-center uppercase tracking-wide mb-2`}>Final</div>
                             <MatchCard match={playoff.final} label="Championship" />
                             {playoff.champion && (
-                                <div className={`mt-2 sm:mt-4 text-center px-2 sm:px-4 py-1 sm:py-2 rounded-lg ${colors.bg} border ${colors.border}`}>
-                                    <div className="text-[10px] sm:text-xs text-gray-500 uppercase">Champion</div>
-                                    <div className="flex items-center justify-center gap-1 sm:gap-2 mt-1">
-                                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-4 h-4 sm:w-6 sm:h-6 text-amber-600">
+                                <div className={`mt-4 text-center px-4 py-2 rounded-lg ${colors.bg} border ${colors.border}`}>
+                                    <div className="text-xs text-gray-500 uppercase">Champion</div>
+                                    <div className="flex items-center justify-center gap-2 mt-1">
+                                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-6 h-6 text-amber-600">
                                             <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 18.75h-9m9 0a3 3 0 0 1 3 3h-15a3 3 0 0 1 3-3m9 0v-3.375c0-.621-.503-1.125-1.125-1.125h-.871M7.5 18.75v-3.375c0-.621.504-1.125 1.125-1.125h.872m5.007 0H9.497m5.007 0a7.454 7.454 0 0 1-.982-3.172M9.497 14.25a7.454 7.454 0 0 0 .981-3.172M5.25 4.236c-.982.143-1.954.317-2.916.52A6.003 6.003 0 0 0 7.73 9.728M5.25 4.236V4.5c0 2.108.966 3.99 2.48 5.228M5.25 4.236V2.721C7.456 2.41 9.71 2.25 12 2.25c2.291 0 4.545.16 6.75.47v1.516M7.73 9.728a6.726 6.726 0 0 0 2.748 1.35m8.272-6.842V4.5c0 2.108-.966 3.99-2.48 5.228m2.48-5.492a46.32 46.32 0 0 1 2.916.52 6.003 6.003 0 0 1-5.395 4.972m0 0a6.726 6.726 0 0 1-2.749 1.35m0 0a6.772 6.772 0 0 1-2.992 0" />
                                         </svg>
-                                        <span className={`font-bold text-sm sm:text-lg ${colors.accent} truncate max-w-[100px] sm:max-w-none`}>{playoff.champion}</span>
+                                        <span className={`font-bold text-lg ${colors.accent}`}>{playoff.champion}</span>
                                     </div>
                                 </div>
                             )}
@@ -609,23 +609,23 @@ const API_BASE = '/api';
                         ) : null}
 
                         {showModal && (
-                            <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4" onClick={() => setShowModal(false)}>
-                                <div className="bg-gray-100 rounded-xl p-4 sm:p-6 max-w-sm w-full mx-4" onClick={e => e.stopPropagation()}>
-                                    <h3 className="text-base sm:text-lg font-bold mb-3 sm:mb-4 text-center">{label}</h3>
-                                    <div className="grid grid-cols-2 gap-2 mb-3 sm:mb-4">
+                            <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50" onClick={() => setShowModal(false)}>
+                                <div className="bg-gray-100 rounded-xl p-6 max-w-sm w-full" onClick={e => e.stopPropagation()}>
+                                    <h3 className="text-lg font-bold mb-4 text-center">{label}</h3>
+                                    <div className="grid grid-cols-2 gap-2 mb-4">
                                         {[match.player1, match.player2].map(p => (
-                                            <button key={p} onClick={() => setWinner(p)} className={`p-2 sm:p-3 rounded-lg ${winner === p ? 'bg-emerald-600' : 'bg-gray-200'}`}>
-                                                <PlayerAvatar name={p} size="sm" /><div className="mt-1 text-xs sm:text-sm truncate">{p}</div>
+                                            <button key={p} onClick={() => setWinner(p)} className={`p-3 rounded-lg ${winner === p ? 'bg-emerald-600' : 'bg-gray-200'}`}>
+                                                <PlayerAvatar name={p} size="sm" /><div className="mt-1 text-sm">{p}</div>
                                             </button>
                                         ))}
                                     </div>
-                                    <p className="text-xs sm:text-sm text-gray-500 mb-2 text-center">Score (Best of 3: 2-0 or 2-1)</p>
-                                    <div className="flex items-center justify-center gap-3 sm:gap-4 mb-3 sm:mb-4">
-                                        <input type="number" min="0" max="2" value={score1} onChange={e => setScore1(e.target.value)} className="w-12 sm:w-16 bg-gray-200 text-center text-lg sm:text-xl rounded-lg p-2" placeholder="0" />
-                                        <span className="text-sm sm:text-base">-</span>
-                                        <input type="number" min="0" max="2" value={score2} onChange={e => setScore2(e.target.value)} className="w-12 sm:w-16 bg-gray-200 text-center text-lg sm:text-xl rounded-lg p-2" placeholder="0" />
+                                    <p className="text-sm text-gray-500 mb-2 text-center">Score (Best of 3: 2-0 or 2-1)</p>
+                                    <div className="flex items-center justify-center gap-4 mb-4">
+                                        <input type="number" min="0" max="2" value={score1} onChange={e => setScore1(e.target.value)} className="w-16 bg-gray-200 text-center text-xl rounded-lg p-2" placeholder="0" />
+                                        <span>-</span>
+                                        <input type="number" min="0" max="2" value={score2} onChange={e => setScore2(e.target.value)} className="w-16 bg-gray-200 text-center text-xl rounded-lg p-2" placeholder="0" />
                                     </div>
-                                    <button onClick={handleSubmit} disabled={!winner} className="w-full py-2 sm:py-3 bg-emerald-600 disabled:bg-gray-200 rounded-lg font-semibold text-sm sm:text-base">Save</button>
+                                    <button onClick={handleSubmit} disabled={!winner} className="w-full py-3 bg-emerald-600 disabled:bg-gray-200 rounded-lg font-semibold">Save</button>
                                 </div>
                             </div>
                         )}
@@ -1267,26 +1267,23 @@ const API_BASE = '/api';
                     </div>
 
                     {/* My Availability Grid */}
-                    <div className="bg-white shadow-sm border border-gray-200 rounded-xl p-2 sm:p-4">
-                        <h3 className="text-base sm:text-lg font-bold mb-2 sm:mb-3 px-2 sm:px-0">Set My Availability (2 Weeks)</h3>
-                        <p className="text-xs sm:text-sm text-gray-500 mb-3 sm:mb-4 px-2 sm:px-0">Tap slots when you're free to play. Your opponents will see when you overlap!</p>
-                        <div className="overflow-x-auto -mx-2 sm:mx-0 touch-pan-x scrollbar-thin">
-                            <div className="inline-block min-w-full px-2 sm:px-0">
-                            <table className="w-full text-xs sm:text-sm">
+                    <div className="bg-white shadow-sm border border-gray-200 rounded-xl p-4">
+                        <h3 className="text-lg font-bold mb-3">Set My Availability (2 Weeks)</h3>
+                        <p className="text-sm text-gray-500 mb-4">Tap slots when you're free to play. Your opponents will see when you overlap!</p>
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-sm">
                                 <thead>
                                     <tr>
-                                        <th className="p-0.5 sm:p-1 text-left text-gray-500 sticky left-0 bg-white z-10">
-                                            <div className="text-[10px] sm:text-xs">Time</div>
-                                        </th>
+                                        <th className="p-1 text-left text-gray-500">Time</th>
                                         {weekDates.map((date, i) => {
                                             const d = new Date(date + 'T12:00');
                                             const isSecondWeek = i >= 7;
                                             return (
-                                                <th key={date} className={`p-0.5 sm:p-1 text-center ${isSecondWeek ? 'bg-blue-50' : ''} ${i === 7 ? 'border-l-2 border-blue-300' : ''}`}>
-                                                    <div className="text-gray-500 text-[10px] sm:text-xs">{dayNames[d.getDay()]}</div>
-                                                    <div className="font-semibold text-xs sm:text-sm">{d.getDate()}</div>
-                                                    {i === 0 && <div className="text-[8px] sm:text-[10px] text-purple-600">Week 1</div>}
-                                                    {i === 7 && <div className="text-[8px] sm:text-[10px] text-blue-600">Week 2</div>}
+                                                <th key={date} className={`p-1 text-center ${isSecondWeek ? 'bg-blue-50' : ''} ${i === 7 ? 'border-l-2 border-blue-300' : ''}`}>
+                                                    <div className="text-gray-500 text-xs">{dayNames[d.getDay()]}</div>
+                                                    <div className="font-semibold">{d.getDate()}</div>
+                                                    {i === 0 && <div className="text-[10px] text-purple-600">Week 1</div>}
+                                                    {i === 7 && <div className="text-[10px] text-blue-600">Week 2</div>}
                                                 </th>
                                             );
                                         })}
@@ -1295,7 +1292,7 @@ const API_BASE = '/api';
                                 <tbody>
                                     {timeSlots.map(slot => (
                                         <tr key={slot}>
-                                            <td className="p-0.5 sm:p-1 text-gray-500 text-[10px] sm:text-xs sticky left-0 bg-white z-10">{formatTime(slot)}</td>
+                                            <td className="p-1 text-gray-500 text-xs">{formatTime(slot)}</td>
                                             {weekDates.map((date, i) => {
                                                 const isAvailable = myAvailability[currentPlayer]?.[date]?.includes(slot);
                                                 const existingBooking = tableBookings.find(b =>
@@ -1308,12 +1305,12 @@ const API_BASE = '/api';
                                                 const bookingGroup = existingBooking?.group_name;
                                                 const isSecondWeek = i >= 7;
                                                 return (
-                                                    <td key={date} className={`p-0.5 sm:p-1 ${isSecondWeek ? 'bg-blue-50/30' : ''} ${i === 7 ? 'border-l-2 border-blue-300' : ''}`}>
+                                                    <td key={date} className={`p-1 ${isSecondWeek ? 'bg-blue-50/30' : ''} ${i === 7 ? 'border-l-2 border-blue-300' : ''}`}>
                                                         <button
                                                             onClick={() => !isTableBooked && toggleMyAvailability(date, slot)}
                                                             disabled={isTableBooked && !myBooking}
                                                             title={existingBooking ? `${existingBooking.player1} vs ${existingBooking.player2}${bookingGroup ? ` (Group ${bookingGroup})` : ''}` : ''}
-                                                            className={`w-full h-6 sm:h-8 rounded text-[10px] sm:text-xs relative ${
+                                                            className={`w-full h-8 rounded text-xs relative ${
                                                                 myBooking ? 'bg-purple-600 text-white' :
                                                                 isTableBooked && bookingGroup === 'A' ? 'bg-emerald-900/60 text-green-600 cursor-not-allowed border border-emerald-700' :
                                                                 isTableBooked && bookingGroup === 'B' ? 'bg-amber-900/60 text-amber-600 cursor-not-allowed border border-amber-700' :
@@ -1689,18 +1686,18 @@ const API_BASE = '/api';
             }
 
             return (
-                <div className="relative min-h-screen bg-gray-50">
+                <div className="relative min-h-screen">
                     <SnowEffect />
 
-                    <div className="relative z-10 max-w-7xl mx-auto px-2 sm:px-4 lg:px-6 py-4">
+                    <div className="relative z-10">
                         {/* Winter Header */}
-                        <div className="winter-gradient rounded-xl sm:rounded-2xl p-4 sm:p-6 md:p-8 mb-4 sm:mb-6 text-center relative overflow-hidden">
+                        <div className="winter-gradient rounded-2xl p-8 mb-6 text-center relative overflow-hidden">
                             <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI2MCIgaGVpZ2h0PSI2MCI+PGNpcmNsZSBjeD0iMzAiIGN5PSIzMCIgcj0iMiIgZmlsbD0icmdiYSgyNTUsMjU1LDI1NSwwLjEpIi8+PC9zdmc+')] opacity-30"></div>
                             <div className="relative">
-                                <div className="text-4xl sm:text-5xl md:text-6xl mb-2 sm:mb-4">❄️ 🏓 ❄️</div>
-                                <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-white mb-1 sm:mb-2">Mammotome Ping Pong League</h1>
-                                <h2 className="text-lg sm:text-xl md:text-2xl text-fuchsia-200 mb-1 sm:mb-2">{config?.season_name || 'Winter League 2026'}</h2>
-                                <p className="text-fuchsia-100 text-sm sm:text-base md:text-lg">Register now to compete!</p>
+                                <div className="text-6xl mb-4">❄️ 🏓 ❄️</div>
+                                <h1 className="text-4xl font-bold text-white mb-2">Mammotome Ping Pong League</h1>
+                                <h2 className="text-2xl text-fuchsia-200 mb-2">{config?.season_name || 'Winter League 2026'}</h2>
+                                <p className="text-fuchsia-100 text-lg">Register now to compete!</p>
 
                                 {config?.registration_open ? (
                                     <div className="mt-4 inline-block bg-emerald-500/20 border border-emerald-400/50 rounded-full px-6 py-2">
@@ -3996,11 +3993,6 @@ const API_BASE = '/api';
             const handleSelectPlayer = async (player) => {
                 setCurrentPlayer(player);
                 localStorage.setItem('pingpong_currentPlayer', player);
-
-                // Redirect to league page when player logs in
-                if (player) {
-                    setView('league');
-                }
 
                 // Auto-request notification permission when player selects their name
                 if (player && 'Notification' in window && Notification.permission === 'default') {
