@@ -5188,8 +5188,9 @@ app.post('/api/registration/generate-bracket', requireAdmin, async (req, res) =>
       if (low === high) {
         arr.push(low);
       } else {
-        fillBracket(low, (low + high) / 2, arr);
-        fillBracket((low + high) / 2 + 1, high, arr);
+        const mid = Math.floor((low + high) / 2);
+        fillBracket(low, mid, arr);
+        fillBracket(mid + 1, high, arr);
       }
     }
     fillBracket(1, bracketSize, bracketOrder);
