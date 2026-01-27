@@ -4776,6 +4776,7 @@ const ensureRegistrationTables = async () => {
       is_bye BOOLEAN DEFAULT FALSE,
       completed BOOLEAN DEFAULT FALSE,
       scheduled_date DATE,
+      scheduled_week INTEGER,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )
@@ -5259,11 +5260,17 @@ app.post('/api/registration/generate-bracket', requireAdmin, async (req, res) =>
     // Clear any existing league matches
     await pool.query('DELETE FROM league_matches');
 
-    // Save round 1 matches to database
-    for (const match of round1Matches) {
+    // Save round 1 matches to database with week scheduling
+    // Distribute Round 1 matches across 4 weeks
+    const matchesPerWeek = Math.ceil(round1Matches.length / 4);
+
+    for (let i = 0; i < round1Matches.length; i++) {
+      const match = round1Matches[i];
+      const scheduledWeek = Math.floor(i / matchesPerWeek) + 1; // Week 1, 2, 3, or 4
+
       await pool.query(`
-        INSERT INTO league_matches (round, match_number, player1, player2, seed1, seed2, winner, is_bye, completed)
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+        INSERT INTO league_matches (round, match_number, player1, player2, seed1, seed2, winner, is_bye, completed, scheduled_week)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
       `, [
         1,
         match.matchNumber,
@@ -5273,7 +5280,8 @@ app.post('/api/registration/generate-bracket', requireAdmin, async (req, res) =>
         match.seed2,
         match.winner,
         match.isBye,
-        match.isBye
+        match.isBye,
+        scheduledWeek
       ]);
     }
 
@@ -5440,11 +5448,17 @@ app.post('/api/registration/fix-unseeded/:playerName', requireAdmin, async (req,
 
     await pool.query('DELETE FROM league_matches');
 
-    for (const match of round1Matches) {
+    // Distribute Round 1 matches across 4 weeks
+    const matchesPerWeek = Math.ceil(round1Matches.length / 4);
+
+    for (let i = 0; i < round1Matches.length; i++) {
+      const match = round1Matches[i];
+      const scheduledWeek = Math.floor(i / matchesPerWeek) + 1; // Week 1, 2, 3, or 4
+
       await pool.query(`
-        INSERT INTO league_matches (round, match_number, player1, player2, seed1, seed2, winner, is_bye, completed)
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-      `, [1, match.matchNumber, match.player1, match.player2, match.seed1, match.seed2, match.winner, match.isBye, match.isBye]);
+        INSERT INTO league_matches (round, match_number, player1, player2, seed1, seed2, winner, is_bye, completed, scheduled_week)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+      `, [1, match.matchNumber, match.player1, match.player2, match.seed1, match.seed2, match.winner, match.isBye, match.isBye, scheduledWeek]);
     }
 
     const numRounds = Math.log2(bracketSize);
