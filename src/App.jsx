@@ -3966,11 +3966,22 @@ const API_BASE = '/api';
                 }
             };
 
-            const handleRecordLeagueScore = async (winner) => {
-                if (!selectedLeagueMatch || !winner || !leagueScore) {
-                    alert('Please select a winner and enter a score');
+            const handleRecordLeagueScore = async (scoreFormat) => {
+                if (!selectedLeagueMatch || !scoreFormat) {
+                    alert('Please select a score');
                     return;
                 }
+
+                // Parse score to determine winner (format: "2-1", "2-0", etc.)
+                const [gamesWon, gamesLost] = scoreFormat.split('-').map(Number);
+
+                if (!gamesWon || !gamesLost || (gamesWon !== 2 && gamesLost !== 2)) {
+                    alert('Invalid score format. Must be 2-0, 2-1, 1-2, or 0-2');
+                    return;
+                }
+
+                // Determine winner based on who got 2 games
+                const winner = gamesWon === 2 ? selectedLeagueMatch.player1 : selectedLeagueMatch.player2;
 
                 try {
                     const res = await fetch(`${API_BASE}/league/match/result`, {
@@ -3979,7 +3990,7 @@ const API_BASE = '/api';
                         body: JSON.stringify({
                             matchId: selectedLeagueMatch.id,
                             winner: winner,
-                            score: leagueScore
+                            score: scoreFormat
                         })
                     });
 
@@ -4412,8 +4423,6 @@ const API_BASE = '/api';
                                         const matches = season?.schedule?.[selectedGroup]?.[weekNum - 1] || [];
                                         const activeMatches = matches.filter(m => !m.cancelled);
 
-                                        if (activeMatches.length === 0) return null;
-
                                         return (
                                             <div key={weekNum} className="bg-white shadow-sm border border-gray-200 rounded-xl p-4">
                                                 <div className="flex items-center justify-between mb-3">
@@ -4429,7 +4438,11 @@ const API_BASE = '/api';
                                                         </span>
                                                     )}
                                                 </div>
-                                                <WeeklyMatches matches={activeMatches} week={weekNum} onRecordResult={handleRecordResult} />
+                                                {activeMatches.length > 0 ? (
+                                                    <WeeklyMatches matches={activeMatches} week={weekNum} onRecordResult={handleRecordResult} />
+                                                ) : (
+                                                    <p className="text-gray-400 text-sm text-center py-4">No matches scheduled for this week</p>
+                                                )}
                                             </div>
                                         );
                                     });
@@ -4630,44 +4643,67 @@ const API_BASE = '/api';
                                 {/* League Score Recording Modal */}
                                 {showLeagueScoreModal && selectedLeagueMatch && (
                                     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-                                        <div className="bg-white rounded-xl p-6 max-w-md w-full">
+                                        <div className="bg-white rounded-xl p-6 max-w-lg w-full">
                                             <h3 className="text-xl font-bold mb-4">Record Match Result</h3>
 
-                                            <div className="mb-4 bg-gray-50 p-4 rounded-lg">
+                                            <div className="mb-6 bg-gray-50 p-4 rounded-lg">
                                                 <div className="text-sm text-gray-600 mb-2">Round {selectedLeagueMatch.round} - Match {selectedLeagueMatch.match_number}</div>
-                                                <div className="flex items-center justify-between">
-                                                    <span className="font-semibold">{selectedLeagueMatch.player1}</span>
-                                                    <span className="text-gray-400">vs</span>
-                                                    <span className="font-semibold">{selectedLeagueMatch.player2}</span>
+                                                <div className="flex items-center justify-center gap-4">
+                                                    <span className="text-lg font-bold text-blue-600">{selectedLeagueMatch.player1}</span>
+                                                    <span className="text-gray-400 font-semibold">VS</span>
+                                                    <span className="text-lg font-bold text-red-600">{selectedLeagueMatch.player2}</span>
                                                 </div>
                                             </div>
 
-                                            <div className="mb-4">
-                                                <label className="block text-sm font-medium mb-2">Score (e.g., "2-1" or "11-9, 9-11, 11-7")</label>
-                                                <input
-                                                    type="text"
-                                                    value={leagueScore}
-                                                    onChange={(e) => setLeagueScore(e.target.value)}
-                                                    placeholder="Enter score"
-                                                    className="w-full px-3 py-2 border rounded-lg"
-                                                />
-                                            </div>
-
                                             <div className="mb-6">
-                                                <label className="block text-sm font-medium mb-2">Winner:</label>
-                                                <div className="grid grid-cols-2 gap-3">
+                                                <label className="block text-sm font-medium mb-3 text-center">
+                                                    Best of 3 Games - Select Final Score
+                                                </label>
+
+                                                <div className="grid grid-cols-2 gap-4">
+                                                    {/* Player 1 wins 2-0 */}
                                                     <button
-                                                        onClick={() => handleRecordLeagueScore(selectedLeagueMatch.player1)}
-                                                        className="bg-green-600 hover:bg-green-500 text-white px-4 py-3 rounded-lg font-semibold"
+                                                        onClick={() => handleRecordLeagueScore('2-0')}
+                                                        className="bg-blue-600 hover:bg-blue-500 text-white p-4 rounded-lg font-semibold flex flex-col items-center gap-2 transition-all hover:scale-105"
                                                     >
-                                                        {selectedLeagueMatch.player1}
+                                                        <span className="text-sm opacity-80">{selectedLeagueMatch.player1}</span>
+                                                        <span className="text-2xl">2-0</span>
+                                                        <span className="text-xs opacity-80">Wins 2 games straight</span>
                                                     </button>
+
+                                                    {/* Player 2 wins 0-2 */}
                                                     <button
-                                                        onClick={() => handleRecordLeagueScore(selectedLeagueMatch.player2)}
-                                                        className="bg-green-600 hover:bg-green-500 text-white px-4 py-3 rounded-lg font-semibold"
+                                                        onClick={() => handleRecordLeagueScore('0-2')}
+                                                        className="bg-red-600 hover:bg-red-500 text-white p-4 rounded-lg font-semibold flex flex-col items-center gap-2 transition-all hover:scale-105"
                                                     >
-                                                        {selectedLeagueMatch.player2}
+                                                        <span className="text-sm opacity-80">{selectedLeagueMatch.player2}</span>
+                                                        <span className="text-2xl">2-0</span>
+                                                        <span className="text-xs opacity-80">Wins 2 games straight</span>
                                                     </button>
+
+                                                    {/* Player 1 wins 2-1 */}
+                                                    <button
+                                                        onClick={() => handleRecordLeagueScore('2-1')}
+                                                        className="bg-blue-500 hover:bg-blue-400 text-white p-4 rounded-lg font-semibold flex flex-col items-center gap-2 transition-all hover:scale-105"
+                                                    >
+                                                        <span className="text-sm opacity-80">{selectedLeagueMatch.player1}</span>
+                                                        <span className="text-2xl">2-1</span>
+                                                        <span className="text-xs opacity-80">Wins after losing 1 game</span>
+                                                    </button>
+
+                                                    {/* Player 2 wins 1-2 */}
+                                                    <button
+                                                        onClick={() => handleRecordLeagueScore('1-2')}
+                                                        className="bg-red-500 hover:bg-red-400 text-white p-4 rounded-lg font-semibold flex flex-col items-center gap-2 transition-all hover:scale-105"
+                                                    >
+                                                        <span className="text-sm opacity-80">{selectedLeagueMatch.player2}</span>
+                                                        <span className="text-2xl">2-1</span>
+                                                        <span className="text-xs opacity-80">Wins after losing 1 game</span>
+                                                    </button>
+                                                </div>
+
+                                                <div className="mt-4 text-xs text-gray-500 text-center">
+                                                    Score format: [Player 1 games won] - [Player 2 games won]
                                                 </div>
                                             </div>
 
@@ -4677,7 +4713,7 @@ const API_BASE = '/api';
                                                     setSelectedLeagueMatch(null);
                                                     setLeagueScore('');
                                                 }}
-                                                className="w-full bg-gray-200 hover:bg-gray-300 px-4 py-2 rounded-lg"
+                                                className="w-full bg-gray-200 hover:bg-gray-300 px-4 py-2 rounded-lg font-semibold"
                                             >
                                                 Cancel
                                             </button>
