@@ -3198,48 +3198,81 @@ const API_BASE = '/api';
         function MyGames({ players, season, currentPlayer, onSelectPlayer }) {
             const [showAvatarPicker, setShowAvatarPicker] = useState(false);
             const [, forceUpdate] = useState(0); // To trigger re-render after avatar change
+            const [leagueMatches, setLeagueMatches] = useState([]);
+
+            useEffect(() => {
+                // Fetch league matches
+                fetch(`${API_BASE}/league/matches`)
+                    .then(r => r.json())
+                    .then(data => setLeagueMatches(data || []))
+                    .catch(() => setLeagueMatches([]));
+            }, []);
 
             const playerStats = useMemo(() => {
-                if (!currentPlayer || !season) return null;
+                if (!currentPlayer) return null;
+                if (!season && leagueMatches.length === 0) return null;
 
-                // Find which group the player is in
-                const inGroupA = season.standings?.A?.[currentPlayer];
-                const inGroupB = season.standings?.B?.[currentPlayer];
+                // Get league bracket matches for this player
+                const playerLeagueMatches = leagueMatches.filter(m =>
+                    m.player1 === currentPlayer || m.player2 === currentPlayer
+                );
+
+                // If no season, return league-only stats
+                if (!season && playerLeagueMatches.length > 0) {
+                    // Calculate league stats
+                    const wins = playerLeagueMatches.filter(m => m.completed && m.winner === currentPlayer).length;
+                    const losses = playerLeagueMatches.filter(m => m.completed && m.winner && m.winner !== currentPlayer).length;
+
+                    return {
+                        leagueOnly: true,
+                        stats: { wins, losses, pointsFor: 0, pointsAgainst: 0 },
+                        matches: [],
+                        leagueMatches: playerLeagueMatches
+                    };
+                }
+
+                // Season-based logic
+                const inGroupA = season?.standings?.A?.[currentPlayer];
+                const inGroupB = season?.standings?.B?.[currentPlayer];
                 const group = inGroupA ? 'A' : (inGroupB ? 'B' : null);
                 const stats = inGroupA || inGroupB;
 
-                if (!group || !stats) return null;
-
-                // Get all matches for this player
+                // Get all season matches for this player
                 const allMatches = [];
-                const schedule = season.schedule?.[group] || [];
-                schedule.forEach((week, weekIdx) => {
-                    week.forEach(match => {
-                        if (match.player1 === currentPlayer || match.player2 === currentPlayer) {
-                            allMatches.push({ ...match, week: weekIdx + 1 });
-                        }
+                if (season && group) {
+                    const schedule = season.schedule?.[group] || [];
+                    schedule.forEach((week, weekIdx) => {
+                        week.forEach(match => {
+                            if (match.player1 === currentPlayer || match.player2 === currentPlayer) {
+                                allMatches.push({ ...match, week: weekIdx + 1 });
+                            }
+                        });
                     });
-                });
+                }
 
                 // Calculate rank in group
-                const standings = Object.entries(season.standings[group] || {})
-                    .map(([name, s]) => ({ name, ...s }))
-                    .sort((a, b) => {
-                        if (b.wins !== a.wins) return b.wins - a.wins;
-                        const diffA = a.pointsFor - a.pointsAgainst;
-                        const diffB = b.pointsFor - b.pointsAgainst;
-                        return diffB - diffA;
-                    });
-                const rank = standings.findIndex(p => p.name === currentPlayer) + 1;
-                const totalPlayers = standings.length;
+                let rank = null;
+                let totalPlayers = null;
+                if (season && group && stats) {
+                    const standings = Object.entries(season.standings[group] || {})
+                        .map(([name, s]) => ({ name, ...s }))
+                        .sort((a, b) => {
+                            if (b.wins !== a.wins) return b.wins - a.wins;
+                            const diffA = a.pointsFor - a.pointsAgainst;
+                            const diffB = b.pointsFor - b.pointsAgainst;
+                            return diffB - diffA;
+                        });
+                    rank = standings.findIndex(p => p.name === currentPlayer) + 1;
+                    totalPlayers = standings.length;
+                }
 
                 // Check wildcard eligibility
-                const wildcardMatch = season.wildcard?.matches?.find(m =>
+                const wildcardMatch = season?.wildcard?.matches?.find(m =>
                     m.player1 === currentPlayer || m.player2 === currentPlayer
                 );
 
                 // Check playoff qualification
-                const playoffTeam = season.playoffs?.[group];
+                const playoffTeam = season?.playoffs?.[group];
                 const inPlayoffs = playoffTeam?.semifinals?.some(m =>
                     m.player1 === currentPlayer || m.player2 === currentPlayer
                 ) || playoffTeam?.final?.player1 === currentPlayer || playoffTeam?.final?.player2 === currentPlayer;
@@ -3248,15 +3281,16 @@ const API_BASE = '/api';
                     group,
                     rank,
                     totalPlayers,
-                    stats,
+                    stats: stats || { wins: 0, losses: 0, pointsFor: 0, pointsAgainst: 0 },
                     matches: allMatches,
+                    leagueMatches: playerLeagueMatches,
                     wildcardMatch,
                     inPlayoffs,
-                    isChampion: season.playoffs?.[group]?.champion === currentPlayer,
-                    isFinalist: season.superBowl?.player1 === currentPlayer || season.superBowl?.player2 === currentPlayer,
-                    isOverallChamp: season.superBowl?.winner === currentPlayer
+                    isChampion: season?.playoffs?.[group]?.champion === currentPlayer,
+                    isFinalist: season?.superBowl?.player1 === currentPlayer || season?.superBowl?.player2 === currentPlayer,
+                    isOverallChamp: season?.superBowl?.winner === currentPlayer
                 };
-            }, [currentPlayer, season]);
+            }, [currentPlayer, season, leagueMatches]);
 
             if (!players?.length) {
                 return (
@@ -3286,6 +3320,7 @@ const API_BASE = '/api';
                     {currentPlayer && playerStats && (
                         <>
                             {/* Player Card */}
+                            {!playerStats.leagueOnly && (
                             <div className={`bg-gradient-to-r ${playerStats.group === 'A' ? 'from-green-100 to-white' : 'from-amber-100 to-white'} rounded-xl p-6 border ${playerStats.group === 'A' ? 'border-emerald-700' : 'border-amber-700'}`}>
                                 <div className="flex items-center gap-4 mb-4">
                                     <div className="relative group">
@@ -3338,8 +3373,10 @@ const API_BASE = '/api';
                                     </div>
                                 </div>
                             </div>
+                            )}
 
                             {/* Status Badges */}
+                            {!playerStats.leagueOnly && (
                             <div className="flex flex-wrap gap-2">
                                 {playerStats.rank <= 4 && (
                                     <span className="bg-emerald-900/50 text-green-600 px-3 py-1 rounded-full text-sm">✓ Playoff Qualified</span>
@@ -3356,10 +3393,46 @@ const API_BASE = '/api';
                                     <span className="bg-cyan-900/50 text-cyan-400 px-3 py-1 rounded-full text-sm">🏆 In Playoffs</span>
                                 )}
                             </div>
+                            )}
 
-                            {/* Match History */}
+                            {/* League-Only Mode Stats */}
+                            {playerStats.leagueOnly && (
+                                <div className="bg-gradient-to-r from-purple-100 to-white rounded-xl p-6 border border-purple-700">
+                                    <div className="flex items-center gap-4 mb-4">
+                                        <div className="relative group">
+                                            <PlayerAvatar name={currentPlayer} size="lg" onClick={() => setShowAvatarPicker(true)} />
+                                        </div>
+                                        <div>
+                                            <h2 className="text-2xl font-bold">{currentPlayer}</h2>
+                                            <p className="text-sm text-purple-600">League Bracket Player</p>
+                                        </div>
+                                    </div>
+
+                                    {showAvatarPicker && (
+                                        <AvatarPicker
+                                            playerName={currentPlayer}
+                                            onClose={() => setShowAvatarPicker(false)}
+                                            onSelect={() => forceUpdate(n => n + 1)}
+                                        />
+                                    )}
+
+                                    <div className="grid grid-cols-2 gap-4 text-center">
+                                        <div className="bg-gray-100/50 rounded-lg p-3">
+                                            <div className="text-2xl font-bold text-green-600">{playerStats.stats.wins}</div>
+                                            <div className="text-xs text-gray-500">Wins</div>
+                                        </div>
+                                        <div className="bg-gray-100/50 rounded-lg p-3">
+                                            <div className="text-2xl font-bold text-red-500">{playerStats.stats.losses}</div>
+                                            <div className="text-xs text-gray-500">Losses</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Season Match History */}
+                            {!playerStats.leagueOnly && playerStats.matches.length > 0 && (
                             <div className="bg-white shadow-sm border border-gray-200 rounded-xl p-4">
-                                <h3 className="text-lg font-bold mb-3">Your Matches</h3>
+                                <h3 className="text-lg font-bold mb-3">Your Season Matches</h3>
                                 <div className="space-y-2 max-h-96 overflow-y-auto">
                                     {playerStats.matches.map((match, idx) => {
                                         const opponent = match.player1 === currentPlayer ? match.player2 : match.player1;
@@ -3386,11 +3459,73 @@ const API_BASE = '/api';
                                             </div>
                                         );
                                     })}
-                                    {playerStats.matches.length === 0 && (
-                                        <p className="text-gray-500 text-center py-4">No matches scheduled yet.</p>
-                                    )}
                                 </div>
                             </div>
+                            )}
+
+                            {/* League Bracket Matches */}
+                            {playerStats.leagueMatches && playerStats.leagueMatches.length > 0 && (
+                                <div className="bg-white shadow-sm border border-gray-200 rounded-xl p-4">
+                                    <h3 className="text-lg font-bold mb-3 flex items-center gap-2">
+                                        <span>🏆</span>
+                                        Your Bracket Matches
+                                    </h3>
+                                    <div className="space-y-2 max-h-96 overflow-y-auto">
+                                        {playerStats.leagueMatches.map((match) => {
+                                            const opponent = match.player1 === currentPlayer ? match.player2 : match.player1;
+                                            const opponentSeed = match.player1 === currentPlayer ? match.seed2 : match.seed1;
+                                            const isWinner = match.winner === currentPlayer;
+                                            const isBye = match.is_bye;
+
+                                            return (
+                                                <div key={match.id} className={`p-3 rounded-lg border ${match.completed ? (isWinner ? 'bg-green-50 border-green-300' : 'bg-red-50 border-red-300') : 'bg-purple-50 border-purple-200'}`}>
+                                                    <div className="flex items-center justify-between mb-2">
+                                                        <span className="text-xs font-semibold text-gray-600">
+                                                            Round {match.round} • Match {match.match_number}
+                                                        </span>
+                                                        {isBye && (
+                                                            <span className="text-xs bg-amber-200 text-amber-800 px-2 py-1 rounded font-semibold">
+                                                                BYE
+                                                            </span>
+                                                        )}
+                                                        {match.completed && (
+                                                            <span className={`text-xs px-2 py-1 rounded font-semibold ${isWinner ? 'bg-green-200 text-green-800' : 'bg-red-200 text-red-800'}`}>
+                                                                {isWinner ? 'WON' : 'LOST'}
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                    <div className="flex items-center gap-3">
+                                                        {!isBye && <PlayerAvatar name={opponent} size="sm" />}
+                                                        <div>
+                                                            <div className="font-medium">
+                                                                {isBye ? 'BYE - Automatic Advance' : opponent}
+                                                            </div>
+                                                            {opponentSeed && !isBye && (
+                                                                <span className="text-xs text-gray-500">Seed #{opponentSeed}</span>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                    {match.score && (
+                                                        <div className="mt-2 text-sm text-gray-600">
+                                                            Score: {match.score}
+                                                        </div>
+                                                    )}
+                                                    {!match.completed && !isBye && opponent !== 'TBD' && (
+                                                        <div className="mt-2 text-xs text-purple-600 font-semibold">
+                                                            Match pending - check League tab
+                                                        </div>
+                                                    )}
+                                                    {opponent === 'TBD' && (
+                                                        <div className="mt-2 text-xs text-gray-500 italic">
+                                                            Waiting for previous round to complete
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+                            )}
                         </>
                     )}
 
@@ -4314,6 +4449,8 @@ const API_BASE = '/api';
                                                                     <div className={`flex items-center justify-between p-2 rounded ${
                                                                         match.completed && match.winner === match.player1
                                                                             ? 'bg-green-100 font-semibold'
+                                                                            : match.player1 === currentPlayer
+                                                                            ? 'bg-blue-100 border-2 border-blue-500'
                                                                             : 'bg-gray-100'
                                                                     }`}>
                                                                         <div className="flex items-center gap-2">
@@ -4322,7 +4459,8 @@ const API_BASE = '/api';
                                                                                     #{match.seed1}
                                                                                 </span>
                                                                             )}
-                                                                            <span className={match.player1 === 'BYE' ? 'text-gray-400 italic' : ''}>
+                                                                            <span className={match.player1 === 'BYE' ? 'text-gray-400 italic' : match.player1 === currentPlayer ? 'font-bold text-blue-700' : ''}>
+                                                                                {match.player1 === currentPlayer && '👤 '}
                                                                                 {match.player1 || 'TBD'}
                                                                             </span>
                                                                         </div>
@@ -4338,6 +4476,8 @@ const API_BASE = '/api';
                                                                     <div className={`flex items-center justify-between p-2 rounded ${
                                                                         match.completed && match.winner === match.player2
                                                                             ? 'bg-green-100 font-semibold'
+                                                                            : match.player2 === currentPlayer
+                                                                            ? 'bg-blue-100 border-2 border-blue-500'
                                                                             : 'bg-gray-100'
                                                                     }`}>
                                                                         <div className="flex items-center gap-2">
@@ -4346,7 +4486,8 @@ const API_BASE = '/api';
                                                                                     #{match.seed2}
                                                                                 </span>
                                                                             )}
-                                                                            <span className={match.player2 === 'BYE' ? 'text-gray-400 italic' : ''}>
+                                                                            <span className={match.player2 === 'BYE' ? 'text-gray-400 italic' : match.player2 === currentPlayer ? 'font-bold text-blue-700' : ''}>
+                                                                                {match.player2 === currentPlayer && '👤 '}
                                                                                 {match.player2 || 'TBD'}
                                                                             </span>
                                                                         </div>
