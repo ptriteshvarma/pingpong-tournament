@@ -4520,10 +4520,21 @@ const API_BASE = '/api';
                             <div>
                                 {leagueMatches.length > 0 ? (
                                     <div className="bg-white shadow-sm border border-gray-200 rounded-xl p-6 mb-6">
-                                        <h2 className="text-2xl font-bold mb-4 flex items-center gap-2">
-                                            <span>🏆</span>
-                                            League Bracket
-                                        </h2>
+                                        <div className="mb-6">
+                                            <h2 className="text-3xl font-bold mb-2 flex items-center gap-2">
+                                                <span>🏆</span>
+                                                Single-Elimination Bracket Tournament
+                                            </h2>
+                                            <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
+                                                <p className="text-sm text-purple-900 font-semibold mb-1">📋 Tournament Format:</p>
+                                                <ul className="text-xs text-purple-800 space-y-1 ml-4">
+                                                    <li>• Single-elimination bracket (lose once = eliminated)</li>
+                                                    <li>• Win your match to advance to next round</li>
+                                                    <li>• Play matches anytime before next round starts</li>
+                                                    <li>• Final winner becomes tournament champion</li>
+                                                </ul>
+                                            </div>
+                                        </div>
 
                                         {/* Group matches by round */}
                                         {Array.from(new Set(leagueMatches.map(m => m.round))).sort((a, b) => a - b).map(roundNum => {
@@ -4659,8 +4670,19 @@ const API_BASE = '/api';
                                         })}
                                     </div>
                                 ) : (
-                                    <div className="text-center py-12">
-                                        <p className="text-gray-500 mb-4">No active season or league bracket. Go to Register tab to create one.</p>
+                                    <div className="bg-white shadow-sm border border-gray-200 rounded-xl p-8 text-center">
+                                        <div className="text-6xl mb-4">🏆</div>
+                                        <h2 className="text-2xl font-bold mb-3 text-gray-800">No Bracket Tournament Active</h2>
+                                        <p className="text-gray-600 mb-6">Start a single-elimination bracket tournament to begin play</p>
+                                        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 max-w-md mx-auto">
+                                            <p className="text-sm font-semibold text-blue-900 mb-2">To start a bracket tournament:</p>
+                                            <ol className="text-xs text-blue-800 text-left space-y-1">
+                                                <li>1. Go to <span className="font-bold">Register</span> tab</li>
+                                                <li>2. Review all player registrations</li>
+                                                <li>3. Click <span className="font-bold">"Generate Bracket from Registrations"</span></li>
+                                                <li>4. Return here to see the bracket and play matches</li>
+                                            </ol>
+                                        </div>
                                     </div>
                                 )}
 
