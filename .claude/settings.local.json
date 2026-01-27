@@ -60,7 +60,8 @@
       "Bash(if [ -f .env ])",
       "Bash(then grep ADMIN .env)",
       "Bash(else echo \"No .env file found\")",
-      "Bash(fi)"
+      "Bash(fi)",
+      "Bash(git checkout:*)"
     ]
   }
 }
