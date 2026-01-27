@@ -5120,14 +5120,18 @@ app.put('/api/registration/:id', requireAdmin, async (req, res) => {
     const { id } = req.params;
     const { registration_status, final_seed } = req.body;
 
+    // If final_seed is null, also set is_ranked to false (unseeded player)
+    const isRanked = final_seed !== null && final_seed !== undefined;
+
     await pool.query(`
       UPDATE league_registration SET
         registration_status = COALESCE($1, registration_status),
         final_seed = $2,
+        is_ranked = $3,
         admin_approved = TRUE,
         updated_at = CURRENT_TIMESTAMP
-      WHERE id = $3
-    `, [registration_status, final_seed, id]);
+      WHERE id = $4
+    `, [registration_status, final_seed, isRanked, id]);
 
     res.json({ success: true });
   } catch (error) {
@@ -5293,6 +5297,27 @@ app.post('/api/registration/generate-bracket', requireAdmin, async (req, res) =>
       players: finalPlayers,
       round1: round1Matches
     });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Update player seeded status (admin)
+app.post('/api/registration/:id/unseeded', requireAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    await pool.query(`
+      UPDATE league_registration
+      SET is_ranked = FALSE,
+          final_seed = NULL,
+          suggested_seed = NULL,
+          updated_at = CURRENT_TIMESTAMP
+      WHERE id = $1
+      RETURNING *
+    `, [id]);
+
+    res.json({ success: true, message: 'Player updated to unseeded' });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
