@@ -1569,6 +1569,26 @@ const API_BASE = '/api';
                 } catch (e) { }
             };
 
+            const handleConvertToSeason = async () => {
+                if (!confirm('Convert to Season format?\n\n• Deletes current bracket tournament\n• Creates 10-week season with Groups A & B\n• 8 games per player\n• Mid-season swap at Week 3\n• Keeps all registered players\n\nThis will close registration. Continue?')) return;
+                try {
+                    const res = await fetch(`${API_BASE}/registration/convert-to-season`, {
+                        method: 'POST',
+                        headers: { 'X-Admin-Password': localStorage.getItem('adminPassword') || '' }
+                    });
+                    const data = await res.json();
+                    if (res.ok) {
+                        alert(`Season created!\n\nGroup A: ${data.season.groupA} players\nGroup B: ${data.season.groupB} players\nTotal Weeks: ${data.season.totalWeeks}\n\nGo to Home/Schedule tab to view the season.`);
+                        window.location.href = '/';
+                    } else {
+                        alert(data.error);
+                    }
+                } catch (e) {
+                    console.error('Failed to convert:', e);
+                    alert('Failed to convert to season');
+                }
+            };
+
             const handleGenerateBracket = async () => {
                 if (!confirm('Generate bracket from approved registrations? This will close registration.')) return;
                 try {
@@ -1907,18 +1927,50 @@ const API_BASE = '/api';
                                             </div>
                                         </div>
 
-                                        {/* Generate Bracket */}
+                                        {/* Generate Tournament */}
                                         <div className="bg-gray-100 rounded-lg p-4">
-                                            <h3 className="font-bold mb-3">Generate League Bracket</h3>
-                                            <p className="text-sm text-gray-500 mb-3">
-                                                Creates bracket with proper seeding and byes. Closes registration.
+                                            <h3 className="font-bold mb-3">Start Tournament</h3>
+                                            <p className="text-sm text-gray-500 mb-4">
+                                                Choose your tournament format. This will close registration.
                                             </p>
-                                            <button
-                                                onClick={handleGenerateBracket}
-                                                className="bg-amber-600 hover:bg-amber-500 px-4 py-2 rounded-lg font-semibold"
-                                            >
-                                                Generate Bracket from Registrations
-                                            </button>
+
+                                            <div className="space-y-3">
+                                                <button
+                                                    onClick={handleConvertToSeason}
+                                                    className="w-full bg-green-600 hover:bg-green-500 px-4 py-3 rounded-lg font-semibold text-left"
+                                                >
+                                                    <div className="flex items-start gap-3">
+                                                        <span className="text-2xl">🏆</span>
+                                                        <div>
+                                                            <div className="font-bold">Season Format (Recommended)</div>
+                                                            <div className="text-xs text-white/80 mt-1">
+                                                                • 10 weeks with Groups A & B<br/>
+                                                                • 8 games per player<br/>
+                                                                • Mid-season group swap (Week 3)<br/>
+                                                                • Playoffs with top 4 from each group
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </button>
+
+                                                <button
+                                                    onClick={handleGenerateBracket}
+                                                    className="w-full bg-amber-600 hover:bg-amber-500 px-4 py-3 rounded-lg font-semibold text-left"
+                                                >
+                                                    <div className="flex items-start gap-3">
+                                                        <span className="text-2xl">🥊</span>
+                                                        <div>
+                                                            <div className="font-bold">Bracket Tournament</div>
+                                                            <div className="text-xs text-white/80 mt-1">
+                                                                • Single-elimination<br/>
+                                                                • Lose once = eliminated<br/>
+                                                                • 1-5 games per player<br/>
+                                                                • Faster format (4-5 weeks)
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </button>
+                                            </div>
                                         </div>
                                     </div>
                                 )}

@@ -5495,6 +5495,90 @@ app.post('/api/registration/fix-unseeded/:playerName', requireAdmin, async (req,
   }
 });
 
+// Convert bracket tournament to season (admin)
+app.post('/api/registration/convert-to-season', requireAdmin, async (req, res) => {
+  try {
+    await ensureRegistrationTables();
+
+    console.log('[Convert to Season] Starting conversion...');
+
+    // Get all approved registrations
+    const registrations = await pool.query(`
+      SELECT player_name, final_seed, is_ranked
+      FROM league_registration
+      WHERE registration_status = 'approved' AND admin_approved = TRUE
+      ORDER BY
+        CASE WHEN final_seed IS NOT NULL THEN final_seed ELSE 9999 END ASC,
+        player_name ASC
+    `);
+
+    if (registrations.rows.length < 4) {
+      return res.status(400).json({ error: 'Need at least 4 approved players to start a season' });
+    }
+
+    console.log(`[Convert to Season] Found ${registrations.rows.length} players`);
+
+    // Separate into Group A (seeded/ranked) and Group B (unseeded)
+    const groupA = registrations.rows
+      .filter(p => p.is_ranked && p.final_seed !== null)
+      .map(p => ({ name: p.player_name, seed: p.final_seed }));
+
+    const groupB = registrations.rows
+      .filter(p => !p.is_ranked || p.final_seed === null)
+      .map(p => ({ name: p.player_name, seed: null }));
+
+    console.log(`[Convert to Season] Group A: ${groupA.length} players, Group B: ${groupB.length} players`);
+
+    if (groupA.length === 0 || groupB.length === 0) {
+      return res.status(400).json({
+        error: 'Need players in both groups. Make sure some players are seeded and some are unseeded.',
+        groupA: groupA.length,
+        groupB: groupB.length
+      });
+    }
+
+    // Generate season with 8 games per player over 10 weeks
+    const season = generateSeason(groupA, groupB, 10, {
+      gamesPerPlayerA: 8,
+      gamesPerPlayerB: 8
+    });
+
+    console.log('[Convert to Season] Season generated');
+
+    // Delete bracket tournament data
+    await pool.query('DELETE FROM league_matches');
+    console.log('[Convert to Season] Deleted old bracket data');
+
+    // Close registration
+    await pool.query(`
+      UPDATE league_config SET registration_open = FALSE, updated_at = CURRENT_TIMESTAMP WHERE id = 1
+    `);
+
+    // Save season to database
+    await pool.query('DELETE FROM season WHERE id = 1');
+    await pool.query('INSERT INTO season (id, data) VALUES (1, $1)', [season]);
+
+    console.log('[Convert to Season] Season saved to database');
+
+    res.json({
+      success: true,
+      message: 'Successfully converted to Season format',
+      season: {
+        totalWeeks: season.totalWeeks,
+        groupA: groupA.length,
+        groupB: groupB.length,
+        matchesPerGroup: {
+          A: season.schedule.A.reduce((sum, week) => sum + week.length, 0),
+          B: season.schedule.B.reduce((sum, week) => sum + week.length, 0)
+        }
+      }
+    });
+  } catch (error) {
+    console.error('[Convert to Season Error]', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Clear all registrations (admin)
 app.delete('/api/registration/all', requireAdmin, async (req, res) => {
   try {
