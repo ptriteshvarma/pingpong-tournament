@@ -1402,6 +1402,7 @@ const API_BASE = '/api';
         function WinterLeagueRegistration({ isAdmin, onRefresh }) {
             const [config, setConfig] = useState(null);
             const [registrations, setRegistrations] = useState([]);
+            const [leagueMatches, setLeagueMatches] = useState([]);
             const [playerName, setPlayerName] = useState('');
             const [email, setEmail] = useState('');
             const [loading, setLoading] = useState(true);
@@ -1416,14 +1417,17 @@ const API_BASE = '/api';
 
             const fetchData = async () => {
                 try {
-                    const [configRes, listRes] = await Promise.all([
+                    const [configRes, listRes, matchesRes] = await Promise.all([
                         fetch(`${API_BASE}/registration/config`),
-                        fetch(`${API_BASE}/registration/list`)
+                        fetch(`${API_BASE}/registration/list`),
+                        fetch(`${API_BASE}/league/matches`)
                     ]);
                     const configData = await configRes.json();
                     const listData = await listRes.json();
+                    const matchesData = await matchesRes.json();
                     setConfig(configData);
                     setRegistrations(listData);
+                    setLeagueMatches(matchesData || []);
                     if (configData.registration_close_date) {
                         setCloseDate(new Date(configData.registration_close_date).toISOString().slice(0, 16));
                     }
@@ -1865,6 +1869,120 @@ const API_BASE = '/api';
                                         </div>
                                     </div>
                                 )}
+                            </div>
+                        )}
+
+                        {/* League Bracket Display */}
+                        {!config?.registration_open && leagueMatches.length > 0 && (
+                            <div className="bg-white shadow-sm border border-gray-200 rounded-xl p-6 mb-6">
+                                <h2 className="text-2xl font-bold mb-4 flex items-center gap-2">
+                                    <span>🏆</span>
+                                    League Bracket
+                                </h2>
+
+                                {/* Group matches by round */}
+                                {Array.from(new Set(leagueMatches.map(m => m.round))).sort((a, b) => a - b).map(roundNum => {
+                                    const roundMatches = leagueMatches.filter(m => m.round === roundNum);
+                                    const totalMatches = roundMatches.length;
+                                    const completedMatches = roundMatches.filter(m => m.completed).length;
+
+                                    return (
+                                        <div key={roundNum} className="mb-6">
+                                            <div className="flex items-center justify-between mb-3">
+                                                <h3 className="text-lg font-bold text-purple-600">
+                                                    Round {roundNum}
+                                                    {roundNum === 1 && totalMatches === 16 && ' (Round of 32)'}
+                                                    {roundNum === 2 && totalMatches === 8 && ' (Round of 16)'}
+                                                    {roundNum === 3 && totalMatches === 4 && ' (Quarterfinals)'}
+                                                    {roundNum === 4 && totalMatches === 2 && ' (Semifinals)'}
+                                                    {roundNum === 5 && totalMatches === 1 && ' (Final)'}
+                                                </h3>
+                                                <span className="text-sm text-gray-500">
+                                                    {completedMatches}/{totalMatches} complete
+                                                </span>
+                                            </div>
+
+                                            <div className="grid md:grid-cols-2 gap-4">
+                                                {roundMatches.map(match => (
+                                                    <div
+                                                        key={match.id}
+                                                        className={`border rounded-lg p-4 ${match.completed ? 'bg-gray-50 border-gray-300' : 'bg-white border-purple-200'}`}
+                                                    >
+                                                        <div className="flex items-center justify-between mb-2">
+                                                            <span className="text-xs font-semibold text-gray-500">
+                                                                Match {match.match_number}
+                                                            </span>
+                                                            {match.completed && (
+                                                                <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded">
+                                                                    Complete
+                                                                </span>
+                                                            )}
+                                                        </div>
+
+                                                        <div className="space-y-2">
+                                                            {/* Player 1 */}
+                                                            <div className={`flex items-center justify-between p-2 rounded ${
+                                                                match.completed && match.winner === match.player1
+                                                                    ? 'bg-green-100 font-semibold'
+                                                                    : 'bg-gray-100'
+                                                            }`}>
+                                                                <div className="flex items-center gap-2">
+                                                                    {match.seed1 && (
+                                                                        <span className="text-xs bg-purple-200 text-purple-700 px-1.5 py-0.5 rounded font-semibold">
+                                                                            #{match.seed1}
+                                                                        </span>
+                                                                    )}
+                                                                    <span className={match.player1 === 'BYE' ? 'text-gray-400 italic' : ''}>
+                                                                        {match.player1 || 'TBD'}
+                                                                    </span>
+                                                                </div>
+                                                                {match.completed && match.winner === match.player1 && (
+                                                                    <span className="text-green-600">✓</span>
+                                                                )}
+                                                            </div>
+
+                                                            {/* VS */}
+                                                            <div className="text-center text-xs text-gray-400 font-semibold">VS</div>
+
+                                                            {/* Player 2 */}
+                                                            <div className={`flex items-center justify-between p-2 rounded ${
+                                                                match.completed && match.winner === match.player2
+                                                                    ? 'bg-green-100 font-semibold'
+                                                                    : 'bg-gray-100'
+                                                            }`}>
+                                                                <div className="flex items-center gap-2">
+                                                                    {match.seed2 && (
+                                                                        <span className="text-xs bg-purple-200 text-purple-700 px-1.5 py-0.5 rounded font-semibold">
+                                                                            #{match.seed2}
+                                                                        </span>
+                                                                    )}
+                                                                    <span className={match.player2 === 'BYE' ? 'text-gray-400 italic' : ''}>
+                                                                        {match.player2 || 'TBD'}
+                                                                    </span>
+                                                                </div>
+                                                                {match.completed && match.winner === match.player2 && (
+                                                                    <span className="text-green-600">✓</span>
+                                                                )}
+                                                            </div>
+                                                        </div>
+
+                                                        {match.score && (
+                                                            <div className="mt-2 text-xs text-gray-600 text-center">
+                                                                Score: {match.score}
+                                                            </div>
+                                                        )}
+
+                                                        {match.is_bye && (
+                                                            <div className="mt-2 text-xs text-amber-600 text-center font-semibold">
+                                                                BYE - Winner advances automatically
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    );
+                                })}
                             </div>
                         )}
                     </div>
