@@ -5597,6 +5597,8 @@ app.post('/api/registration/convert-to-season', requireAdmin, async (req, res) =
       .map(p => ({ name: p.player_name, seed: null }));
 
     console.log(`[Convert to Season] Group A: ${groupA.length} players, Group B: ${groupB.length} players`);
+    console.log(`[Convert to Season] Group A players:`, groupA.map(p => p.name));
+    console.log(`[Convert to Season] Group B players:`, groupB.map(p => p.name));
 
     if (groupA.length === 0 || groupB.length === 0) {
       return res.status(400).json({
@@ -5613,6 +5615,8 @@ app.post('/api/registration/convert-to-season', requireAdmin, async (req, res) =
     });
 
     console.log('[Convert to Season] Season generated');
+    console.log(`[Convert to Season] Season has ${season.groups.A.players.length} Group A, ${season.groups.B.players.length} Group B`);
+    console.log(`[Convert to Season] Group B in season:`, season.groups.B.players.map(p => p.name));
 
     // Delete bracket tournament data
     await pool.query('DELETE FROM league_matches');
