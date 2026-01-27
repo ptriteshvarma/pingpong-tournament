@@ -916,6 +916,8 @@ const API_BASE = '/api';
             const [newDate, setNewDate] = useState('');
             const [newSlot, setNewSlot] = useState('');
             const [leagueMatches, setLeagueMatches] = useState([]);
+            const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+            const [isSaving, setIsSaving] = useState(false);
 
             // Fetch league matches
             useEffect(() => {
@@ -1004,11 +1006,10 @@ const API_BASE = '/api';
             useEffect(() => { loadData(); }, [loadData]);
 
             // Toggle availability for current player
-            const toggleMyAvailability = async (date, slot) => {
+            const toggleMyAvailability = (date, slot) => {
                 if (!currentPlayer) return;
 
                 console.log('[BookTable] Toggle availability:', { player: currentPlayer, date, slot });
-                console.log('[BookTable] Current myAvailability:', myAvailability);
 
                 const playerAvail = myAvailability[currentPlayer] || {};
                 const dateSlots = playerAvail[date] || [];
@@ -1027,29 +1028,40 @@ const API_BASE = '/api';
                     [currentPlayer]: updatedPlayerAvail
                 };
 
-                console.log('[BookTable] New updatedPlayerAvail:', updatedPlayerAvail);
                 setMyAvailability(updatedAvail);
+                setHasUnsavedChanges(true);
+            };
 
-                // Save to server - send ALL dates for this player, not just the one that changed
+            const saveAvailability = async () => {
+                if (!currentPlayer || !hasUnsavedChanges) return;
+
+                setIsSaving(true);
+                console.log('[BookTable] Saving availability...');
+
+                const playerAvail = myAvailability[currentPlayer] || {};
+
                 try {
                     const response = await fetch(`${API_BASE}/availability`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ [currentPlayer]: updatedPlayerAvail })
+                        body: JSON.stringify({ [currentPlayer]: playerAvail })
                     });
 
                     if (!response.ok) {
                         console.error('Failed to save availability:', await response.text());
                         alert('Failed to save availability. Please try again.');
+                        setIsSaving(false);
                         return;
                     }
 
                     console.log('[BookTable] Saved successfully, reloading data...');
-                    // Reload data from server to ensure we have the latest
                     await loadData();
+                    setHasUnsavedChanges(false);
+                    setIsSaving(false);
                 } catch (e) {
                     console.error('Failed to save availability:', e);
                     alert('Failed to save availability. Please try again.');
+                    setIsSaving(false);
                 }
             };
 
@@ -1309,13 +1321,35 @@ const API_BASE = '/api';
                                 </tbody>
                             </table>
                         </div>
-                        <div className="flex gap-4 mt-3 text-xs flex-wrap">
-                            <span className="flex items-center gap-1"><span className="w-3 h-3 bg-emerald-600 rounded"></span> I'm available</span>
-                            <span className="flex items-center gap-1"><span className="w-3 h-3 bg-purple-600 rounded"></span> My booking</span>
-                            <span className="flex items-center gap-1"><span className="w-3 h-3 bg-emerald-900/60 border border-emerald-700 rounded"></span> Group A</span>
-                            <span className="flex items-center gap-1"><span className="w-3 h-3 bg-amber-900/60 border border-amber-700 rounded"></span> Group B</span>
-                            <span className="flex items-center gap-1"><span className="w-3 h-3 bg-gray-200 rounded"></span> Other</span>
+
+                        {/* Save Button */}
+                        <div className="mt-4 flex items-center justify-between">
+                            <div className="flex gap-4 text-xs flex-wrap">
+                                <span className="flex items-center gap-1"><span className="w-3 h-3 bg-emerald-600 rounded"></span> I'm available</span>
+                                <span className="flex items-center gap-1"><span className="w-3 h-3 bg-purple-600 rounded"></span> My booking</span>
+                                <span className="flex items-center gap-1"><span className="w-3 h-3 bg-emerald-900/60 border border-emerald-700 rounded"></span> Group A</span>
+                                <span className="flex items-center gap-1"><span className="w-3 h-3 bg-amber-900/60 border border-amber-700 rounded"></span> Group B</span>
+                                <span className="flex items-center gap-1"><span className="w-3 h-3 bg-gray-200 rounded"></span> Other</span>
+                            </div>
+
+                            <button
+                                onClick={saveAvailability}
+                                disabled={!hasUnsavedChanges || isSaving}
+                                className={`px-6 py-2 rounded-lg font-semibold transition-colors ${
+                                    hasUnsavedChanges && !isSaving
+                                        ? 'bg-emerald-600 hover:bg-emerald-500 text-white'
+                                        : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                                }`}
+                            >
+                                {isSaving ? 'Saving...' : hasUnsavedChanges ? 'Save Availability ✓' : 'Saved'}
+                            </button>
                         </div>
+
+                        {hasUnsavedChanges && (
+                            <div className="mt-2 text-sm text-amber-600 bg-amber-50 border border-amber-200 rounded-lg p-2">
+                                ⚠️ You have unsaved changes. Click "Save Availability" to persist your selections.
+                            </div>
+                        )}
                     </div>
 
                     {/* My Booked Matches */}
