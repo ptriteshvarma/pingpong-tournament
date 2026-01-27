@@ -3843,6 +3843,9 @@ const API_BASE = '/api';
             const [swapZone, setSwapZone] = useState(null);
             const [leagueMatches, setLeagueMatches] = useState([]);
             const [loading, setLoading] = useState(true);
+            const [showLeagueScoreModal, setShowLeagueScoreModal] = useState(false);
+            const [selectedLeagueMatch, setSelectedLeagueMatch] = useState(null);
+            const [leagueScore, setLeagueScore] = useState('');
             const [isAdmin, setIsAdmin] = useState(() => localStorage.getItem('pingpong_isAdmin') === 'true');
             const [selectedWeek, setSelectedWeek] = useState(1);
             const [selectedGroup, setSelectedGroup] = useState('A');
@@ -3958,6 +3961,37 @@ const API_BASE = '/api';
                         body: JSON.stringify({ matchId, winner, loser, score1, score2 })
                     });
                     await loadData();
+                } catch (e) {
+                    alert('Failed to record result');
+                }
+            };
+
+            const handleRecordLeagueScore = async (winner) => {
+                if (!selectedLeagueMatch || !winner || !leagueScore) {
+                    alert('Please select a winner and enter a score');
+                    return;
+                }
+
+                try {
+                    const res = await fetch(`${API_BASE}/league/match/result`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            matchId: selectedLeagueMatch.id,
+                            winner: winner,
+                            score: leagueScore
+                        })
+                    });
+
+                    if (res.ok) {
+                        setShowLeagueScoreModal(false);
+                        setSelectedLeagueMatch(null);
+                        setLeagueScore('');
+                        await loadData();
+                    } else {
+                        const err = await res.json();
+                        alert(err.error || 'Failed to record result');
+                    }
                 } catch (e) {
                     alert('Failed to record result');
                 }
@@ -4565,6 +4599,21 @@ const API_BASE = '/api';
                                                                         BYE - Winner advances automatically
                                                                     </div>
                                                                 )}
+
+                                                                {/* Record Score Button */}
+                                                                {!match.completed && !match.is_bye && match.player1 && match.player2 &&
+                                                                 match.player1 !== 'TBD' && match.player2 !== 'TBD' &&
+                                                                 (isAdmin || match.player1 === currentPlayer || match.player2 === currentPlayer) && (
+                                                                    <button
+                                                                        onClick={() => {
+                                                                            setSelectedLeagueMatch(match);
+                                                                            setShowLeagueScoreModal(true);
+                                                                        }}
+                                                                        className="mt-3 w-full bg-purple-600 hover:bg-purple-500 text-white px-3 py-2 rounded text-sm font-semibold"
+                                                                    >
+                                                                        Record Score
+                                                                    </button>
+                                                                )}
                                                             </div>
                                                         ))}
                                                     </div>
@@ -4575,6 +4624,64 @@ const API_BASE = '/api';
                                 ) : (
                                     <div className="text-center py-12">
                                         <p className="text-gray-500 mb-4">No active season or league bracket. Go to Register tab to create one.</p>
+                                    </div>
+                                )}
+
+                                {/* League Score Recording Modal */}
+                                {showLeagueScoreModal && selectedLeagueMatch && (
+                                    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+                                        <div className="bg-white rounded-xl p-6 max-w-md w-full">
+                                            <h3 className="text-xl font-bold mb-4">Record Match Result</h3>
+
+                                            <div className="mb-4 bg-gray-50 p-4 rounded-lg">
+                                                <div className="text-sm text-gray-600 mb-2">Round {selectedLeagueMatch.round} - Match {selectedLeagueMatch.match_number}</div>
+                                                <div className="flex items-center justify-between">
+                                                    <span className="font-semibold">{selectedLeagueMatch.player1}</span>
+                                                    <span className="text-gray-400">vs</span>
+                                                    <span className="font-semibold">{selectedLeagueMatch.player2}</span>
+                                                </div>
+                                            </div>
+
+                                            <div className="mb-4">
+                                                <label className="block text-sm font-medium mb-2">Score (e.g., "2-1" or "11-9, 9-11, 11-7")</label>
+                                                <input
+                                                    type="text"
+                                                    value={leagueScore}
+                                                    onChange={(e) => setLeagueScore(e.target.value)}
+                                                    placeholder="Enter score"
+                                                    className="w-full px-3 py-2 border rounded-lg"
+                                                />
+                                            </div>
+
+                                            <div className="mb-6">
+                                                <label className="block text-sm font-medium mb-2">Winner:</label>
+                                                <div className="grid grid-cols-2 gap-3">
+                                                    <button
+                                                        onClick={() => handleRecordLeagueScore(selectedLeagueMatch.player1)}
+                                                        className="bg-green-600 hover:bg-green-500 text-white px-4 py-3 rounded-lg font-semibold"
+                                                    >
+                                                        {selectedLeagueMatch.player1}
+                                                    </button>
+                                                    <button
+                                                        onClick={() => handleRecordLeagueScore(selectedLeagueMatch.player2)}
+                                                        className="bg-green-600 hover:bg-green-500 text-white px-4 py-3 rounded-lg font-semibold"
+                                                    >
+                                                        {selectedLeagueMatch.player2}
+                                                    </button>
+                                                </div>
+                                            </div>
+
+                                            <button
+                                                onClick={() => {
+                                                    setShowLeagueScoreModal(false);
+                                                    setSelectedLeagueMatch(null);
+                                                    setLeagueScore('');
+                                                }}
+                                                className="w-full bg-gray-200 hover:bg-gray-300 px-4 py-2 rounded-lg"
+                                            >
+                                                Cancel
+                                            </button>
+                                        </div>
                                     </div>
                                 )}
                             </div>
