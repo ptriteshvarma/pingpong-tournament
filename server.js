@@ -5123,7 +5123,15 @@ app.put('/api/registration/:id', requireAdmin, async (req, res) => {
     // If final_seed is null, also set is_ranked to false (unseeded player)
     const isRanked = final_seed !== null && final_seed !== undefined;
 
-    await pool.query(`
+    console.log('[Registration Update]', {
+      id,
+      registration_status,
+      final_seed,
+      isRanked,
+      final_seed_type: typeof final_seed
+    });
+
+    const result = await pool.query(`
       UPDATE league_registration SET
         registration_status = COALESCE($1, registration_status),
         final_seed = $2,
@@ -5131,10 +5139,17 @@ app.put('/api/registration/:id', requireAdmin, async (req, res) => {
         admin_approved = TRUE,
         updated_at = CURRENT_TIMESTAMP
       WHERE id = $4
+      RETURNING id, player_name, final_seed, is_ranked
     `, [registration_status, final_seed, isRanked, id]);
 
-    res.json({ success: true });
+    console.log('[Registration Updated]', result.rows[0]);
+
+    res.json({
+      success: true,
+      updated: result.rows[0]
+    });
   } catch (error) {
+    console.error('[Registration Update Error]', error);
     res.status(500).json({ error: error.message });
   }
 });

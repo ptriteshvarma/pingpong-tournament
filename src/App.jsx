@@ -1507,20 +1507,36 @@ const API_BASE = '/api';
 
             const handleApprove = async (id, status, seed = null) => {
                 try {
+                    // Explicitly handle unseeded case
+                    let finalSeed = null;
+                    if (seed !== null && seed !== undefined && seed !== '') {
+                        finalSeed = parseInt(seed);
+                    }
+
+                    console.log('Updating registration:', { id, status, finalSeed });
+
                     const res = await fetch(`${API_BASE}/registration/${id}`, {
                         method: 'PUT',
                         headers: { 'Content-Type': 'application/json', 'X-Admin-Password': localStorage.getItem('adminPassword') || '' },
-                        body: JSON.stringify({ registration_status: status, final_seed: seed ? parseInt(seed) : null })
+                        body: JSON.stringify({ registration_status: status, final_seed: finalSeed })
                     });
                     if (!res.ok) {
                         const err = await res.json();
                         alert('Failed: ' + (err.error || 'Unknown error'));
                         return;
                     }
+
+                    const result = await res.json();
+                    console.log('Update successful:', result);
+                    alert(finalSeed === null ? 'Player set to unseeded (Group B)' : `Player seed set to #${finalSeed}`);
+
                     setEditingId(null);
                     setEditSeed('');
                     fetchData();
-                } catch (e) { console.error('Failed to approve:', e); alert('Failed to update registration'); }
+                } catch (e) {
+                    console.error('Failed to approve:', e);
+                    alert('Failed to update registration: ' + e.message);
+                }
             };
 
             const handleDelete = async (id) => {
