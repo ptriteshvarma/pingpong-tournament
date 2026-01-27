@@ -985,9 +985,11 @@ const API_BASE = '/api';
             // Load all data
             const loadData = useCallback(async () => {
                 try {
+                    console.log('[BookTable] Loading availability data...');
                     // Load availability for all players
                     const availRes = await fetch(`${API_BASE}/availability`);
                     const availData = await availRes.json();
+                    console.log('[BookTable] Availability loaded:', availData);
                     setMyAvailability(availData || {});
 
                     // Load table bookings
@@ -995,7 +997,7 @@ const API_BASE = '/api';
                     const bookingsData = await bookingsRes.json();
                     setTableBookings(Array.isArray(bookingsData) ? bookingsData : []);
                 } catch (e) {
-                    console.error('Error loading data:', e);
+                    console.error('[BookTable] Error loading data:', e);
                 }
             }, [selectedDate]);
 
@@ -1004,6 +1006,9 @@ const API_BASE = '/api';
             // Toggle availability for current player
             const toggleMyAvailability = async (date, slot) => {
                 if (!currentPlayer) return;
+
+                console.log('[BookTable] Toggle availability:', { player: currentPlayer, date, slot });
+                console.log('[BookTable] Current myAvailability:', myAvailability);
 
                 const playerAvail = myAvailability[currentPlayer] || {};
                 const dateSlots = playerAvail[date] || [];
@@ -1021,6 +1026,8 @@ const API_BASE = '/api';
                     ...myAvailability,
                     [currentPlayer]: updatedPlayerAvail
                 };
+
+                console.log('[BookTable] New updatedPlayerAvail:', updatedPlayerAvail);
                 setMyAvailability(updatedAvail);
 
                 // Save to server - send ALL dates for this player, not just the one that changed
