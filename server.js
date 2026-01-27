@@ -2072,6 +2072,11 @@ app.get('/api/config', (req, res) => {
 // Get availability
 app.get('/api/availability', async (req, res) => {
   try {
+    // Disable caching to always fetch fresh data
+    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
+
     await ensureAvailabilityTable();
     const result = await pool.query('SELECT * FROM availability');
 

@@ -1041,7 +1041,12 @@ const API_BASE = '/api';
                     if (!response.ok) {
                         console.error('Failed to save availability:', await response.text());
                         alert('Failed to save availability. Please try again.');
+                        return;
                     }
+
+                    console.log('[BookTable] Saved successfully, reloading data...');
+                    // Reload data from server to ensure we have the latest
+                    await loadData();
                 } catch (e) {
                     console.error('Failed to save availability:', e);
                     alert('Failed to save availability. Please try again.');
