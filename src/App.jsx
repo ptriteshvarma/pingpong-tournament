@@ -1011,24 +1011,33 @@ const API_BASE = '/api';
                     ? dateSlots.filter(s => s !== slot)
                     : [...dateSlots, slot];
 
+                // Update player's availability for this date
+                const updatedPlayerAvail = {
+                    ...playerAvail,
+                    [date]: newSlots
+                };
+
                 const updatedAvail = {
                     ...myAvailability,
-                    [currentPlayer]: {
-                        ...playerAvail,
-                        [date]: newSlots
-                    }
+                    [currentPlayer]: updatedPlayerAvail
                 };
                 setMyAvailability(updatedAvail);
 
-                // Save to server
+                // Save to server - send ALL dates for this player, not just the one that changed
                 try {
-                    await fetch(`${API_BASE}/availability`, {
+                    const response = await fetch(`${API_BASE}/availability`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ [currentPlayer]: { [date]: newSlots } })
+                        body: JSON.stringify({ [currentPlayer]: updatedPlayerAvail })
                     });
+
+                    if (!response.ok) {
+                        console.error('Failed to save availability:', await response.text());
+                        alert('Failed to save availability. Please try again.');
+                    }
                 } catch (e) {
-                    console.error('Failed to save availability');
+                    console.error('Failed to save availability:', e);
+                    alert('Failed to save availability. Please try again.');
                 }
             };
 

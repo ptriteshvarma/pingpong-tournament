@@ -2072,6 +2072,7 @@ app.get('/api/config', (req, res) => {
 // Get availability
 app.get('/api/availability', async (req, res) => {
   try {
+    await ensureAvailabilityTable();
     const result = await pool.query('SELECT * FROM availability');
 
     const availability = {};
@@ -2095,6 +2096,7 @@ app.get('/api/availability', async (req, res) => {
 app.post('/api/availability', async (req, res) => {
   const client = await pool.connect();
   try {
+    await ensureAvailabilityTable();
     await client.query('BEGIN');
 
     const availability = req.body;
@@ -2130,6 +2132,20 @@ app.post('/api/availability', async (req, res) => {
 });
 
 // ============== TABLE BOOKING SYSTEM ==============
+
+// Ensure availability table exists
+const ensureAvailabilityTable = async () => {
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS availability (
+      id SERIAL PRIMARY KEY,
+      player_name VARCHAR(255) NOT NULL,
+      date DATE NOT NULL,
+      time_slot VARCHAR(10) NOT NULL,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE(player_name, date, time_slot)
+    )
+  `);
+};
 
 // Ensure table_bookings table exists
 const ensureBookingsTable = async () => {
