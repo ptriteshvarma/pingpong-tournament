@@ -4489,10 +4489,18 @@ app.get('/api/notifications/:playerName', async (req, res) => {
   try {
     await ensureNotificationsTable();
 
+    // Auto-cleanup: Delete notifications older than 30 days
+    await pool.query(`
+      DELETE FROM notifications
+      WHERE created_at < NOW() - INTERVAL '30 days'
+    `);
+
     const { playerName } = req.params;
+    // Only show notifications from last 30 days
     const result = await pool.query(`
       SELECT * FROM notifications
-      WHERE player_name = $1 OR player_name IS NULL
+      WHERE (player_name = $1 OR player_name IS NULL)
+        AND created_at > NOW() - INTERVAL '30 days'
       ORDER BY created_at DESC
       LIMIT 50
     `, [playerName]);
@@ -4747,6 +4755,46 @@ app.post('/api/notifications/send-manual', requireAdmin, async (req, res) => {
 
   } catch (error) {
     console.error('Manual notification error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Delete old notifications (admin)
+app.delete('/api/notifications/cleanup', requireAdmin, async (req, res) => {
+  try {
+    await ensureNotificationsTable();
+
+    const { daysOld = 30 } = req.body;
+
+    const result = await pool.query(
+      `DELETE FROM notifications WHERE created_at < NOW() - INTERVAL '${parseInt(daysOld)} days' RETURNING *`
+    );
+
+    res.json({
+      success: true,
+      deleted: result.rowCount,
+      message: `Deleted ${result.rowCount} notifications older than ${daysOld} days`
+    });
+  } catch (error) {
+    console.error('Notification cleanup error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Delete ALL notifications (admin - use with caution!)
+app.delete('/api/notifications/delete-all', requireAdmin, async (req, res) => {
+  try {
+    await ensureNotificationsTable();
+
+    const result = await pool.query('DELETE FROM notifications RETURNING *');
+
+    res.json({
+      success: true,
+      deleted: result.rowCount,
+      message: `Deleted all ${result.rowCount} notifications`
+    });
+  } catch (error) {
+    console.error('Notification delete all error:', error);
     res.status(500).json({ error: error.message });
   }
 });
