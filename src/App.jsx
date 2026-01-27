@@ -1322,34 +1322,35 @@ const API_BASE = '/api';
                             </table>
                         </div>
 
-                        {/* Save Button */}
-                        <div className="mt-4 flex items-center justify-between">
-                            <div className="flex gap-4 text-xs flex-wrap">
-                                <span className="flex items-center gap-1"><span className="w-3 h-3 bg-emerald-600 rounded"></span> I'm available</span>
-                                <span className="flex items-center gap-1"><span className="w-3 h-3 bg-purple-600 rounded"></span> My booking</span>
-                                <span className="flex items-center gap-1"><span className="w-3 h-3 bg-emerald-900/60 border border-emerald-700 rounded"></span> Group A</span>
-                                <span className="flex items-center gap-1"><span className="w-3 h-3 bg-amber-900/60 border border-amber-700 rounded"></span> Group B</span>
-                                <span className="flex items-center gap-1"><span className="w-3 h-3 bg-gray-200 rounded"></span> Other</span>
-                            </div>
-
-                            <button
-                                onClick={saveAvailability}
-                                disabled={!hasUnsavedChanges || isSaving}
-                                className={`px-6 py-2 rounded-lg font-semibold transition-colors ${
-                                    hasUnsavedChanges && !isSaving
-                                        ? 'bg-emerald-600 hover:bg-emerald-500 text-white'
-                                        : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                                }`}
-                            >
-                                {isSaving ? 'Saving...' : hasUnsavedChanges ? 'Save Availability ✓' : 'Saved'}
-                            </button>
-                        </div>
-
+                        {/* Unsaved Changes Warning */}
                         {hasUnsavedChanges && (
-                            <div className="mt-2 text-sm text-amber-600 bg-amber-50 border border-amber-200 rounded-lg p-2">
-                                ⚠️ You have unsaved changes. Click "Save Availability" to persist your selections.
+                            <div className="mt-3 text-sm text-amber-600 bg-amber-50 border border-amber-200 rounded-lg p-3 flex items-center gap-2">
+                                <span className="text-lg">⚠️</span>
+                                <span>You have unsaved changes. Click "Save Availability" button below.</span>
                             </div>
                         )}
+
+                        {/* Save Button - Prominent */}
+                        <button
+                            onClick={saveAvailability}
+                            disabled={!hasUnsavedChanges || isSaving}
+                            className={`mt-3 w-full py-3 rounded-lg font-bold text-lg transition-all ${
+                                hasUnsavedChanges && !isSaving
+                                    ? 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-lg'
+                                    : 'bg-gray-200 text-gray-500 cursor-not-allowed'
+                            }`}
+                        >
+                            {isSaving ? '💾 Saving...' : hasUnsavedChanges ? '💾 Save Availability' : '✓ Saved'}
+                        </button>
+
+                        {/* Legend */}
+                        <div className="mt-3 pt-3 border-t border-gray-200 flex gap-4 text-xs flex-wrap justify-center">
+                            <span className="flex items-center gap-1"><span className="w-3 h-3 bg-emerald-600 rounded"></span> I'm available</span>
+                            <span className="flex items-center gap-1"><span className="w-3 h-3 bg-purple-600 rounded"></span> My booking</span>
+                            <span className="flex items-center gap-1"><span className="w-3 h-3 bg-emerald-900/60 border border-emerald-700 rounded"></span> Group A</span>
+                            <span className="flex items-center gap-1"><span className="w-3 h-3 bg-amber-900/60 border border-amber-700 rounded"></span> Group B</span>
+                            <span className="flex items-center gap-1"><span className="w-3 h-3 bg-gray-200 rounded"></span> Other</span>
+                        </div>
                     </div>
 
                     {/* My Booked Matches */}
