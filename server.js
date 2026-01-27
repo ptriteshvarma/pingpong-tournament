@@ -4762,6 +4762,24 @@ const ensureRegistrationTables = async () => {
       updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )
   `);
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS league_matches (
+      id SERIAL PRIMARY KEY,
+      round INTEGER NOT NULL,
+      match_number INTEGER NOT NULL,
+      player1 VARCHAR(255),
+      player2 VARCHAR(255),
+      seed1 INTEGER,
+      seed2 INTEGER,
+      winner VARCHAR(255),
+      score VARCHAR(50),
+      is_bye BOOLEAN DEFAULT FALSE,
+      completed BOOLEAN DEFAULT FALSE,
+      scheduled_date DATE,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
   // Insert default config if not exists
   await pool.query(`
     INSERT INTO league_config (id, season_name, registration_open)
@@ -5218,6 +5236,27 @@ app.post('/api/registration/generate-bracket', requireAdmin, async (req, res) =>
       });
     }
 
+    // Clear any existing league matches
+    await pool.query('DELETE FROM league_matches');
+
+    // Save round 1 matches to database
+    for (const match of round1Matches) {
+      await pool.query(`
+        INSERT INTO league_matches (round, match_number, player1, player2, seed1, seed2, winner, is_bye, completed)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+      `, [
+        1,
+        match.matchNumber,
+        match.player1,
+        match.player2,
+        match.seed1,
+        match.seed2,
+        match.winner,
+        match.isBye,
+        match.isBye
+      ]);
+    }
+
     // Close registration
     await pool.query(`
       UPDATE league_config SET registration_open = FALSE, updated_at = CURRENT_TIMESTAMP WHERE id = 1
@@ -5246,6 +5285,93 @@ app.delete('/api/registration/all', requireAdmin, async (req, res) => {
       UPDATE league_config SET registration_open = TRUE, updated_at = CURRENT_TIMESTAMP WHERE id = 1
     `);
     res.json({ success: true, message: 'All registrations cleared' });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Get league bracket matches
+app.get('/api/league/matches', async (req, res) => {
+  try {
+    await ensureRegistrationTables();
+    const result = await pool.query(`
+      SELECT * FROM league_matches
+      ORDER BY round ASC, match_number ASC
+    `);
+    res.json(result.rows);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Update league match result
+app.post('/api/league/match/result', async (req, res) => {
+  try {
+    await ensureRegistrationTables();
+    const { matchId, winner, score } = req.body;
+
+    if (!matchId || !winner) {
+      return res.status(400).json({ error: 'Match ID and winner are required' });
+    }
+
+    // Update the match
+    await pool.query(`
+      UPDATE league_matches
+      SET winner = $1, score = $2, completed = TRUE, updated_at = CURRENT_TIMESTAMP
+      WHERE id = $3
+    `, [winner, score || null, matchId]);
+
+    // Get the updated match
+    const matchResult = await pool.query(`
+      SELECT * FROM league_matches WHERE id = $1
+    `, [matchId]);
+
+    if (matchResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Match not found' });
+    }
+
+    const match = matchResult.rows[0];
+
+    // Check if we need to advance the winner to the next round
+    const currentRound = match.round;
+    const currentMatchNumber = match.match_number;
+    const nextRound = currentRound + 1;
+    const nextMatchNumber = Math.ceil(currentMatchNumber / 2);
+
+    // Check if next round match exists
+    const nextMatchResult = await pool.query(`
+      SELECT * FROM league_matches WHERE round = $1 AND match_number = $2
+    `, [nextRound, nextMatchNumber]);
+
+    if (nextMatchResult.rows.length === 0) {
+      // Create next round match if it doesn't exist
+      const isFirstMatch = currentMatchNumber % 2 === 1;
+      await pool.query(`
+        INSERT INTO league_matches (round, match_number, player1, player2, is_bye, completed)
+        VALUES ($1, $2, $3, $4, FALSE, FALSE)
+      `, [
+        nextRound,
+        nextMatchNumber,
+        isFirstMatch ? winner : null,
+        isFirstMatch ? null : winner
+      ]);
+    } else {
+      // Update existing next round match with the winner
+      const nextMatch = nextMatchResult.rows[0];
+      const isFirstMatch = currentMatchNumber % 2 === 1;
+
+      if (isFirstMatch) {
+        await pool.query(`
+          UPDATE league_matches SET player1 = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2
+        `, [winner, nextMatch.id]);
+      } else {
+        await pool.query(`
+          UPDATE league_matches SET player2 = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2
+        `, [winner, nextMatch.id]);
+      }
+    }
+
+    res.json({ success: true, match: matchResult.rows[0] });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
