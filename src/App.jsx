@@ -1,3 +1,4 @@
+import { SpeedInsights } from '@vercel/speed-insights/react';
 import { useState, useEffect, useCallback, useMemo } from 'react';
 
 const API_BASE = '/api';
@@ -5166,6 +5167,7 @@ const API_BASE = '/api';
 
                         {view === 'admin' && <AdminPanel players={players} season={season} onCreateSeason={handleCreateSeason} isAdmin={isAdmin} onLogin={handleLogin} onAddPlayer={handleAddPlayer} onCreateBracket={handleCreateBracket} onArchiveSeason={handleArchiveSeason} onClearSeason={handleClearSeason} />}
                     </main>
+                    <SpeedInsights />
                 </div>
             );
         }
