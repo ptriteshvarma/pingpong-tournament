@@ -2319,7 +2319,12 @@ const API_BASE = '/api';
             return (
                 <div className="space-y-6">
                     <div className="bg-white shadow-sm border border-gray-200 rounded-xl p-4">
-                        <h2 className="text-xl font-bold mb-4">Table Availability Calendar</h2>
+                        <div className="flex items-center justify-between mb-4">
+                            <h2 className="text-xl font-bold">Table Availability Calendar</h2>
+                            <span className="text-sm text-gray-500 bg-blue-50 px-3 py-1 rounded-full">
+                                📅 View only - Use "Book Table" tab to schedule games
+                            </span>
+                        </div>
 
                         {/* Date Selector */}
                         <div className="flex gap-2 overflow-x-auto pb-2 mb-4">
@@ -2390,7 +2395,11 @@ const API_BASE = '/api';
                         <div className="bg-white shadow-sm border border-gray-200 rounded-xl p-4">
                             <h3 className="font-bold mb-3">Scheduled Games</h3>
                             <div className="space-y-2">
-                                {calendarData.bookings[selectedDate].map(booking => (
+                                {calendarData.bookings[selectedDate]
+                                    .filter((booking, index, self) =>
+                                        index === self.findIndex(b => b.id === booking.id)
+                                    )
+                                    .map(booking => (
                                     <div key={booking.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                                         <div>
                                             <span className="font-medium">{booking.player1}</span>
