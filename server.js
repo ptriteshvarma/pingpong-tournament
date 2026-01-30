@@ -288,12 +288,19 @@ if (process.env.VERCEL) {
 
 // Log asset requests in Vercel for debugging
 if (process.env.VERCEL) {
-  app.use('/assets/*', (req, res, next) => {
-    console.log('Asset request:', req.url);
+  app.use('/assets/*.js', (req, res, next) => {
     const fs = require('fs');
     const assetPath = path.join(PUBLIC_DIR, req.url);
-    console.log('Looking for:', assetPath);
-    console.log('File exists:', fs.existsSync(assetPath));
+    console.log('JS request:', req.url);
+    console.log('Path:', assetPath);
+    console.log('Exists:', fs.existsSync(assetPath));
+    if (fs.existsSync(assetPath)) {
+      const content = fs.readFileSync(assetPath, 'utf-8');
+      const first100 = content.substring(0, 100);
+      console.log('First 100 chars:', first100);
+      console.log('Has require?', first100.includes('require'));
+      console.log('Has import?', first100.includes('import'));
+    }
     next();
   });
 }
