@@ -1,7 +1,6 @@
 {
   "version": 2,
   "buildCommand": "npm run build",
-  "outputDirectory": "public",
   "functions": {
     "api/index.js": {
       "memory": 1024,
@@ -10,9 +9,7 @@
   },
   "routes": [
     { "src": "/api/(.*)", "dest": "/api" },
-    { "src": "/assets/(.*)", "dest": "/assets/$1" },
-    { "src": "/(manifest\\.json|favicon\\.svg|service-worker\\.js)", "dest": "/$1" },
-    { "src": "/(.*)", "dest": "/index.html" }
+    { "src": "/(.*)", "dest": "/api" }
   ],
   "crons": [
     {
