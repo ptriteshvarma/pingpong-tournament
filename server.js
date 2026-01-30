@@ -8,6 +8,11 @@ const { Pool } = require('pg');
 // This is necessary because Vercel's serverless environment has issues with Supabase's SSL certificates
 process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
 
+// Determine the correct public folder path for Vercel serverless environment
+const PUBLIC_DIR = process.env.VERCEL
+  ? path.join(process.cwd(), 'public')
+  : path.join(__dirname, 'public');
+
 const app = express();
 const PORT = process.env.PORT || 3000;
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'Username';
@@ -268,7 +273,7 @@ initDatabase()
 app.use(compression()); // Enable gzip compression for all responses
 app.use(cors());
 app.use(express.json({ limit: '10mb' }));
-app.use(express.static(path.join(__dirname, 'public'), {
+app.use(express.static(PUBLIC_DIR, {
   maxAge: '1h', // Cache static files for 1 hour
   etag: true
 }));
@@ -6091,7 +6096,7 @@ app.get('/api/table/availability/:date', async (req, res) => {
 
 // Serve the main HTML file
 app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+  res.sendFile(path.join(PUBLIC_DIR, 'index.html'));
 });
 
 // ============ WEB PUSH NOTIFICATIONS ============
@@ -6439,7 +6444,7 @@ app.get('/api/notifications/weekly-summary', async (req, res) => {
 
 // SPA fallback - serve index.html for all non-API routes
 app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+  res.sendFile(path.join(PUBLIC_DIR, 'index.html'));
 });
 
 // Start server (for local development)
