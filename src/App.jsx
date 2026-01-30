@@ -1157,7 +1157,7 @@ const API_BASE = '/api';
                 return `${h12}:${m} ${ampm}`;
             };
 
-            // Generate 2 weeks of dates
+            // Generate 3 weeks of dates starting from NEXT Sunday
             const weekDates = useMemo(() => {
                 const dates = [];
                 const today = new Date();
