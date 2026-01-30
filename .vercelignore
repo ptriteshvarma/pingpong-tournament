@@ -1,2 +1,3 @@
-# Don't exclude dist - we need it for static assets
+# Don't exclude dist and public - we need them for static assets
 !dist
+!public
