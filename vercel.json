@@ -4,10 +4,12 @@
   "functions": {
     "api/index.js": {
       "memory": 1024,
-      "maxDuration": 10
+      "maxDuration": 10,
+      "includeFiles": "public/**"
     }
   },
   "routes": [
+    { "handle": "filesystem" },
     { "src": "/api/(.*)", "dest": "/api" },
     { "src": "/(.*)", "dest": "/api" }
   ],
