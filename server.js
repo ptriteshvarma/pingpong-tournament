@@ -4597,12 +4597,13 @@ app.put('/api/notifications/:playerName/read-all', async (req, res) => {
 const createNotification = async (playerName, type, title, message, link = null) => {
   try {
     await ensureNotificationsTable();
-    await pool.query(
-      `INSERT INTO notifications (player_name, type, title, message, link) VALUES ($1, $2, $3, $4, $5)`,
+    const result = await pool.query(
+      `INSERT INTO notifications (player_name, type, title, message, link) VALUES ($1, $2, $3, $4, $5) RETURNING id`,
       [playerName, type, title, message, link]
     );
+    console.log(`✅ Notification created [ID: ${result.rows[0].id}] for ${playerName || 'ALL'}: ${title}`);
   } catch (e) {
-    console.error('Failed to create notification:', e.message);
+    console.error('❌ Failed to create notification:', e.message);
   }
 };
 

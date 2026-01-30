@@ -3288,12 +3288,17 @@ const API_BASE = '/api';
                 <div className="relative">
                     <button
                         onClick={handleBellClick}
-                        className={`relative p-2 rounded-lg transition-colors ${currentPlayer ? 'hover:bg-gray-200 text-gray-900' : 'text-gray-400 cursor-pointer hover:bg-gray-100'}`}
-                        title={currentPlayer ? 'Notifications' : 'Select player name first (My Games tab)'}
+                        className={`relative p-2 rounded-lg transition-colors ${currentPlayer ? 'hover:bg-gray-200 text-gray-900' : 'text-amber-500 cursor-pointer hover:bg-amber-100 animate-pulse'}`}
+                        title={currentPlayer ? 'Notifications' : 'Click here! Select player name first (My Games tab)'}
                     >
                         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-5 h-5">
                             <path strokeLinecap="round" strokeLinejoin="round" d="M14.857 17.082a23.848 23.848 0 0 0 5.454-1.31A8.967 8.967 0 0 1 18 9.75V9A6 6 0 0 0 6 9v.75a8.967 8.967 0 0 1-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 0 1-5.714 0m5.714 0a3 3 0 1 1-5.714 0" />
                         </svg>
+                        {!currentPlayer && (
+                            <span className="absolute -top-1 -right-1 w-4 h-4 bg-amber-500 rounded-full text-[10px] flex items-center justify-center font-bold text-white">
+                                ?
+                            </span>
+                        )}
                         {currentPlayer && unreadCount > 0 && (
                             <span className="absolute -top-1 -right-1 w-5 h-5 bg-rose-500 rounded-full text-xs flex items-center justify-center font-bold text-white">
                                 {unreadCount > 9 ? '9+' : unreadCount}
@@ -4097,12 +4102,20 @@ const API_BASE = '/api';
 
             const handleRecordResult = async (matchId, winner, loser, score1, score2) => {
                 try {
-                    await fetch(`${API_BASE}/season/match`, {
+                    const res = await fetch(`${API_BASE}/season/match`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ matchId, winner, loser, score1, score2 })
                     });
-                    await loadData();
+
+                    if (res.ok) {
+                        await loadData();
+                        // Notify user that notifications were sent
+                        alert(`✅ Result recorded!\n\n🔔 Notifications sent to:\n- ${winner}\n- ${loser}\n\nPlayers: Go to "My Games" tab and select your name to view notifications.`);
+                    } else {
+                        const error = await res.json();
+                        alert(error.error || 'Failed to record result');
+                    }
                 } catch (e) {
                     alert('Failed to record result');
                 }
