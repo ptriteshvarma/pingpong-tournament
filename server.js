@@ -6060,7 +6060,11 @@ app.get('/api/table/availability/:date', async (req, res) => {
     for (let h = 8; h < 18; h++) {
       for (const m of ['00', '30']) {
         const time = `${h.toString().padStart(2, '0')}:${m}`;
-        const booking = result.rows.find(b => b.start_time === time + ':00' || b.start_time === time);
+        // Handle both HH:MM and HH:MM:SS formats from database
+        const booking = result.rows.find(b => {
+          const dbTime = b.start_time.substring(0, 5); // Get HH:MM part
+          return dbTime === time;
+        });
 
         slots.push({
           time,
