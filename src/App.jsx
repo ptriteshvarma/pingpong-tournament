@@ -926,6 +926,7 @@ const API_BASE = '/api';
             const [leagueMatches, setLeagueMatches] = useState([]);
             const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
             const [isSaving, setIsSaving] = useState(false);
+            const [expandedMatches, setExpandedMatches] = useState({});
 
             // Fetch league matches
             useEffect(() => {
@@ -1159,12 +1160,23 @@ const API_BASE = '/api';
             // Generate 2 weeks of dates
             const weekDates = useMemo(() => {
                 const dates = [];
-                const start = new Date();
-                start.setDate(start.getDate() - start.getDay()); // Start from Sunday
-                for (let i = 0; i < 21; i++) { // Changed from 14 to 21 for 3 weeks
-                    const d = new Date(start);
-                    d.setDate(start.getDate() + i);
-                    dates.push(d.toISOString().split('T')[0]);
+                const today = new Date();
+                today.setHours(12, 0, 0, 0); // Set to noon to avoid timezone issues
+
+                // Calculate next Sunday (start of Week 1)
+                const daysUntilSunday = (7 - today.getDay()) % 7 || 7; // If today is Sunday, get next Sunday
+                const nextSunday = new Date(today);
+                nextSunday.setDate(today.getDate() + daysUntilSunday);
+
+                // Generate 21 days starting from next Sunday
+                for (let i = 0; i < 21; i++) {
+                    const d = new Date(nextSunday);
+                    d.setDate(nextSunday.getDate() + i);
+                    // Use local date string to avoid timezone issues
+                    const year = d.getFullYear();
+                    const month = String(d.getMonth() + 1).padStart(2, '0');
+                    const day = String(d.getDate()).padStart(2, '0');
+                    dates.push(`${year}-${month}-${day}`);
                 }
                 return dates;
             }, []);
@@ -1241,9 +1253,9 @@ const API_BASE = '/api';
                                             </div>
                                             {overlap.length > 0 ? (
                                                 <div>
-                                                    <p className="text-xs text-green-600 mb-2">{overlap.length} mutual available slots this week:</p>
+                                                    <p className="text-xs text-green-600 mb-2">{overlap.length} mutual available slots:</p>
                                                     <div className="flex flex-wrap gap-1">
-                                                        {overlap.slice(0, 6).map(({date, slot}) => (
+                                                        {(expandedMatches[match.id] ? overlap : overlap.slice(0, 6)).map(({date, slot}) => (
                                                             <button key={date + slot} onClick={() => {
                                                                 setSelectedMatch(match);
                                                                 setSelectedDate(date);
@@ -1253,7 +1265,16 @@ const API_BASE = '/api';
                                                                 {dayNames[new Date(date + 'T12:00').getDay()]} {formatTime(slot)}
                                                             </button>
                                                         ))}
-                                                        {overlap.length > 6 && <span className="text-xs text-gray-500">+{overlap.length - 6} more</span>}
+                                                        {overlap.length > 6 && !expandedMatches[match.id] && (
+                                                            <button onClick={() => setExpandedMatches({...expandedMatches, [match.id]: true})} className="text-xs text-purple-600 hover:text-purple-700 px-2 py-1 rounded border border-purple-600">
+                                                                +{overlap.length - 6} more
+                                                            </button>
+                                                        )}
+                                                        {expandedMatches[match.id] && (
+                                                            <button onClick={() => setExpandedMatches({...expandedMatches, [match.id]: false})} className="text-xs text-gray-600 hover:text-gray-700 px-2 py-1 rounded border border-gray-400">
+                                                                Show less
+                                                            </button>
+                                                        )}
                                                     </div>
                                                 </div>
                                             ) : (
@@ -1379,7 +1400,7 @@ const API_BASE = '/api';
                                         <div key={b.id} className="flex items-center justify-between bg-gray-100 rounded-lg p-3">
                                             <div className="flex items-center gap-3">
                                                 <div className="text-purple-600 font-mono font-semibold">
-                                                    {new Date(b.booking_date).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
+                                                    {new Date(b.booking_date.split('T')[0] + 'T12:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
                                                     {' '}{formatTime(b.start_time?.substring(0, 5))}
                                                 </div>
                                                 <div className="font-medium">vs {b.player1 === currentPlayer ? b.player2 : b.player1}</div>
@@ -1437,7 +1458,7 @@ const API_BASE = '/api';
                             <div className="bg-gray-100 rounded-xl p-6 max-w-md w-full animate-slideIn" onClick={e => e.stopPropagation()}>
                                 <h3 className="text-lg font-bold mb-2">Move Booking</h3>
                                 <p className="text-gray-500 mb-4">
-                                    Current: {new Date(bookingToMove.booking_date).toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })} at {formatTime(bookingToMove.start_time?.substring(0, 5))}
+                                    Current: {new Date(bookingToMove.booking_date.split('T')[0] + 'T12:00').toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })} at {formatTime(bookingToMove.start_time?.substring(0, 5))}
                                 </p>
                                 <div className="space-y-3 mb-4">
                                     <div>
