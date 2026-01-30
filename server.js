@@ -2340,6 +2340,23 @@ app.post('/api/bookings', async (req, res) => {
       return res.status(409).json({ error: 'Time slot already booked' });
     }
 
+    // Check if these two players already have an active booking together
+    const duplicateBooking = await pool.query(
+      `SELECT id, booking_date, start_time FROM table_bookings
+       WHERE ((player1 = $1 AND player2 = $2) OR (player1 = $2 AND player2 = $1))
+       AND status IN ('booked', 'tentative')`,
+      [player1, player2]
+    );
+
+    if (duplicateBooking.rows.length > 0) {
+      const existingBooking = duplicateBooking.rows[0];
+      const existingDate = new Date(existingBooking.booking_date).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+      return res.status(409).json({
+        error: 'Duplicate booking not allowed',
+        message: `${player1} vs ${player2} already have a booking on ${existingDate} at ${existingBooking.start_time}. Please complete or cancel that booking first.`
+      });
+    }
+
     // Bookings after mid-season swap no longer need tentative marking since we block them above
     const bookingWeek = getWeekNumber(booking_date);
     const isTentative = false; // Removed tentative logic - we now block entirely

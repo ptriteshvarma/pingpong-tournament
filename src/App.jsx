@@ -190,19 +190,19 @@ const API_BASE = '/api';
                         {/* Relegation Zone */}
                         <div className="bg-rose-900/30 border border-rose-600/50 rounded-lg p-3">
                             <div className="flex items-center gap-2 mb-2">
-                                <div className="text-red-500"><SwapIcons.ArrowDown /></div>
-                                <span className="font-bold text-red-500 uppercase tracking-wide text-sm">RELEGATION ZONE</span>
+                                <div className="text-red-400"><SwapIcons.ArrowDown /></div>
+                                <span className="font-bold text-red-400 uppercase tracking-wide text-sm">RELEGATION ZONE</span>
                             </div>
-                            <p className="text-xs text-rose-300/70 mb-2">Bottom 3 of Group A move DOWN to Group B</p>
+                            <p className="text-xs text-rose-200 mb-2">Bottom 3 of Group A move DOWN to Group B</p>
                             <div className="space-y-1">
                                 {swapZone.relegationZone?.map(player => (
                                     <div key={player.name} className="flex items-center justify-between bg-rose-900/40 rounded px-2 py-1">
                                         <div className="flex items-center gap-2">
-                                            <span className="text-red-500 font-bold">#{player.rank}</span>
+                                            <span className="text-red-400 font-bold">#{player.rank}</span>
                                             <PlayerAvatar name={player.name} size="sm" />
                                             <span className="text-sm text-white">{player.name}</span>
                                         </div>
-                                        <span className="text-xs text-rose-300">
+                                        <span className="text-xs text-rose-100">
                                             {player.wins}W-{player.losses}L
                                             {player.gamesPlayed !== undefined && <span className="ml-1 opacity-70">({player.gamesPlayed}g)</span>}
                                         </span>
@@ -214,19 +214,19 @@ const API_BASE = '/api';
                         {/* Promotion Zone */}
                         <div className="bg-emerald-900/30 border border-emerald-600/50 rounded-lg p-3">
                             <div className="flex items-center gap-2 mb-2">
-                                <div className="text-green-600"><SwapIcons.ArrowUp /></div>
-                                <span className="font-bold text-green-600 uppercase tracking-wide text-sm">PROMOTION ZONE</span>
+                                <div className="text-emerald-400"><SwapIcons.ArrowUp /></div>
+                                <span className="font-bold text-emerald-300 uppercase tracking-wide text-sm">PROMOTION ZONE</span>
                             </div>
-                            <p className="text-xs text-emerald-300/70 mb-2">Top 3 of Group B move UP to Group A</p>
+                            <p className="text-xs text-emerald-200 mb-2">Top 3 of Group B move UP to Group A</p>
                             <div className="space-y-1">
                                 {swapZone.promotionZone?.map(player => (
                                     <div key={player.name} className="flex items-center justify-between bg-emerald-900/40 rounded px-2 py-1">
                                         <div className="flex items-center gap-2">
-                                            <span className="text-green-600 font-bold">#{player.rank}</span>
+                                            <span className="text-emerald-400 font-bold">#{player.rank}</span>
                                             <PlayerAvatar name={player.name} size="sm" />
                                             <span className="text-sm text-white">{player.name}</span>
                                         </div>
-                                        <span className="text-xs text-emerald-300">
+                                        <span className="text-xs text-emerald-100">
                                             {player.wins}W-{player.losses}L
                                             {player.gamesPlayed !== undefined && <span className="ml-1 opacity-70">({player.gamesPlayed}g)</span>}
                                         </span>
@@ -240,15 +240,15 @@ const API_BASE = '/api';
                     {swapZone.bubble?.length > 0 && (
                         <div className="mt-3 pt-3 border-t border-gray-300">
                             <div className="flex items-center gap-2 mb-2">
-                                <div className="text-amber-600"><SwapIcons.Bolt /></div>
-                                <span className="text-sm font-semibold text-amber-600">ON THE BUBBLE</span>
+                                <div className="text-amber-500"><SwapIcons.Bolt /></div>
+                                <span className="text-sm font-semibold text-amber-500">ON THE BUBBLE</span>
                             </div>
                             <div className="flex flex-wrap gap-2">
                                 {swapZone.bubble.map(player => (
                                     <div key={player.name} className="flex items-center gap-2 bg-amber-900/30 border border-amber-600/50 rounded px-2 py-1 text-sm">
-                                        <span className="text-amber-600">#{player.rank} G{player.group}</span>
+                                        <span className="text-amber-400">#{player.rank} G{player.group}</span>
                                         <span className="text-white">{player.name}</span>
-                                        <span className="text-xs text-amber-300">- {player.message}</span>
+                                        <span className="text-xs text-amber-200">- {player.message}</span>
                                     </div>
                                 ))}
                             </div>
