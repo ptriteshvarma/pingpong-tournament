@@ -1161,7 +1161,7 @@ const API_BASE = '/api';
                 const dates = [];
                 const start = new Date();
                 start.setDate(start.getDate() - start.getDay()); // Start from Sunday
-                for (let i = 0; i < 14; i++) { // Changed from 7 to 14 for 2 weeks
+                for (let i = 0; i < 21; i++) { // Changed from 14 to 21 for 3 weeks
                     const d = new Date(start);
                     d.setDate(start.getDate() + i);
                     dates.push(d.toISOString().split('T')[0]);
@@ -1268,7 +1268,7 @@ const API_BASE = '/api';
 
                     {/* My Availability Grid */}
                     <div className="bg-white shadow-sm border border-gray-200 rounded-xl p-4">
-                        <h3 className="text-lg font-bold mb-3">Set My Availability (2 Weeks)</h3>
+                        <h3 className="text-lg font-bold mb-3">Set My Availability (3 Weeks)</h3>
                         <p className="text-sm text-gray-500 mb-4">Tap slots when you're free to play. Your opponents will see when you overlap!</p>
                         <div className="overflow-x-auto">
                             <table className="w-full text-sm">
@@ -1277,13 +1277,15 @@ const API_BASE = '/api';
                                         <th className="p-1 text-left text-gray-500">Time</th>
                                         {weekDates.map((date, i) => {
                                             const d = new Date(date + 'T12:00');
-                                            const isSecondWeek = i >= 7;
+                                            const weekStyle = i >= 14 ? 'bg-green-50' : i >= 7 ? 'bg-blue-50' : '';
+                                            const borderStyle = i === 7 || i === 14 ? 'border-l-2 border-blue-300' : '';
                                             return (
-                                                <th key={date} className={`p-1 text-center ${isSecondWeek ? 'bg-blue-50' : ''} ${i === 7 ? 'border-l-2 border-blue-300' : ''}`}>
+                                                <th key={date} className={`p-1 text-center ${weekStyle} ${borderStyle}`}>
                                                     <div className="text-gray-500 text-xs">{dayNames[d.getDay()]}</div>
                                                     <div className="font-semibold">{d.getDate()}</div>
                                                     {i === 0 && <div className="text-[10px] text-purple-600">Week 1</div>}
                                                     {i === 7 && <div className="text-[10px] text-blue-600">Week 2</div>}
+                                                    {i === 14 && <div className="text-[10px] text-green-600">Week 3</div>}
                                                 </th>
                                             );
                                         })}
@@ -1303,9 +1305,10 @@ const API_BASE = '/api';
                                                 const isTableBooked = !!existingBooking;
                                                 const myBooking = existingBooking && (existingBooking.player1 === currentPlayer || existingBooking.player2 === currentPlayer);
                                                 const bookingGroup = existingBooking?.group_name;
-                                                const isSecondWeek = i >= 7;
+                                                const weekBg = i >= 14 ? 'bg-green-50/30' : i >= 7 ? 'bg-blue-50/30' : '';
+                                                const borderStyle = i === 7 || i === 14 ? 'border-l-2 border-blue-300' : '';
                                                 return (
-                                                    <td key={date} className={`p-1 ${isSecondWeek ? 'bg-blue-50/30' : ''} ${i === 7 ? 'border-l-2 border-blue-300' : ''}`}>
+                                                    <td key={date} className={`p-1 ${weekBg} ${borderStyle}`}>
                                                         <button
                                                             onClick={() => !isTableBooked && toggleMyAvailability(date, slot)}
                                                             disabled={isTableBooked && !myBooking}
