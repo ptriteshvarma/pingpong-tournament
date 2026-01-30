@@ -360,9 +360,12 @@ const API_BASE = '/api';
                 setScore2('');
             };
 
+            // Ensure matches is always an array
+            const safeMatches = Array.isArray(matches) ? matches : [];
+
             return (
                 <div className="space-y-2">
-                    {matches.map(match => (
+                    {safeMatches.map(match => (
                         <div key={match.id} className={`flex items-center justify-between p-3 rounded-lg ${match.completed ? 'bg-gray-100/50' : 'bg-gray-100'}`}>
                             <div className="flex items-center gap-3 flex-1">
                                 <div className="flex items-center gap-2 flex-1">
@@ -427,7 +430,7 @@ const API_BASE = '/api';
 
         // Playoff Bracket
         function PlayoffBracket({ playoff, groupName, onRecordResult }) {
-            if (!playoff) return null;
+            if (!playoff || !Array.isArray(playoff.semifinals)) return null;
 
             const MatchCard = ({ match, label }) => {
                 const [showModal, setShowModal] = useState(false);
@@ -717,7 +720,7 @@ const API_BASE = '/api';
 
         // Wildcard Round Component
         function WildcardRound({ wildcard, onRecordResult }) {
-            if (!wildcard?.matches) return null;
+            if (!wildcard?.matches || !Array.isArray(wildcard.matches)) return null;
 
             const WildcardMatch = ({ match }) => {
                 const [showModal, setShowModal] = useState(false);
