@@ -3,12 +3,14 @@
   "buildCommand": "npm run build",
   "functions": {
     "api/index.js": {
+      "memory": 1024,
+      "maxDuration": 10,
       "includeFiles": "public/**"
     }
   },
-  "rewrites": [
-    { "source": "/api/(.*)", "destination": "/api" },
-    { "source": "/(.*)", "destination": "/api" }
+  "routes": [
+    { "src": "/api/(.*)", "dest": "/api" },
+    { "src": "/(.*)", "dest": "/api" }
   ],
   "crons": [
     {
