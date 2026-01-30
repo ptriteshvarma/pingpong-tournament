@@ -1253,7 +1253,7 @@ const API_BASE = '/api';
                                             </div>
                                             {overlap.length > 0 ? (
                                                 <div>
-                                                    <p className="text-xs text-green-600 mb-2">{overlap.length} mutual available slots:</p>
+                                                    <p className="text-xs text-gray-700 font-medium mb-2">{overlap.length} mutual available slots:</p>
                                                     <div className="flex flex-wrap gap-1">
                                                         {(expandedMatches[match.id] ? overlap : overlap.slice(0, 6)).map(({date, slot}) => (
                                                             <button key={date + slot} onClick={() => {
@@ -1261,7 +1261,7 @@ const API_BASE = '/api';
                                                                 setSelectedDate(date);
                                                                 setSelectedSlot(slot);
                                                                 setShowBookingModal(true);
-                                                            }} className="text-xs bg-emerald-900/50 text-green-600 px-2 py-1 rounded hover:bg-emerald-800">
+                                                            }} className="text-xs bg-emerald-900/50 text-emerald-200 px-2 py-1 rounded hover:bg-emerald-800">
                                                                 {dayNames[new Date(date + 'T12:00').getDay()]} {formatTime(slot)}
                                                             </button>
                                                         ))}
