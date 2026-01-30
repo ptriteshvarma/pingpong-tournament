@@ -1250,7 +1250,7 @@ const API_BASE = '/api';
                                                                 setSelectedSlot(slot);
                                                                 setShowBookingModal(true);
                                                             }} className="text-xs bg-emerald-900/50 text-green-600 px-2 py-1 rounded hover:bg-emerald-800">
-                                                                {dayNames[new Date(date).getDay()]} {formatTime(slot)}
+                                                                {dayNames[new Date(date + 'T12:00').getDay()]} {formatTime(slot)}
                                                             </button>
                                                         ))}
                                                         {overlap.length > 6 && <span className="text-xs text-gray-500">+{overlap.length - 6} more</span>}
