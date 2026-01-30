@@ -273,6 +273,31 @@ initDatabase()
 app.use(compression()); // Enable gzip compression for all responses
 app.use(cors());
 app.use(express.json({ limit: '10mb' }));
+
+// Debug logging for Vercel
+if (process.env.VERCEL) {
+  console.log('PUBLIC_DIR:', PUBLIC_DIR);
+  const fs = require('fs');
+  const publicExists = fs.existsSync(PUBLIC_DIR);
+  console.log('Public folder exists:', publicExists);
+  if (publicExists) {
+    const files = fs.readdirSync(PUBLIC_DIR);
+    console.log('Files in public:', files);
+  }
+}
+
+// Log asset requests in Vercel for debugging
+if (process.env.VERCEL) {
+  app.use('/assets/*', (req, res, next) => {
+    console.log('Asset request:', req.url);
+    const fs = require('fs');
+    const assetPath = path.join(PUBLIC_DIR, req.url);
+    console.log('Looking for:', assetPath);
+    console.log('File exists:', fs.existsSync(assetPath));
+    next();
+  });
+}
+
 app.use(express.static(PUBLIC_DIR, {
   maxAge: '1h', // Cache static files for 1 hour
   etag: true
@@ -6442,8 +6467,15 @@ app.get('/api/notifications/weekly-summary', async (req, res) => {
   }
 });
 
-// SPA fallback - serve index.html for all non-API routes
-app.get('*', (req, res) => {
+// SPA fallback - serve index.html for all non-API routes (but not static files)
+app.get('*', (req, res, next) => {
+  // Don't serve index.html for static file requests
+  if (req.url.startsWith('/assets/') ||
+      req.url.startsWith('/manifest.json') ||
+      req.url.startsWith('/favicon.svg') ||
+      req.url.startsWith('/service-worker.js')) {
+    return next(); // Let static middleware handle it or 404
+  }
   res.sendFile(path.join(PUBLIC_DIR, 'index.html'));
 });
 
