@@ -1,9 +1,14 @@
 {
   "version": 2,
   "buildCommand": "npm run build",
-  "rewrites": [
-    { "source": "/api/(.*)", "destination": "/server.js" },
-    { "source": "/(.*)", "destination": "/server.js" }
+  "functions": {
+    "server.js": {
+      "includeFiles": "public/**"
+    }
+  },
+  "routes": [
+    { "handle": "filesystem" },
+    { "src": "/(.*)", "dest": "/server.js" }
   ],
   "crons": [
     {
