@@ -1166,15 +1166,15 @@ const API_BASE = '/api';
                 const today = new Date();
                 today.setHours(12, 0, 0, 0); // Set to noon to avoid timezone issues
 
-                // Calculate next Sunday (start of Week 1)
-                const daysUntilSunday = (7 - today.getDay()) % 7 || 7; // If today is Sunday, get next Sunday
-                const nextSunday = new Date(today);
-                nextSunday.setDate(today.getDate() + daysUntilSunday);
+                // Calculate current week's Sunday (start of Week 1)
+                const daysSinceSunday = today.getDay(); // 0 = Sunday, 1 = Monday, etc.
+                const currentSunday = new Date(today);
+                currentSunday.setDate(today.getDate() - daysSinceSunday);
 
-                // Generate 21 days starting from next Sunday
+                // Generate 21 days starting from current week's Sunday
                 for (let i = 0; i < 21; i++) {
-                    const d = new Date(nextSunday);
-                    d.setDate(nextSunday.getDate() + i);
+                    const d = new Date(currentSunday);
+                    d.setDate(currentSunday.getDate() + i);
                     // Use local date string to avoid timezone issues
                     const year = d.getFullYear();
                     const month = String(d.getMonth() + 1).padStart(2, '0');
