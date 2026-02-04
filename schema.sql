@@ -80,12 +80,13 @@ CREATE TABLE IF NOT EXISTS table_bookings (
     status VARCHAR(20) DEFAULT 'booked', -- 'booked', 'completed', 'cancelled'
     reminded BOOLEAN DEFAULT FALSE, -- Whether 1-hour reminder was sent
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    created_by VARCHAR(255),
-    UNIQUE(booking_date, start_time) -- Only one booking per time slot
+    created_by VARCHAR(255)
 );
 
 CREATE INDEX idx_bookings_date ON table_bookings(booking_date);
 CREATE INDEX idx_bookings_status ON table_bookings(status);
+-- Partial unique index: only one ACTIVE booking per time slot (allows cancelled slots to be rebooked)
+CREATE UNIQUE INDEX unique_active_bookings ON table_bookings(booking_date, start_time) WHERE status != 'cancelled';
 
 -- Season/League table (stores entire season as JSON for flexibility)
 CREATE TABLE IF NOT EXISTS season (

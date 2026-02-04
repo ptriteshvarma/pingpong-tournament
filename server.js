@@ -2185,9 +2185,18 @@ const ensureBookingsTable = async () => {
       group_name VARCHAR(10),
       status VARCHAR(20) DEFAULT 'booked',
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-      created_by VARCHAR(255),
-      UNIQUE(booking_date, start_time)
+      created_by VARCHAR(255)
     )
+  `);
+  // Drop old UNIQUE constraint if it exists (from previous schema version)
+  await pool.query(`
+    ALTER TABLE table_bookings DROP CONSTRAINT IF EXISTS table_bookings_booking_date_start_time_key
+  `);
+  // Create partial unique index: only one ACTIVE booking per time slot (allows cancelled slots to be rebooked)
+  await pool.query(`
+    CREATE UNIQUE INDEX IF NOT EXISTS unique_active_bookings
+    ON table_bookings(booking_date, start_time)
+    WHERE status != 'cancelled'
   `);
 };
 
@@ -2318,27 +2327,51 @@ app.post('/api/bookings', async (req, res) => {
     const season = seasonResult.rows[0]?.data;
     const midSeasonCompleted = season?.midSeasonReview?.completed || false;
 
-    // NEW: Game-based booking block
-    // Block bookings for players who have 4+ games completed (until swap happens)
+    // NEW: Game-based booking limit (4 games before mid-season swap)
+    // Count BOTH completed AND booked games to enforce the 4-game limit
     if (season && !midSeasonCompleted) {
       const player1Stats = season.standings?.A?.[player1] || season.standings?.B?.[player1];
       const player2Stats = season.standings?.A?.[player2] || season.standings?.B?.[player2];
 
-      const player1Games = player1Stats ? (player1Stats.wins + player1Stats.losses) : 0;
-      const player2Games = player2Stats ? (player2Stats.wins + player2Stats.losses) : 0;
+      const player1Completed = player1Stats ? (player1Stats.wins + player1Stats.losses) : 0;
+      const player2Completed = player2Stats ? (player2Stats.wins + player2Stats.losses) : 0;
 
-      // Block if either player has >= 4 games completed
-      if (player1Games >= 4 || player2Games >= 4) {
-        const blockedPlayer = player1Games >= 4 ? player1 : player2;
-        const blockedPlayerGames = player1Games >= 4 ? player1Games : player2Games;
+      // Count active booked games (not yet completed) for each player
+      const player1BookedResult = await pool.query(
+        `SELECT COUNT(*) FROM table_bookings
+         WHERE (player1 = $1 OR player2 = $1)
+         AND status IN ('booked', 'tentative')`,
+        [player1]
+      );
+      const player2BookedResult = await pool.query(
+        `SELECT COUNT(*) FROM table_bookings
+         WHERE (player1 = $1 OR player2 = $1)
+         AND status IN ('booked', 'tentative')`,
+        [player2]
+      );
+
+      const player1Booked = parseInt(player1BookedResult.rows[0].count) || 0;
+      const player2Booked = parseInt(player2BookedResult.rows[0].count) || 0;
+
+      const player1TotalGames = player1Completed + player1Booked;
+      const player2TotalGames = player2Completed + player2Booked;
+
+      // Block if either player has >= 4 games (completed + booked)
+      if (player1TotalGames >= 4 || player2TotalGames >= 4) {
+        const blockedPlayer = player1TotalGames >= 4 ? player1 : player2;
+        const blockedPlayerTotal = player1TotalGames >= 4 ? player1TotalGames : player2TotalGames;
+        const blockedPlayerCompleted = player1TotalGames >= 4 ? player1Completed : player2Completed;
+        const blockedPlayerBooked = player1TotalGames >= 4 ? player1Booked : player2Booked;
 
         return res.status(403).json({
-          error: 'Bookings blocked - Waiting for mid-season swap',
-          reason: `${blockedPlayer} has completed ${blockedPlayerGames} games. Players who have reached 4 games cannot book more until ALL players reach 4 games and the mid-season swap is completed.`,
+          error: 'Bookings blocked - 4 game limit reached',
+          reason: `${blockedPlayer} has ${blockedPlayerTotal} games (${blockedPlayerCompleted} completed, ${blockedPlayerBooked} booked). Players cannot book more than 4 games before the mid-season swap.`,
           blockedPlayer,
-          playerGames: blockedPlayerGames,
+          totalGames: blockedPlayerTotal,
+          completedGames: blockedPlayerCompleted,
+          bookedGames: blockedPlayerBooked,
           requiresSwap: true,
-          message: 'This ensures fair evaluation for the mid-season swap - everyone must play 4 games before swapping groups.'
+          message: 'This ensures fair evaluation for the mid-season swap - players are limited to 4 games until all players complete their first 4 games and groups are reshuffled.'
         });
       }
     }
