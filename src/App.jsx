@@ -952,15 +952,26 @@ const API_BASE = '/api';
                 if (!currentPlayer) return [];
                 const matches = [];
 
+                // Check if mid-season swap is completed (happens at Week 3)
+                const midSeasonCompleted = season?.midSeasonReview?.completed || false;
+                const MID_SEASON_WEEK = 3;
+
                 // Add season matches
                 if (season) {
                     ['A', 'B'].forEach(group => {
                         season.schedule?.[group]?.forEach((week, weekIdx) => {
+                            const weekNum = weekIdx + 1;
                             week.forEach(match => {
                                 if (!match.completed && (match.player1 === currentPlayer || match.player2 === currentPlayer)) {
+                                    // Hide matches from Week 3+ until mid-season swap is completed
+                                    // This prevents booking matches with opponents who may change after the swap
+                                    if (!midSeasonCompleted && weekNum >= MID_SEASON_WEEK) {
+                                        return; // Skip this match
+                                    }
+
                                     matches.push({
                                         ...match,
-                                        weekNum: weekIdx + 1,
+                                        weekNum,
                                         opponent: match.player1 === currentPlayer ? match.player2 : match.player1,
                                         group,
                                         type: 'season'
@@ -1258,16 +1269,20 @@ const API_BASE = '/api';
                                                 <div>
                                                     <p className="text-xs text-gray-700 font-medium mb-2">{overlap.length} mutual available slots:</p>
                                                     <div className="flex flex-wrap gap-1">
-                                                        {(expandedMatches[match.id] ? overlap : overlap.slice(0, 6)).map(({date, slot}) => (
+                                                        {(expandedMatches[match.id] ? overlap : overlap.slice(0, 6)).map(({date, slot}) => {
+                                                            const d = new Date(date + 'T12:00');
+                                                            const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+                                                            const dateStr = `${dayNames[d.getDay()]} ${monthNames[d.getMonth()]} ${d.getDate()}`;
+                                                            return (
                                                             <button key={date + slot} onClick={() => {
                                                                 setSelectedMatch(match);
                                                                 setSelectedDate(date);
                                                                 setSelectedSlot(slot);
                                                                 setShowBookingModal(true);
                                                             }} className="text-xs bg-emerald-900/50 text-emerald-200 px-2 py-1 rounded hover:bg-emerald-800">
-                                                                {dayNames[new Date(date + 'T12:00').getDay()]} {formatTime(slot)}
+                                                                {dateStr}, {formatTime(slot)}
                                                             </button>
-                                                        ))}
+                                                        );})}
                                                         {overlap.length > 6 && !expandedMatches[match.id] && (
                                                             <button onClick={() => setExpandedMatches({...expandedMatches, [match.id]: true})} className="text-xs text-purple-600 hover:text-purple-700 px-2 py-1 rounded border border-purple-600">
                                                                 +{overlap.length - 6} more
