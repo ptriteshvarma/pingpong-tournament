@@ -4244,7 +4244,27 @@ const API_BASE = '/api';
                     });
                     const data = await res.json();
                     if (res.ok) {
-                        alert(`Mid-season review complete!\n\nMoved to Group B: ${data.swaps.fromAtoB.join(', ')}\nMoved to Group A: ${data.swaps.fromBtoA.join(', ')}\n\n${data.newMatchesCreated} new matches created.`);
+                        let message = `Mid-season review complete!\n\nMoved to Group B: ${data.swaps.fromAtoB.join(', ')}\nMoved to Group A: ${data.swaps.fromBtoA.join(', ')}\n\n${data.newMatchesCreated} new matches created.`;
+
+                        // Add tie warnings if present
+                        if (data.tieWarnings && data.tieWarnings.length > 0) {
+                            message += '\n\n⚠️ TIE WARNINGS:';
+                            data.tieWarnings.forEach(warning => {
+                                if (warning.boundary === 'relegation') {
+                                    message += `\n\n🔴 Group A Relegation Boundary (Tied Record):`;
+                                    message += `\n  ✅ SAFE: ${warning.safePlayer.name} - ${warning.safePlayer.record} (${warning.safePlayer.pointDiff > 0 ? '+' : ''}${warning.safePlayer.pointDiff} diff)`;
+                                    message += `\n  ❌ RELEGATED: ${warning.relegatedPlayer.name} - ${warning.relegatedPlayer.record} (${warning.relegatedPlayer.pointDiff > 0 ? '+' : ''}${warning.relegatedPlayer.pointDiff} diff)`;
+                                    message += `\n  Decided by: ${warning.tiebreakerUsed}`;
+                                } else if (warning.boundary === 'promotion') {
+                                    message += `\n\n🟢 Group B Promotion Boundary (Tied Record):`;
+                                    message += `\n  ✅ PROMOTED: ${warning.promotedPlayer.name} - ${warning.promotedPlayer.record} (${warning.promotedPlayer.pointDiff > 0 ? '+' : ''}${warning.promotedPlayer.pointDiff} diff)`;
+                                    message += `\n  ⛔ SAFE: ${warning.safePlayer.name} - ${warning.safePlayer.record} (${warning.safePlayer.pointDiff > 0 ? '+' : ''}${warning.safePlayer.pointDiff} diff)`;
+                                    message += `\n  Decided by: ${warning.tiebreakerUsed}`;
+                                }
+                            });
+                        }
+
+                        alert(message);
                         await loadData();
                     } else {
                         alert(data.error || 'Failed to execute mid-season review');

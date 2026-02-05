@@ -3767,10 +3767,97 @@ app.post('/api/season/mid-review', requireAdmin, async (req, res) => {
     // Top 3 from Group B (best performers)
     const topB = sortedB.slice(0, 3);
 
+    // Detect ties at relegation/promotion boundaries
+    const tieWarnings = [];
+
+    // Helper function to check if two players have the same record
+    const haveSameRecord = (p1, p2) => {
+      return p1.wins === p2.wins && p1.losses === p2.losses;
+    };
+
+    // Helper function to explain tiebreaker
+    const getTiebreakerReason = (winner, loser) => {
+      // Check head-to-head
+      const h2hWinner = winner.headToHead?.[loser.name];
+      const h2hLoser = loser.headToHead?.[winner.name];
+      if (h2hWinner && h2hLoser) {
+        const h2hDiffWinner = (h2hWinner.wins || 0) - (h2hWinner.losses || 0);
+        const h2hDiffLoser = (h2hLoser.wins || 0) - (h2hLoser.losses || 0);
+        if (h2hDiffWinner !== h2hDiffLoser) {
+          return `Head-to-head record (${h2hDiffWinner > h2hDiffLoser ? winner.name : loser.name} won their matchup)`;
+        }
+      }
+      // Check point differential
+      const diffWinner = (winner.pointsFor || 0) - (winner.pointsAgainst || 0);
+      const diffLoser = (loser.pointsFor || 0) - (loser.pointsAgainst || 0);
+      if (diffWinner !== diffLoser) {
+        return `Point differential (${winner.name}: ${diffWinner > 0 ? '+' : ''}${diffWinner}, ${loser.name}: ${diffLoser > 0 ? '+' : ''}${diffLoser})`;
+      }
+      // Initial seed
+      return `Initial seed (${winner.name}: #${winner.initialSeed || '?'}, ${loser.name}: #${loser.initialSeed || '?'})`;
+    };
+
+    // Check Group A: Position 3 (safe) vs Position 4 (relegated)
+    if (sortedA.length >= 4) {
+      const safePlayer = sortedA[sortedA.length - 4]; // 3rd from bottom (safe)
+      const relegatedPlayer = sortedA[sortedA.length - 3]; // 3rd from top of bottom-3 (relegated)
+
+      if (haveSameRecord(safePlayer, relegatedPlayer)) {
+        const reason = getTiebreakerReason(safePlayer, relegatedPlayer);
+        tieWarnings.push({
+          group: 'A',
+          boundary: 'relegation',
+          message: `Tie at Group A relegation boundary (positions ${sortedA.length - 3}-${sortedA.length - 2})`,
+          safePlayer: {
+            name: safePlayer.name,
+            position: sortedA.length - 3,
+            record: `${safePlayer.wins}-${safePlayer.losses}`,
+            pointDiff: (safePlayer.pointsFor || 0) - (safePlayer.pointsAgainst || 0)
+          },
+          relegatedPlayer: {
+            name: relegatedPlayer.name,
+            position: sortedA.length - 2,
+            record: `${relegatedPlayer.wins}-${relegatedPlayer.losses}`,
+            pointDiff: (relegatedPlayer.pointsFor || 0) - (relegatedPlayer.pointsAgainst || 0)
+          },
+          tiebreakerUsed: reason
+        });
+      }
+    }
+
+    // Check Group B: Position 3 (promoted) vs Position 4 (safe)
+    if (sortedB.length >= 4) {
+      const promotedPlayer = sortedB[2]; // 3rd place (promoted)
+      const safePlayer = sortedB[3]; // 4th place (safe)
+
+      if (haveSameRecord(promotedPlayer, safePlayer)) {
+        const reason = getTiebreakerReason(promotedPlayer, safePlayer);
+        tieWarnings.push({
+          group: 'B',
+          boundary: 'promotion',
+          message: `Tie at Group B promotion boundary (positions 3-4)`,
+          promotedPlayer: {
+            name: promotedPlayer.name,
+            position: 3,
+            record: `${promotedPlayer.wins}-${promotedPlayer.losses}`,
+            pointDiff: (promotedPlayer.pointsFor || 0) - (promotedPlayer.pointsAgainst || 0)
+          },
+          safePlayer: {
+            name: safePlayer.name,
+            position: 4,
+            record: `${safePlayer.wins}-${safePlayer.losses}`,
+            pointDiff: (safePlayer.pointsFor || 0) - (safePlayer.pointsAgainst || 0)
+          },
+          tiebreakerUsed: reason
+        });
+      }
+    }
+
     // Record the swaps
     const swaps = {
       fromAtoB: bottomA.map(p => p.name),
-      fromBtoA: topB.map(p => p.name)
+      fromBtoA: topB.map(p => p.name),
+      tieWarnings: tieWarnings.length > 0 ? tieWarnings : undefined
     };
 
     // Update groups
@@ -4037,7 +4124,11 @@ app.post('/api/season/mid-review', requireAdmin, async (req, res) => {
         description: resetStats
           ? 'Swapped players start fresh (0-0) and are matched against similarly-ranked opponents'
           : 'Swapped players keep their stats and are matched against similarly-ranked opponents'
-      }
+      },
+      ...(tieWarnings.length > 0 && {
+        tieWarnings: tieWarnings,
+        tieWarningMessage: `⚠️ ${tieWarnings.length} tie(s) detected at relegation/promotion boundary - tiebreakers were used to determine final placements`
+      })
     });
   } catch (error) {
     await client.query('ROLLBACK');
