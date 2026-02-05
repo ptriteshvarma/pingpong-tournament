@@ -6501,9 +6501,29 @@ app.get('*', (req, res, next) => {
   res.sendFile(path.join(PUBLIC_DIR, 'index.html'));
 });
 
+// Fix database sequences on startup
+const fixDatabaseSequences = async () => {
+  try {
+    // Fix leaderboard sequence (sync with max id)
+    await pool.query(`
+      SELECT setval(pg_get_serial_sequence('leaderboard', 'id'),
+        COALESCE((SELECT MAX(id) FROM leaderboard), 0) + 1,
+        false)
+    `);
+    console.log('✓ Database sequences synchronized');
+  } catch (error) {
+    console.error('Warning: Could not fix database sequences:', error.message);
+  }
+};
+
+// Initialize database fixes (runs in both dev and production)
+(async () => {
+  await fixDatabaseSequences();
+})();
+
 // Start server (for local development)
 if (process.env.NODE_ENV !== 'production') {
-  app.listen(PORT, () => {
+  app.listen(PORT, async () => {
     console.log(`Server running on port ${PORT}`);
     console.log(`Database: ${process.env.POSTGRES_URL ? 'PostgreSQL' : 'Local development'}`);
 
