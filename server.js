@@ -2337,16 +2337,19 @@ app.post('/api/bookings', async (req, res) => {
       const player2Completed = player2Stats ? (player2Stats.wins + player2Stats.losses) : 0;
 
       // Count active booked games (not yet completed) for each player
+      // Only count future/today bookings to avoid double-counting games already recorded in standings
       const player1BookedResult = await pool.query(
         `SELECT COUNT(*) FROM table_bookings
          WHERE (player1 = $1 OR player2 = $1)
-         AND status IN ('booked', 'tentative')`,
+         AND status IN ('booked', 'tentative')
+         AND booking_date >= CURRENT_DATE`,
         [player1]
       );
       const player2BookedResult = await pool.query(
         `SELECT COUNT(*) FROM table_bookings
          WHERE (player1 = $1 OR player2 = $1)
-         AND status IN ('booked', 'tentative')`,
+         AND status IN ('booked', 'tentative')
+         AND booking_date >= CURRENT_DATE`,
         [player2]
       );
 
@@ -3435,6 +3438,14 @@ app.post('/api/season/match', async (req, res) => {
       }
     }
 
+    // Auto-complete any active booking between these two players
+    await client.query(
+      `UPDATE table_bookings SET status = 'completed'
+       WHERE ((player1 = $1 AND player2 = $2) OR (player1 = $2 AND player2 = $1))
+       AND status IN ('booked', 'tentative')`,
+      [winner, loser]
+    );
+
     // Save updated season
     await client.query(`
       UPDATE season SET data = $1, current_week = $2, status = $3, updated_at = CURRENT_TIMESTAMP WHERE id = 1
@@ -3605,6 +3616,112 @@ app.post('/api/season/match/correct', requireAdmin, async (req, res) => {
       message: `Match ${matchId} corrected`,
       oldResult: correction.oldResult,
       newResult: { winner: newWinner, loser: newLoser, score1: newScore1, score2: newScore2 }
+    });
+  } catch (error) {
+    await client.query('ROLLBACK');
+    res.status(500).json({ error: error.message });
+  } finally {
+    client.release();
+  }
+});
+
+// Swap matches between weeks (admin only) - move matches from one week to another
+app.post('/api/season/match/swap-weeks', requireAdmin, async (req, res) => {
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+
+    const { swaps } = req.body;
+    // swaps: array of { matchId, targetWeek } - move match to targetWeek (1-indexed)
+
+    if (!Array.isArray(swaps) || swaps.length === 0) {
+      await client.query('ROLLBACK');
+      return res.status(400).json({ error: 'swaps must be a non-empty array of { matchId, targetWeek }' });
+    }
+
+    const result = await client.query('SELECT data FROM season WHERE id = 1 FOR UPDATE');
+    if (result.rows.length === 0) {
+      await client.query('ROLLBACK');
+      return res.status(400).json({ error: 'No active season' });
+    }
+
+    const season = result.rows[0].data;
+
+    if (season.status !== 'regular') {
+      await client.query('ROLLBACK');
+      return res.status(403).json({ error: 'Week swaps only allowed during regular season' });
+    }
+
+    const changes = [];
+
+    for (const swap of swaps) {
+      const { matchId, targetWeek } = swap;
+      const targetWeekIdx = targetWeek - 1;
+
+      // Find the match
+      let found = false;
+      for (const g of ['A', 'B']) {
+        for (let weekIdx = 0; weekIdx < season.schedule[g].length; weekIdx++) {
+          const week = season.schedule[g][weekIdx];
+          for (let mIdx = 0; mIdx < week.length; mIdx++) {
+            if (week[mIdx].id === matchId) {
+              const match = week[mIdx];
+              const sourceWeek = weekIdx + 1;
+
+              if (sourceWeek === targetWeek) {
+                changes.push({ matchId, status: 'skipped', reason: 'Already in target week' });
+                found = true;
+                break;
+              }
+
+              // Ensure target week array exists
+              while (season.schedule[g].length <= targetWeekIdx) {
+                season.schedule[g].push([]);
+              }
+
+              // Remove from source week
+              season.schedule[g][weekIdx].splice(mIdx, 1);
+
+              // Update match week number
+              match.week = targetWeek;
+
+              // Add to target week
+              season.schedule[g][targetWeekIdx].push(match);
+
+              changes.push({
+                matchId,
+                match: `${match.player1} vs ${match.player2}`,
+                from: `Week ${sourceWeek}`,
+                to: `Week ${targetWeek}`,
+                group: g,
+                completed: match.completed
+              });
+
+              found = true;
+              break;
+            }
+          }
+          if (found) break;
+        }
+        if (found) break;
+      }
+
+      if (!found) {
+        await client.query('ROLLBACK');
+        return res.status(404).json({ error: `Match ${matchId} not found` });
+      }
+    }
+
+    await client.query(`
+      UPDATE season SET data = $1, updated_at = CURRENT_TIMESTAMP WHERE id = 1
+    `, [JSON.stringify(season)]);
+
+    await client.query('COMMIT');
+
+    res.json({
+      success: true,
+      message: `${changes.length} match(es) swapped between weeks`,
+      changes
     });
   } catch (error) {
     await client.query('ROLLBACK');
