@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, Fragment } from 'react';
 
 const API_BASE = '/api';
 
@@ -259,7 +259,9 @@ const API_BASE = '/api';
         }
 
         // Standings Table
-        function StandingsTable({ standings, groupName, groupLabel }) {
+        function StandingsTable({ standings, groupName, groupLabel, schedule }) {
+            const [expandedPlayer, setExpandedPlayer] = useState(null);
+
             const sorted = useMemo(() => {
                 // Tiebreaker rules:
                 // 1. Most match wins
@@ -277,6 +279,27 @@ const API_BASE = '/api';
                         return a.pointsAgainst - b.pointsAgainst;
                     });
             }, [standings]);
+
+            const getPlayerMatches = useCallback((playerName) => {
+                if (!schedule || !playerName) return [];
+                const matches = [];
+                schedule.forEach((weekMatches, weekIdx) => {
+                    if (!Array.isArray(weekMatches)) return;
+                    weekMatches.forEach(match => {
+                        if (match.cancelled) return;
+                        if (match.player1 === playerName || match.player2 === playerName) {
+                            matches.push({
+                                ...match,
+                                week: weekIdx + 1,
+                                opponent: match.player1 === playerName ? match.player2 : match.player1,
+                                isWinner: match.winner === playerName,
+                                isLoser: match.loser === playerName,
+                            });
+                        }
+                    });
+                });
+                return matches;
+            }, [schedule]);
 
             return (
                 <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-200">
@@ -296,37 +319,91 @@ const API_BASE = '/api';
                                     <th className="text-center py-2 px-2">PA</th>
                                     <th className="text-center py-2 px-2">Diff</th>
                                     <th className="text-center py-2 px-2">Streak</th>
+                                    <th className="py-2 px-1 w-6"></th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {sorted.map((player, idx) => (
-                                    <tr key={player.name} className={`border-b border-gray-100 ${idx < 4 ? 'bg-purple-50' : ''}`}>
-                                        <td className="py-2 px-2">
-                                            <span className={idx < 4 ? 'text-purple-600 font-bold' : 'text-gray-400'}>{idx + 1}</span>
-                                        </td>
-                                        <td className="py-2 px-2">
-                                            <div className="flex items-center gap-2">
-                                                <PlayerAvatar name={player.name} size="sm" />
-                                                <span className="font-medium text-gray-900">{player.name}</span>
-                                                {player.promotedFrom === 'B' && <span className="text-xs bg-green-100 text-green-700 px-1 rounded" title="Promoted from Group B">⬆️</span>}
-                                                {player.promotedFrom === 'A' && <span className="text-xs bg-red-100 text-red-700 px-1 rounded" title="Moved from Group A">⬇️</span>}
-                                            </div>
-                                        </td>
-                                        <td className="text-center py-2 px-2 text-green-600 font-semibold">{player.wins}</td>
-                                        <td className="text-center py-2 px-2 text-red-500">{player.losses}</td>
-                                        <td className="text-center py-2 px-2 text-gray-700">{player.pointsFor}</td>
-                                        <td className="text-center py-2 px-2 text-gray-700">{player.pointsAgainst}</td>
-                                        <td className="text-center py-2 px-2">
-                                            <span className={player.pointsFor - player.pointsAgainst >= 0 ? 'text-green-600' : 'text-red-500'}>
-                                                {player.pointsFor - player.pointsAgainst >= 0 ? '+' : ''}{player.pointsFor - player.pointsAgainst}
-                                            </span>
-                                        </td>
-                                        <td className="text-center py-2 px-2">
-                                            {player.streak > 0 && <span className="text-green-600">W{player.streak}</span>}
-                                            {player.streak < 0 && <span className="text-red-500">L{Math.abs(player.streak)}</span>}
-                                            {player.streak === 0 && <span className="text-gray-400">-</span>}
-                                        </td>
-                                    </tr>
+                                    <Fragment key={player.name}>
+                                        <tr
+                                            className={`border-b border-gray-100 ${idx < 4 ? 'bg-purple-50' : ''} cursor-pointer hover:bg-gray-100 transition-colors`}
+                                            onClick={() => setExpandedPlayer(expandedPlayer === player.name ? null : player.name)}
+                                        >
+                                            <td className="py-2 px-2">
+                                                <span className={idx < 4 ? 'text-purple-600 font-bold' : 'text-gray-400'}>{idx + 1}</span>
+                                            </td>
+                                            <td className="py-2 px-2">
+                                                <div className="flex items-center gap-2">
+                                                    <PlayerAvatar name={player.name} size="sm" />
+                                                    <span className="font-medium text-gray-900">{player.name}</span>
+                                                    {player.promotedFrom === 'B' && <span className="text-xs bg-green-100 text-green-700 px-1 rounded" title="Promoted from Group B">⬆️</span>}
+                                                    {player.promotedFrom === 'A' && <span className="text-xs bg-red-100 text-red-700 px-1 rounded" title="Moved from Group A">⬇️</span>}
+                                                </div>
+                                            </td>
+                                            <td className="text-center py-2 px-2 text-green-600 font-semibold">{player.wins}</td>
+                                            <td className="text-center py-2 px-2 text-red-500">{player.losses}</td>
+                                            <td className="text-center py-2 px-2 text-gray-700">{player.pointsFor}</td>
+                                            <td className="text-center py-2 px-2 text-gray-700">{player.pointsAgainst}</td>
+                                            <td className="text-center py-2 px-2">
+                                                <span className={player.pointsFor - player.pointsAgainst >= 0 ? 'text-green-600' : 'text-red-500'}>
+                                                    {player.pointsFor - player.pointsAgainst >= 0 ? '+' : ''}{player.pointsFor - player.pointsAgainst}
+                                                </span>
+                                            </td>
+                                            <td className="text-center py-2 px-2">
+                                                {player.streak > 0 && <span className="text-green-600">W{player.streak}</span>}
+                                                {player.streak < 0 && <span className="text-red-500">L{Math.abs(player.streak)}</span>}
+                                                {player.streak === 0 && <span className="text-gray-400">-</span>}
+                                            </td>
+                                            <td className="text-center py-2 px-1">
+                                                <span className={`text-gray-400 text-xs inline-block transition-transform duration-200 ${expandedPlayer === player.name ? 'rotate-90' : ''}`}>
+                                                    ▶
+                                                </span>
+                                            </td>
+                                        </tr>
+                                        {expandedPlayer === player.name && (
+                                            <tr>
+                                                <td colSpan={9} className="p-0">
+                                                    <div className="bg-gray-50 border-t border-gray-200 px-4 py-3">
+                                                        <div className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">
+                                                            Season Matches
+                                                        </div>
+                                                        <div className="space-y-1">
+                                                            {getPlayerMatches(player.name).length === 0 ? (
+                                                                <p className="text-sm text-gray-400 py-2">No matches scheduled</p>
+                                                            ) : (
+                                                                getPlayerMatches(player.name).map((match) => (
+                                                                    <div
+                                                                        key={match.id}
+                                                                        className={`flex items-center justify-between px-3 py-2 rounded-lg text-sm ${
+                                                                            match.completed
+                                                                                ? (match.isWinner ? 'bg-green-50 border border-green-200' : 'bg-red-50 border border-red-200')
+                                                                                : 'bg-white border border-gray-200'
+                                                                        }`}
+                                                                    >
+                                                                        <div className="flex items-center gap-3">
+                                                                            <span className="text-xs text-gray-400 w-10 font-mono">Wk {match.week}</span>
+                                                                            <PlayerAvatar name={match.opponent} size="sm" />
+                                                                            <span className="font-medium text-gray-900">{match.opponent}</span>
+                                                                        </div>
+                                                                        <div>
+                                                                            {match.completed ? (
+                                                                                <div className={`flex items-center gap-2 ${match.isWinner ? 'text-green-600' : 'text-red-500'}`}>
+                                                                                    <span className="font-bold">{match.isWinner ? 'W' : 'L'}</span>
+                                                                                    <span className="text-sm">{match.score1}-{match.score2}</span>
+                                                                                </div>
+                                                                            ) : (
+                                                                                <span className="text-gray-400 text-xs px-2 py-1 bg-gray-100 rounded-full">Upcoming</span>
+                                                                            )}
+                                                                        </div>
+                                                                    </div>
+                                                                ))
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        )}
+                                    </Fragment>
                                 ))}
                             </tbody>
                         </table>
@@ -4441,8 +4518,8 @@ const API_BASE = '/api';
                                 <SwapZoneBanner swapZone={swapZone} />
 
                                 <div className="grid md:grid-cols-2 gap-4">
-                                    <StandingsTable standings={season.standings.A} groupName="A" groupLabel={season.groups.A.name} />
-                                    <StandingsTable standings={season.standings.B} groupName="B" groupLabel={season.groups.B.name} />
+                                    <StandingsTable standings={season.standings.A} groupName="A" groupLabel={season.groups.A.name} schedule={season.schedule?.A} />
+                                    <StandingsTable standings={season.standings.B} groupName="B" groupLabel={season.groups.B.name} schedule={season.schedule?.B} />
                                 </div>
 
                                 {/* League Info Section */}
