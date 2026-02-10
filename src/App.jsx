@@ -2,22 +2,30 @@ import { useState, useEffect, useCallback, useMemo, Fragment } from 'react';
 
 const API_BASE = '/api';
 
-        // Sort standings matching backend logic: wins → head-to-head → point diff → seed
+        // Sort standings matching backend logic: wins → fewest losses → h2h → point diff → seed
         const sortStandings = (standingsObj) => {
             const players = Object.entries(standingsObj || {})
                 .map(([name, stats]) => ({ name, ...stats }));
 
-            const winGroups = {};
+            // Group by (wins, losses) to identify true ties
+            const recordGroups = {};
             players.forEach(p => {
-                if (!winGroups[p.wins]) winGroups[p.wins] = [];
-                winGroups[p.wins].push(p);
+                const key = `${p.wins}-${p.losses}`;
+                if (!recordGroups[key]) recordGroups[key] = [];
+                recordGroups[key].push(p);
+            });
+
+            // Sort record groups: most wins first, then fewest losses
+            const sortedKeys = Object.keys(recordGroups).sort((a, b) => {
+                const [winsA, lossesA] = a.split('-').map(Number);
+                const [winsB, lossesB] = b.split('-').map(Number);
+                if (winsB !== winsA) return winsB - winsA;
+                return lossesA - lossesB;
             });
 
             const sorted = [];
-            Object.keys(winGroups)
-                .sort((a, b) => b - a)
-                .forEach(wins => {
-                    const group = winGroups[wins];
+            sortedKeys.forEach(key => {
+                    const group = recordGroups[key];
                     if (group.length === 1) {
                         sorted.push(group[0]);
                     } else if (group.length === 2) {
@@ -1991,9 +1999,10 @@ const API_BASE = '/api';
                                         <li>Forfeit = 2-0 loss for forfeiting player</li>
                                         <li className="font-semibold mt-2">Tiebreaker Order:</li>
                                         <li className="ml-2">1. Most match wins</li>
-                                        <li className="ml-2">2. Head-to-head record (among tied players)</li>
-                                        <li className="ml-2">3. Point differential (games won - lost)</li>
-                                        <li className="ml-2">4. Initial seed (seeded players only)</li>
+                                        <li className="ml-2">2. Fewest match losses</li>
+                                        <li className="ml-2">3. Head-to-head record (among tied players)</li>
+                                        <li className="ml-2">4. Point differential (games won - lost)</li>
+                                        <li className="ml-2">5. Initial seed (seeded players only)</li>
                                     </ul>
                                 </div>
 
@@ -4585,6 +4594,7 @@ const API_BASE = '/api';
                                             <h4 className="font-semibold text-amber-600 mb-2">Tiebreaker Rules (in order)</h4>
                                             <ol className="space-y-1 text-gray-700 list-decimal list-inside">
                                                 <li>Most match wins</li>
+                                                <li>Fewest match losses</li>
                                                 <li>Head-to-head record (among tied players)</li>
                                                 <li>Point differential (games won - lost)</li>
                                                 <li>Initial seed (seeded players only)</li>

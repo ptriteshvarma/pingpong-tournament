@@ -1185,82 +1185,83 @@ const generateSeason = (groupA, groupB, numWeeks = 10, options = {}) => {
 };
 
 // Sort standings by tiebreaker rules (handles multi-way ties correctly)
+// Order: Wins → Fewest Losses → H2H (among tied) → Point Diff → Seed
 const sortStandings = (standings) => {
   const players = Object.entries(standings)
     .map(([name, stats]) => ({ name, ...stats }));
 
-  // Group players by wins to identify ties
-  const winGroups = {};
+  // Group players by (wins, losses) to identify true ties
+  const recordGroups = {};
   players.forEach(p => {
-    if (!winGroups[p.wins]) winGroups[p.wins] = [];
-    winGroups[p.wins].push(p);
+    const key = `${p.wins}-${p.losses}`;
+    if (!recordGroups[key]) recordGroups[key] = [];
+    recordGroups[key].push(p);
   });
 
-  // Sort each win group separately
+  // Sort record groups: most wins first, then fewest losses
+  const sortedKeys = Object.keys(recordGroups).sort((a, b) => {
+    const [winsA, lossesA] = a.split('-').map(Number);
+    const [winsB, lossesB] = b.split('-').map(Number);
+    if (winsB !== winsA) return winsB - winsA;
+    return lossesA - lossesB;
+  });
+
+  // Sort within each record group using h2h → point diff → seed
   const sortedPlayers = [];
-  Object.keys(winGroups)
-    .sort((a, b) => b - a) // Descending by wins
-    .forEach(wins => {
-      const group = winGroups[wins];
+  sortedKeys.forEach(key => {
+    const group = recordGroups[key];
 
-      if (group.length === 1) {
-        // No tie, just add the player
-        sortedPlayers.push(group[0]);
-      } else if (group.length === 2) {
-        // 2-way tie: use direct head-to-head, then point diff, then seed
-        group.sort((a, b) => {
-          const h2hA = a.headToHead?.[b.name];
-          const h2hB = b.headToHead?.[a.name];
-          if (h2hA && h2hB) {
-            const h2hDiff = (h2hA.wins - h2hA.losses) - (h2hB.wins - h2hB.losses);
-            if (h2hDiff !== 0) return -h2hDiff;
+    if (group.length === 1) {
+      sortedPlayers.push(group[0]);
+    } else if (group.length === 2) {
+      // 2-way tie: use direct head-to-head, then point diff, then seed
+      group.sort((a, b) => {
+        const h2hA = a.headToHead?.[b.name];
+        const h2hB = b.headToHead?.[a.name];
+        if (h2hA && h2hB) {
+          const h2hDiff = (h2hA.wins - h2hA.losses) - (h2hB.wins - h2hB.losses);
+          if (h2hDiff !== 0) return -h2hDiff;
+        }
+        const diffA = (a.pointsFor || 0) - (a.pointsAgainst || 0);
+        const diffB = (b.pointsFor || 0) - (b.pointsAgainst || 0);
+        if (diffB !== diffA) return diffB - diffA;
+        const seedA = a.initialSeed || 9999;
+        const seedB = b.initialSeed || 9999;
+        return seedA - seedB;
+      });
+      sortedPlayers.push(...group);
+    } else {
+      // 3+ way tie: use h2h record against TIED players only, then point diff, then seed
+      group.sort((a, b) => {
+        let h2hWinsA = 0, h2hLossesA = 0;
+        let h2hWinsB = 0, h2hLossesB = 0;
+
+        group.forEach(opponent => {
+          if (opponent.name !== a.name && a.headToHead?.[opponent.name]) {
+            h2hWinsA += a.headToHead[opponent.name].wins || 0;
+            h2hLossesA += a.headToHead[opponent.name].losses || 0;
           }
-          // Point differential (games won - games lost)
-          const diffA = (a.pointsFor || 0) - (a.pointsAgainst || 0);
-          const diffB = (b.pointsFor || 0) - (b.pointsAgainst || 0);
-          if (diffB !== diffA) return diffB - diffA;
-          // Use initial seed as final tiebreaker (lower seed number = better rank)
-          const seedA = a.initialSeed || 9999;
-          const seedB = b.initialSeed || 9999;
-          return seedA - seedB;
+          if (opponent.name !== b.name && b.headToHead?.[opponent.name]) {
+            h2hWinsB += b.headToHead[opponent.name].wins || 0;
+            h2hLossesB += b.headToHead[opponent.name].losses || 0;
+          }
         });
-        sortedPlayers.push(...group);
-      } else {
-        // 3+ way tie: use head-to-head record against TIED players only, then point diff, then seed
-        group.sort((a, b) => {
-          // Calculate h2h win% against other tied players
-          let h2hWinsA = 0, h2hLossesA = 0;
-          let h2hWinsB = 0, h2hLossesB = 0;
 
-          group.forEach(opponent => {
-            if (opponent.name !== a.name && a.headToHead?.[opponent.name]) {
-              h2hWinsA += a.headToHead[opponent.name].wins || 0;
-              h2hLossesA += a.headToHead[opponent.name].losses || 0;
-            }
-            if (opponent.name !== b.name && b.headToHead?.[opponent.name]) {
-              h2hWinsB += b.headToHead[opponent.name].wins || 0;
-              h2hLossesB += b.headToHead[opponent.name].losses || 0;
-            }
-          });
+        const h2hDiffA = h2hWinsA - h2hLossesA;
+        const h2hDiffB = h2hWinsB - h2hLossesB;
+        if (h2hDiffB !== h2hDiffA) return h2hDiffB - h2hDiffA;
 
-          const h2hDiffA = h2hWinsA - h2hLossesA;
-          const h2hDiffB = h2hWinsB - h2hLossesB;
+        const diffA = (a.pointsFor || 0) - (a.pointsAgainst || 0);
+        const diffB = (b.pointsFor || 0) - (b.pointsAgainst || 0);
+        if (diffB !== diffA) return diffB - diffA;
 
-          if (h2hDiffB !== h2hDiffA) return h2hDiffB - h2hDiffA;
-
-          // Point differential (games won - games lost)
-          const diffA = (a.pointsFor || 0) - (a.pointsAgainst || 0);
-          const diffB = (b.pointsFor || 0) - (b.pointsAgainst || 0);
-          if (diffB !== diffA) return diffB - diffA;
-
-          // Use initial seed as final tiebreaker (lower seed number = better rank)
-          const seedA = a.initialSeed || 9999;
-          const seedB = b.initialSeed || 9999;
-          return seedA - seedB;
-        });
-        sortedPlayers.push(...group);
-      }
-    });
+        const seedA = a.initialSeed || 9999;
+        const seedB = b.initialSeed || 9999;
+        return seedA - seedB;
+      });
+      sortedPlayers.push(...group);
+    }
+  });
 
   return sortedPlayers;
 };
