@@ -37,10 +37,8 @@ jspm_packages/
 # Optional eslint cache
 .eslintcache
 
-# Build outputs - Vercel rebuilds from source via "npm run build"
+# Build outputs
 dist/
-public/assets/
-public/index.html
 build/
 *.min.js
 *.min.css
