@@ -2,6 +2,64 @@ import { useState, useEffect, useCallback, useMemo, Fragment } from 'react';
 
 const API_BASE = '/api';
 
+        // Sort standings matching backend logic: wins → head-to-head → initial seed
+        const sortStandings = (standingsObj) => {
+            const players = Object.entries(standingsObj || {})
+                .map(([name, stats]) => ({ name, ...stats }));
+
+            const winGroups = {};
+            players.forEach(p => {
+                if (!winGroups[p.wins]) winGroups[p.wins] = [];
+                winGroups[p.wins].push(p);
+            });
+
+            const sorted = [];
+            Object.keys(winGroups)
+                .sort((a, b) => b - a)
+                .forEach(wins => {
+                    const group = winGroups[wins];
+                    if (group.length === 1) {
+                        sorted.push(group[0]);
+                    } else if (group.length === 2) {
+                        group.sort((a, b) => {
+                            const h2hA = a.headToHead?.[b.name];
+                            const h2hB = b.headToHead?.[a.name];
+                            if (h2hA && h2hB) {
+                                const h2hDiff = (h2hA.wins - h2hA.losses) - (h2hB.wins - h2hB.losses);
+                                if (h2hDiff !== 0) return -h2hDiff;
+                            }
+                            const seedA = a.initialSeed || 9999;
+                            const seedB = b.initialSeed || 9999;
+                            return seedA - seedB;
+                        });
+                        sorted.push(...group);
+                    } else {
+                        group.sort((a, b) => {
+                            let h2hWinsA = 0, h2hLossesA = 0;
+                            let h2hWinsB = 0, h2hLossesB = 0;
+                            group.forEach(opp => {
+                                if (opp.name !== a.name && a.headToHead?.[opp.name]) {
+                                    h2hWinsA += a.headToHead[opp.name].wins || 0;
+                                    h2hLossesA += a.headToHead[opp.name].losses || 0;
+                                }
+                                if (opp.name !== b.name && b.headToHead?.[opp.name]) {
+                                    h2hWinsB += b.headToHead[opp.name].wins || 0;
+                                    h2hLossesB += b.headToHead[opp.name].losses || 0;
+                                }
+                            });
+                            const h2hDiffA = h2hWinsA - h2hLossesA;
+                            const h2hDiffB = h2hWinsB - h2hLossesB;
+                            if (h2hDiffB !== h2hDiffA) return h2hDiffB - h2hDiffA;
+                            const seedA = a.initialSeed || 9999;
+                            const seedB = b.initialSeed || 9999;
+                            return seedA - seedB;
+                        });
+                        sorted.push(...group);
+                    }
+                });
+            return sorted;
+        };
+
         // Icons
         const Icons = {
             Trophy: () => <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d="M16.5 18.75h-9m9 0a3 3 0 0 1 3 3h-15a3 3 0 0 1 3-3m9 0v-3.375c0-.621-.503-1.125-1.125-1.125h-.871M7.5 18.75v-3.375c0-.621.504-1.125 1.125-1.125h.872m5.007 0H9.497m5.007 0a7.454 7.454 0 0 1-.982-3.172M9.497 14.25a7.454 7.454 0 0 0 .981-3.172M5.25 4.236c-.982.143-1.954.317-2.916.52A6.003 6.003 0 0 0 7.73 9.728M5.25 4.236V4.5c0 2.108.966 3.99 2.48 5.228M5.25 4.236V2.721C7.456 2.41 9.71 2.25 12 2.25c2.291 0 4.545.16 6.75.47v1.516M7.73 9.728a6.726 6.726 0 0 0 2.748 1.35m8.272-6.842V4.5c0 2.108-.966 3.99-2.48 5.228m2.48-5.492a46.32 46.32 0 0 1 2.916.52 6.003 6.003 0 0 1-5.395 4.972m0 0a6.726 6.726 0 0 1-2.749 1.35m0 0a6.772 6.772 0 0 1-3.044 0" /></svg>,
@@ -262,23 +320,7 @@ const API_BASE = '/api';
         function StandingsTable({ standings, groupName, groupLabel, schedule }) {
             const [expandedPlayer, setExpandedPlayer] = useState(null);
 
-            const sorted = useMemo(() => {
-                // Tiebreaker rules:
-                // 1. Most match wins
-                // 2. Point differential (games won - games lost)
-                // 3. Most total games won (pointsFor)
-                // 4. Fewest games lost (pointsAgainst)
-                return Object.entries(standings || {})
-                    .map(([name, stats]) => ({ name, ...stats }))
-                    .sort((a, b) => {
-                        if (b.wins !== a.wins) return b.wins - a.wins;
-                        const diffA = a.pointsFor - a.pointsAgainst;
-                        const diffB = b.pointsFor - b.pointsAgainst;
-                        if (diffB !== diffA) return diffB - diffA;
-                        if (b.pointsFor !== a.pointsFor) return b.pointsFor - a.pointsFor;
-                        return a.pointsAgainst - b.pointsAgainst;
-                    });
-            }, [standings]);
+            const sorted = useMemo(() => sortStandings(standings), [standings]);
 
             const getPlayerMatches = useCallback((playerName) => {
                 if (!schedule || !playerName) return [];
@@ -2604,12 +2646,7 @@ const API_BASE = '/api';
                                     const standings = seasonDetails.data?.standings?.[group];
                                     if (!standings) return null;
 
-                                    const sorted = Object.entries(standings)
-                                        .map(([name, s]) => ({ name, ...s }))
-                                        .sort((a, b) => {
-                                            if (b.wins !== a.wins) return b.wins - a.wins;
-                                            return (b.pointsFor - b.pointsAgainst) - (a.pointsFor - a.pointsAgainst);
-                                        });
+                                    const sorted = sortStandings(standings);
 
                                     return (
                                         <div key={group}>
@@ -3563,14 +3600,7 @@ const API_BASE = '/api';
                 let rank = null;
                 let totalPlayers = null;
                 if (season && group && stats) {
-                    const standings = Object.entries(season.standings[group] || {})
-                        .map(([name, s]) => ({ name, ...s }))
-                        .sort((a, b) => {
-                            if (b.wins !== a.wins) return b.wins - a.wins;
-                            const diffA = a.pointsFor - a.pointsAgainst;
-                            const diffB = b.pointsFor - b.pointsAgainst;
-                            return diffB - diffA;
-                        });
+                    const standings = sortStandings(season.standings[group]);
                     rank = standings.findIndex(p => p.name === currentPlayer) + 1;
                     totalPlayers = standings.length;
                 }
