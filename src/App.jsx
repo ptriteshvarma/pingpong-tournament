@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useMemo, Fragment } from 'react';
 
 const API_BASE = '/api';
 
-        // Sort standings matching backend logic: wins → head-to-head → initial seed
+        // Sort standings matching backend logic: wins → head-to-head → point diff → seed
         const sortStandings = (standingsObj) => {
             const players = Object.entries(standingsObj || {})
                 .map(([name, stats]) => ({ name, ...stats }));
@@ -28,6 +28,9 @@ const API_BASE = '/api';
                                 const h2hDiff = (h2hA.wins - h2hA.losses) - (h2hB.wins - h2hB.losses);
                                 if (h2hDiff !== 0) return -h2hDiff;
                             }
+                            const diffA = (a.pointsFor || 0) - (a.pointsAgainst || 0);
+                            const diffB = (b.pointsFor || 0) - (b.pointsAgainst || 0);
+                            if (diffB !== diffA) return diffB - diffA;
                             const seedA = a.initialSeed || 9999;
                             const seedB = b.initialSeed || 9999;
                             return seedA - seedB;
@@ -50,6 +53,9 @@ const API_BASE = '/api';
                             const h2hDiffA = h2hWinsA - h2hLossesA;
                             const h2hDiffB = h2hWinsB - h2hLossesB;
                             if (h2hDiffB !== h2hDiffA) return h2hDiffB - h2hDiffA;
+                            const diffA = (a.pointsFor || 0) - (a.pointsAgainst || 0);
+                            const diffB = (b.pointsFor || 0) - (b.pointsAgainst || 0);
+                            if (diffB !== diffA) return diffB - diffA;
                             const seedA = a.initialSeed || 9999;
                             const seedB = b.initialSeed || 9999;
                             return seedA - seedB;
@@ -1982,8 +1988,12 @@ const API_BASE = '/api';
                                     <ul className="text-sm text-gray-600 space-y-1.5 ml-7">
                                         <li><span className="font-semibold">Win 2-0:</span> 3 points for winner</li>
                                         <li><span className="font-semibold">Win 2-1:</span> 2 points for winner, 1 point for loser</li>
-                                        <li>Standings by: Wins → Point Differential → Head-to-Head</li>
                                         <li>Forfeit = 2-0 loss for forfeiting player</li>
+                                        <li className="font-semibold mt-2">Tiebreaker Order:</li>
+                                        <li className="ml-2">1. Most match wins</li>
+                                        <li className="ml-2">2. Head-to-head record (among tied players)</li>
+                                        <li className="ml-2">3. Point differential (games won - lost)</li>
+                                        <li className="ml-2">4. Initial seed (seeded players only)</li>
                                     </ul>
                                 </div>
 
@@ -4575,9 +4585,9 @@ const API_BASE = '/api';
                                             <h4 className="font-semibold text-amber-600 mb-2">Tiebreaker Rules (in order)</h4>
                                             <ol className="space-y-1 text-gray-700 list-decimal list-inside">
                                                 <li>Most match wins</li>
+                                                <li>Head-to-head record (among tied players)</li>
                                                 <li>Point differential (games won - lost)</li>
-                                                <li>Most total games won</li>
-                                                <li>Fewest games lost</li>
+                                                <li>Initial seed (seeded players only)</li>
                                             </ol>
                                         </div>
 

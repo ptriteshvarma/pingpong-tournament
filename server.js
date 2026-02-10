@@ -1207,7 +1207,7 @@ const sortStandings = (standings) => {
         // No tie, just add the player
         sortedPlayers.push(group[0]);
       } else if (group.length === 2) {
-        // 2-way tie: use direct head-to-head, then initial seed
+        // 2-way tie: use direct head-to-head, then point diff, then seed
         group.sort((a, b) => {
           const h2hA = a.headToHead?.[b.name];
           const h2hB = b.headToHead?.[a.name];
@@ -1215,6 +1215,10 @@ const sortStandings = (standings) => {
             const h2hDiff = (h2hA.wins - h2hA.losses) - (h2hB.wins - h2hB.losses);
             if (h2hDiff !== 0) return -h2hDiff;
           }
+          // Point differential (games won - games lost)
+          const diffA = (a.pointsFor || 0) - (a.pointsAgainst || 0);
+          const diffB = (b.pointsFor || 0) - (b.pointsAgainst || 0);
+          if (diffB !== diffA) return diffB - diffA;
           // Use initial seed as final tiebreaker (lower seed number = better rank)
           const seedA = a.initialSeed || 9999;
           const seedB = b.initialSeed || 9999;
@@ -1222,7 +1226,7 @@ const sortStandings = (standings) => {
         });
         sortedPlayers.push(...group);
       } else {
-        // 3+ way tie: use head-to-head record against TIED players only, then initial seed
+        // 3+ way tie: use head-to-head record against TIED players only, then point diff, then seed
         group.sort((a, b) => {
           // Calculate h2h win% against other tied players
           let h2hWinsA = 0, h2hLossesA = 0;
@@ -1243,6 +1247,11 @@ const sortStandings = (standings) => {
           const h2hDiffB = h2hWinsB - h2hLossesB;
 
           if (h2hDiffB !== h2hDiffA) return h2hDiffB - h2hDiffA;
+
+          // Point differential (games won - games lost)
+          const diffA = (a.pointsFor || 0) - (a.pointsAgainst || 0);
+          const diffB = (b.pointsFor || 0) - (b.pointsAgainst || 0);
+          if (diffB !== diffA) return diffB - diffA;
 
           // Use initial seed as final tiebreaker (lower seed number = better rank)
           const seedA = a.initialSeed || 9999;
