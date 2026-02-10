@@ -286,10 +286,22 @@ if (process.env.VERCEL) {
   }
 }
 
-// Log asset requests in Vercel for debugging
+// Serve hashed assets with long cache (filename changes on rebuild)
+app.use('/assets', express.static(path.join(PUBLIC_DIR, 'assets'), {
+  maxAge: '1y',
+  immutable: true
+}));
+
+// Serve all other static files (index.html, manifest.json, etc.) with no-cache
+// so browsers always get the latest version pointing to correct hashed assets
 app.use(express.static(PUBLIC_DIR, {
-  maxAge: '1h', // Cache static files for 1 hour
-  etag: true
+  maxAge: 0,
+  etag: true,
+  setHeaders: (res, filePath) => {
+    if (filePath.endsWith('.html')) {
+      res.set('Cache-Control', 'no-cache, no-store, must-revalidate');
+    }
+  }
 }));
 
 // Cache middleware for API responses
@@ -6706,6 +6718,7 @@ app.get('*', (req, res, next) => {
       req.url.startsWith('/service-worker.js')) {
     return next(); // Let static middleware handle it or 404
   }
+  res.set('Cache-Control', 'no-cache, no-store, must-revalidate');
   res.sendFile(path.join(PUBLIC_DIR, 'index.html'));
 });
 

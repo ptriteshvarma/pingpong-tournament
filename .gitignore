@@ -37,8 +37,10 @@ jspm_packages/
 # Optional eslint cache
 .eslintcache
 
-# Build outputs (if you add a build process later)
-# dist/ - COMMENTED OUT: Vercel needs dist/ to serve static assets
+# Build outputs - Vercel rebuilds from source via "npm run build"
+dist/
+public/assets/
+public/index.html
 build/
 *.min.js
 *.min.css
