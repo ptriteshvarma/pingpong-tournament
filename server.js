@@ -3753,6 +3753,84 @@ app.post('/api/season/match/swap-weeks', requireAdmin, async (req, res) => {
   }
 });
 
+// Remove pending matches from schedule (admin only) - for trimming excess games
+app.post('/api/season/match/remove', requireAdmin, async (req, res) => {
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+
+    const { matchIds } = req.body;
+
+    if (!Array.isArray(matchIds) || matchIds.length === 0) {
+      await client.query('ROLLBACK');
+      return res.status(400).json({ error: 'matchIds must be a non-empty array of match IDs' });
+    }
+
+    const result = await client.query('SELECT data FROM season WHERE id = 1 FOR UPDATE');
+    if (result.rows.length === 0) {
+      await client.query('ROLLBACK');
+      return res.status(400).json({ error: 'No active season' });
+    }
+
+    const season = result.rows[0].data;
+    const removed = [];
+    const errors = [];
+
+    for (const matchId of matchIds) {
+      let found = false;
+      for (const g of ['A', 'B']) {
+        for (let weekIdx = 0; weekIdx < season.schedule[g].length; weekIdx++) {
+          const week = season.schedule[g][weekIdx];
+          for (let mIdx = 0; mIdx < week.length; mIdx++) {
+            if (week[mIdx].id === matchId) {
+              const match = week[mIdx];
+              if (match.completed) {
+                errors.push({ matchId, error: 'Cannot remove completed match' });
+              } else {
+                week.splice(mIdx, 1);
+                removed.push({
+                  matchId,
+                  match: `${match.player1} vs ${match.player2}`,
+                  week: weekIdx + 1,
+                  group: g
+                });
+              }
+              found = true;
+              break;
+            }
+          }
+          if (found) break;
+        }
+        if (found) break;
+      }
+      if (!found) {
+        errors.push({ matchId, error: 'Match not found' });
+      }
+    }
+
+    if (removed.length > 0) {
+      await client.query(`
+        UPDATE season SET data = $1, updated_at = CURRENT_TIMESTAMP WHERE id = 1
+      `, [JSON.stringify(season)]);
+      await client.query('COMMIT');
+    } else {
+      await client.query('ROLLBACK');
+    }
+
+    res.json({
+      success: removed.length > 0,
+      message: `${removed.length} match(es) removed`,
+      removed,
+      ...(errors.length > 0 && { errors })
+    });
+  } catch (error) {
+    await client.query('ROLLBACK');
+    res.status(500).json({ error: error.message });
+  } finally {
+    client.release();
+  }
+});
+
 // Start playoffs (admin only)
 // Start wildcard round (admin only) - before playoffs
 app.post('/api/season/wildcard', requireAdmin, async (req, res) => {
