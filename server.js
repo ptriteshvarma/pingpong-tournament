@@ -3753,6 +3753,43 @@ app.post('/api/season/match/swap-weeks', requireAdmin, async (req, res) => {
   }
 });
 
+// Add a match to the schedule (admin only)
+app.post('/api/season/match/add', requireAdmin, async (req, res) => {
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const { group, week, player1, player2, matchId } = req.body;
+    if (!group || !week || !player1 || !player2) {
+      await client.query('ROLLBACK');
+      return res.status(400).json({ error: 'group, week, player1, player2 are required' });
+    }
+    const result = await client.query('SELECT data FROM season WHERE id = 1 FOR UPDATE');
+    if (result.rows.length === 0) {
+      await client.query('ROLLBACK');
+      return res.status(400).json({ error: 'No active season' });
+    }
+    const season = result.rows[0].data;
+    const weekIdx = week - 1;
+    while (season.schedule[group].length <= weekIdx) {
+      season.schedule[group].push([]);
+    }
+    const id = matchId || `${group}-W${week}-M${season.schedule[group][weekIdx].length + 1}-ADD`;
+    const match = {
+      id, week, group, player1, player2,
+      score1: null, score2: null, winner: null, loser: null, completed: false
+    };
+    season.schedule[group][weekIdx].push(match);
+    await client.query('UPDATE season SET data = $1, updated_at = CURRENT_TIMESTAMP WHERE id = 1', [JSON.stringify(season)]);
+    await client.query('COMMIT');
+    res.json({ success: true, match });
+  } catch (error) {
+    await client.query('ROLLBACK');
+    res.status(500).json({ error: error.message });
+  } finally {
+    client.release();
+  }
+});
+
 // Remove pending matches from schedule (admin only) - for trimming excess games
 app.post('/api/season/match/remove', requireAdmin, async (req, res) => {
   const client = await pool.connect();
