@@ -4174,6 +4174,117 @@ app.post('/api/season/custom-promotion', requireAdmin, async (req, res) => {
   }
 });
 
+// Swap a player between groups and regenerate schedules
+app.post('/api/season/swap-groups', requireAdmin, async (req, res) => {
+  const { moveToA, moveToB, newGamesPerPlayer } = req.body;
+  if (!moveToA || !moveToB) {
+    return res.status(400).json({ error: 'moveToA and moveToB player names required' });
+  }
+
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const result = await client.query('SELECT data FROM season WHERE id = 1 FOR UPDATE');
+    if (result.rows.length === 0) {
+      await client.query('ROLLBACK');
+      return res.status(400).json({ error: 'No active season' });
+    }
+    const season = result.rows[0].data;
+
+    await createSeasonSnapshot(season, `Before swap: ${moveToA} to A, ${moveToB} to B`, 'admin');
+
+    // Validate players exist in correct groups
+    if (!season.standings.B[moveToA]) {
+      await client.query('ROLLBACK');
+      return res.status(400).json({ error: `${moveToA} not found in Group B` });
+    }
+    if (!season.standings.A[moveToB]) {
+      await client.query('ROLLBACK');
+      return res.status(400).json({ error: `${moveToB} not found in Group A` });
+    }
+
+    // Move moveToB: A → B
+    const aStats = season.standings.A[moveToB];
+    season.standings.B[moveToB] = { ...aStats };
+    delete season.standings.A[moveToB];
+    const aPlayer = season.groups.A.players.find(p => p.name === moveToB);
+    season.groups.B.players.push(aPlayer || { name: moveToB, seed: null });
+    season.groups.A.players = season.groups.A.players.filter(p => p.name !== moveToB);
+
+    // Move moveToA: B → A
+    const bStats = season.standings.B[moveToA];
+    season.standings.A[moveToA] = { ...bStats, promotedFrom: 'B', preSwapStats: { ...bStats } };
+    delete season.standings.B[moveToA];
+    const bPlayer = season.groups.B.players.find(p => p.name === moveToA);
+    season.groups.A.players.push(bPlayer ? { ...bPlayer, promotedMidSeason: true } : { name: moveToA, seed: null, promotedMidSeason: true });
+    season.groups.B.players = season.groups.B.players.filter(p => p.name !== moveToA);
+
+    // Clear all POST matches and regenerate
+    const gamesPerPlayer = newGamesPerPlayer || 5;
+    const startWeek = 5;
+    const endWeek = 10;
+    for (const group of ['A', 'B']) {
+      while (season.schedule[group].length < endWeek) {
+        season.schedule[group].push([]);
+      }
+      for (let w = 0; w < season.schedule[group].length; w++) {
+        season.schedule[group][w] = season.schedule[group][w].filter(m => !m.id.includes('-POST-'));
+      }
+    }
+
+    // Regenerate Group A schedule
+    const groupANames = season.groups.A.players.map(p => p.name);
+    const existingA = getCompletedMatchups(season.standings.A);
+    const newAMatches = generateCompetitiveSchedule(groupANames, season.standings.A, gamesPerPlayer, existingA);
+    const distributedA = distributeMatchesToWeekRange(newAMatches, startWeek, endWeek, 'A');
+    for (const match of distributedA) {
+      season.schedule.A[match.week - 1].push(match);
+    }
+
+    // Regenerate Group B schedule
+    const groupBNames = season.groups.B.players.map(p => p.name);
+    const existingB = getCompletedMatchups(season.standings.B);
+    const newBMatches = generateCompetitiveSchedule(groupBNames, season.standings.B, gamesPerPlayer, existingB);
+    const distributedB = distributeMatchesToWeekRange(newBMatches, startWeek, endWeek, 'B');
+    for (const match of distributedB) {
+      season.schedule.B[match.week - 1].push(match);
+    }
+
+    // Update mid-season review
+    season.midSeasonReview.swaps.fromBtoA = season.midSeasonReview.swaps.fromBtoA.filter(n => n !== moveToB);
+    if (!season.midSeasonReview.swaps.fromBtoA.includes(moveToA)) {
+      season.midSeasonReview.swaps.fromBtoA.push(moveToA);
+    }
+    if (!season.midSeasonReview.swaps.fromAtoB) season.midSeasonReview.swaps.fromAtoB = [];
+    season.midSeasonReview.swaps.fromAtoB.push(moveToB);
+    season.midSeasonReview.completedAt = new Date().toISOString();
+    season.midSeasonReview.newMatchesCreated = { A: distributedA.length, B: distributedB.length };
+
+    await client.query('UPDATE season SET data = $1, updated_at = CURRENT_TIMESTAMP WHERE id = 1', [JSON.stringify(season)]);
+    await client.query('COMMIT');
+
+    // Verify game counts
+    const verifyA = {};
+    groupANames.forEach(n => { verifyA[n] = 0; });
+    distributedA.forEach(m => { verifyA[m.player1]++; verifyA[m.player2]++; });
+    const verifyB = {};
+    groupBNames.forEach(n => { verifyB[n] = 0; });
+    distributedB.forEach(m => { verifyB[m.player1]++; verifyB[m.player2]++; });
+
+    res.json({
+      success: true,
+      message: `Swapped ${moveToA} to Group A, ${moveToB} to Group B`,
+      groupA: { players: groupANames.length, matches: distributedA.length, perPlayer: verifyA },
+      groupB: { players: groupBNames.length, matches: distributedB.length, perPlayer: verifyB }
+    });
+  } catch (error) {
+    await client.query('ROLLBACK');
+    res.status(500).json({ error: error.message });
+  } finally {
+    client.release();
+  }
+});
+
 // Remove pending matches from schedule (admin only) - for trimming excess games
 app.post('/api/season/match/remove', requireAdmin, async (req, res) => {
   const client = await pool.connect();
