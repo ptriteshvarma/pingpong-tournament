@@ -369,6 +369,7 @@ const API_BASE = '/api';
                                 <tr className="text-gray-500 border-b border-gray-200 bg-gray-50">
                                     <th className="text-left py-2 px-2">#</th>
                                     <th className="text-left py-2 px-2">Player</th>
+                                    <th className="text-center py-2 px-2" title="Games Played">GP</th>
                                     <th className="text-center py-2 px-2">W</th>
                                     <th className="text-center py-2 px-2">L</th>
                                     <th className="text-center py-2 px-2">PF</th>
@@ -396,6 +397,7 @@ const API_BASE = '/api';
                                                     {player.promotedFrom === 'A' && <span className="text-xs bg-red-100 text-red-700 px-1 rounded" title="Moved from Group A">⬇️</span>}
                                                 </div>
                                             </td>
+                                            <td className="text-center py-2 px-2 text-gray-700 font-semibold">{player.wins + player.losses}</td>
                                             <td className="text-center py-2 px-2 text-green-600 font-semibold">{player.wins}</td>
                                             <td className="text-center py-2 px-2 text-red-500">{player.losses}</td>
                                             <td className="text-center py-2 px-2 text-gray-700">{player.pointsFor}</td>
