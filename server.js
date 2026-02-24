@@ -1268,6 +1268,7 @@ const sortStandings = (standings) => {
 
 // Generate competitive schedule: pair players by rank proximity (strong vs strong)
 // Returns array of { player1, player2 } matches
+// gamesPerPlayer can be a number (same for all) or an object { playerName: count }
 const generateCompetitiveSchedule = (playerNames, standings, gamesPerPlayer, existingMatchups) => {
   // Sort players by standings to get rankings
   const standingsObj = {};
@@ -1277,7 +1278,9 @@ const generateCompetitiveSchedule = (playerNames, standings, gamesPerPlayer, exi
   const sorted = sortStandings(standingsObj);
   const rankedNames = sorted.map(p => p.name);
   const n = rankedNames.length;
-  const totalNeeded = n * gamesPerPlayer / 2;
+
+  // Per-player target: either uniform or variable
+  const targetFor = (name) => typeof gamesPerPlayer === 'number' ? gamesPerPlayer : (gamesPerPlayer[name] || 0);
 
   // Build all possible pairs with scores
   const allPairs = [];
@@ -1304,7 +1307,7 @@ const generateCompetitiveSchedule = (playerNames, standings, gamesPerPlayer, exi
   // Helper: try to add a pair
   const tryAdd = (pair) => {
     if (usedKeys.has(pair.key)) return false;
-    if (playerGameCount[pair.p1] >= gamesPerPlayer || playerGameCount[pair.p2] >= gamesPerPlayer) return false;
+    if (playerGameCount[pair.p1] >= targetFor(pair.p1) || playerGameCount[pair.p2] >= targetFor(pair.p2)) return false;
     usedKeys.add(pair.key);
     selected.push({ player1: pair.p1, player2: pair.p2 });
     playerGameCount[pair.p1]++;
@@ -1312,21 +1315,21 @@ const generateCompetitiveSchedule = (playerNames, standings, gamesPerPlayer, exi
     return true;
   };
 
-  // Phase 1a: Greedily select new pairs, prioritizing players with fewest games
+  // Phase 1a: Greedily select new pairs, prioritizing players furthest from target
   let changed = true;
   while (changed) {
     changed = false;
-    // Re-sort to prioritize pairs where both players have fewer games
     const available = newPairs.filter(p => !usedKeys.has(p.key) &&
-      playerGameCount[p.p1] < gamesPerPlayer && playerGameCount[p.p2] < gamesPerPlayer);
+      playerGameCount[p.p1] < targetFor(p.p1) && playerGameCount[p.p2] < targetFor(p.p2));
     available.sort((a, b) => {
+      // Remaining games needed (higher = more urgent)
+      const aRemain = Math.max(targetFor(a.p1) - playerGameCount[a.p1], targetFor(a.p2) - playerGameCount[a.p2]);
+      const bRemain = Math.max(targetFor(b.p1) - playerGameCount[b.p1], targetFor(b.p2) - playerGameCount[b.p2]);
+      if (aRemain !== bRemain) return bRemain - aRemain; // Prioritize most games needed
       const aMin = Math.min(playerGameCount[a.p1], playerGameCount[a.p2]);
       const bMin = Math.min(playerGameCount[b.p1], playerGameCount[b.p2]);
-      if (aMin !== bMin) return aMin - bMin; // Prioritize players with fewest games
-      const aMax = Math.max(playerGameCount[a.p1], playerGameCount[a.p2]);
-      const bMax = Math.max(playerGameCount[b.p1], playerGameCount[b.p2]);
-      if (aMax !== bMax) return aMax - bMax;
-      return a.rankDiff - b.rankDiff; // Then by competitive matching
+      if (aMin !== bMin) return aMin - bMin;
+      return a.rankDiff - b.rankDiff;
     });
     for (const pair of available) {
       if (tryAdd(pair)) { changed = true; break; }
@@ -1338,11 +1341,11 @@ const generateCompetitiveSchedule = (playerNames, standings, gamesPerPlayer, exi
   while (changed) {
     changed = false;
     const available = rematchPairs.filter(p => !usedKeys.has(p.key) &&
-      playerGameCount[p.p1] < gamesPerPlayer && playerGameCount[p.p2] < gamesPerPlayer);
+      playerGameCount[p.p1] < targetFor(p.p1) && playerGameCount[p.p2] < targetFor(p.p2));
     available.sort((a, b) => {
-      const aMin = Math.min(playerGameCount[a.p1], playerGameCount[a.p2]);
-      const bMin = Math.min(playerGameCount[b.p1], playerGameCount[b.p2]);
-      if (aMin !== bMin) return aMin - bMin;
+      const aRemain = Math.max(targetFor(a.p1) - playerGameCount[a.p1], targetFor(a.p2) - playerGameCount[a.p2]);
+      const bRemain = Math.max(targetFor(b.p1) - playerGameCount[b.p1], targetFor(b.p2) - playerGameCount[b.p2]);
+      if (aRemain !== bRemain) return bRemain - aRemain;
       return a.rankDiff - b.rankDiff;
     });
     for (const pair of available) {
@@ -1351,12 +1354,12 @@ const generateCompetitiveSchedule = (playerNames, standings, gamesPerPlayer, exi
   }
 
   // Phase 3: If still short, allow duplicate POST pairs (absolute last resort)
-  const underPlayers = rankedNames.filter(p => playerGameCount[p] < gamesPerPlayer);
+  const underPlayers = rankedNames.filter(p => playerGameCount[p] < targetFor(p));
   for (const player of underPlayers) {
-    while (playerGameCount[player] < gamesPerPlayer) {
+    while (playerGameCount[player] < targetFor(player)) {
       let bestOpp = null, bestScore = Infinity;
       for (const opp of rankedNames) {
-        if (opp === player || playerGameCount[opp] >= gamesPerPlayer) continue;
+        if (opp === player || playerGameCount[opp] >= targetFor(opp)) continue;
         const rankDiff = Math.abs(rankedNames.indexOf(player) - rankedNames.indexOf(opp));
         const score = rankDiff * 10 + playerGameCount[opp];
         if (score < bestScore) { bestScore = score; bestOpp = opp; }
@@ -3973,14 +3976,14 @@ app.post('/api/season/custom-promotion', requireAdmin, async (req, res) => {
   try {
     await client.query('BEGIN');
 
-    const { promotePlayers, removePlayers, newGamesPerPlayer } = req.body;
+    const { promotePlayers, removePlayers, newGamesPerPlayer, totalGamesTarget } = req.body;
     if (!Array.isArray(promotePlayers) || promotePlayers.length === 0) {
       await client.query('ROLLBACK');
       return res.status(400).json({ error: 'promotePlayers must be a non-empty array' });
     }
-    if (!newGamesPerPlayer || newGamesPerPlayer < 1) {
+    if (!newGamesPerPlayer && !totalGamesTarget) {
       await client.query('ROLLBACK');
-      return res.status(400).json({ error: 'newGamesPerPlayer must be >= 1' });
+      return res.status(400).json({ error: 'newGamesPerPlayer or totalGamesTarget required' });
     }
 
     const result = await client.query('SELECT data FROM season WHERE id = 1 FOR UPDATE');
@@ -4091,19 +4094,36 @@ app.post('/api/season/custom-promotion', requireAdmin, async (req, res) => {
       }
     }
 
-    // Generate new Group A schedule (all current A players, N new games each)
+    // Calculate per-player game targets
+    const calcTargets = (groupNames, groupStandings) => {
+      if (totalGamesTarget) {
+        // Variable: each player gets (totalGamesTarget - completed) new games
+        const targets = {};
+        groupNames.forEach(name => {
+          const s = groupStandings[name] || { wins: 0, losses: 0 };
+          const completed = s.wins + s.losses;
+          targets[name] = Math.max(0, totalGamesTarget - completed);
+        });
+        return targets;
+      }
+      return newGamesPerPlayer; // Uniform: same for all
+    };
+
+    // Generate new Group A schedule
     const groupANames = season.groups.A.players.map(p => p.name);
     const existingA = getCompletedMatchups(season.standings.A);
-    const newAMatches = generateCompetitiveSchedule(groupANames, season.standings.A, newGamesPerPlayer, existingA);
+    const targetsA = calcTargets(groupANames, season.standings.A);
+    const newAMatches = generateCompetitiveSchedule(groupANames, season.standings.A, targetsA, existingA);
     const distributedA = distributeMatchesToWeekRange(newAMatches, startWeek, endWeek, 'A');
     for (const match of distributedA) {
       season.schedule.A[match.week - 1].push(match);
     }
 
-    // Generate new Group B schedule (remaining B players, N new games each)
+    // Generate new Group B schedule
     const groupBNames = season.groups.B.players.map(p => p.name);
     const existingB = getCompletedMatchups(season.standings.B);
-    const newBMatches = generateCompetitiveSchedule(groupBNames, season.standings.B, newGamesPerPlayer, existingB);
+    const targetsB = calcTargets(groupBNames, season.standings.B);
+    const newBMatches = generateCompetitiveSchedule(groupBNames, season.standings.B, targetsB, existingB);
     const distributedB = distributeMatchesToWeekRange(newBMatches, startWeek, endWeek, 'B');
     for (const match of distributedB) {
       season.schedule.B[match.week - 1].push(match);
@@ -4130,14 +4150,28 @@ app.post('/api/season/custom-promotion', requireAdmin, async (req, res) => {
     await client.query('UPDATE season SET data = $1, updated_at = CURRENT_TIMESTAMP WHERE id = 1', [JSON.stringify(season)]);
     await client.query('COMMIT');
 
-    // Verify game counts
+    // Verify game counts (new POST games + completed = total)
     const verifyA = {};
-    groupANames.forEach(n => { verifyA[n] = 0; });
-    distributedA.forEach(m => { verifyA[m.player1]++; verifyA[m.player2]++; });
+    groupANames.forEach(n => {
+      const s = season.standings.A[n] || { wins: 0, losses: 0 };
+      const completed = s.wins + s.losses;
+      verifyA[n] = { newGames: 0, completed, total: completed };
+    });
+    distributedA.forEach(m => {
+      verifyA[m.player1].newGames++; verifyA[m.player1].total++;
+      verifyA[m.player2].newGames++; verifyA[m.player2].total++;
+    });
 
     const verifyB = {};
-    groupBNames.forEach(n => { verifyB[n] = 0; });
-    distributedB.forEach(m => { verifyB[m.player1]++; verifyB[m.player2]++; });
+    groupBNames.forEach(n => {
+      const s = season.standings.B[n] || { wins: 0, losses: 0 };
+      const completed = s.wins + s.losses;
+      verifyB[n] = { newGames: 0, completed, total: completed };
+    });
+    distributedB.forEach(m => {
+      verifyB[m.player1].newGames++; verifyB[m.player1].total++;
+      verifyB[m.player2].newGames++; verifyB[m.player2].total++;
+    });
 
     res.json({
       success: true,
