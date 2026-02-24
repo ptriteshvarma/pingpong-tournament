@@ -3976,7 +3976,7 @@ app.post('/api/season/custom-promotion', requireAdmin, async (req, res) => {
   try {
     await client.query('BEGIN');
 
-    const { promotePlayers, removePlayers, newGamesPerPlayer, totalGamesTarget } = req.body;
+    const { promotePlayers, removePlayers, demotePlayers, newGamesPerPlayer, totalGamesTarget } = req.body;
     if (!Array.isArray(promotePlayers) || promotePlayers.length === 0) {
       await client.query('ROLLBACK');
       return res.status(400).json({ error: 'promotePlayers must be a non-empty array' });
@@ -4072,6 +4072,20 @@ app.post('/api/season/custom-promotion', requireAdmin, async (req, res) => {
       }
     }
 
+    // Demote players from A to B (if requested)
+    const demoteList = demotePlayers || [];
+    for (const name of demoteList) {
+      if (season.standings.A[name]) {
+        const aStats = { ...season.standings.A[name] };
+        delete aStats.promotedFrom;
+        delete aStats.preSwapStats;
+        season.standings.B[name] = aStats;
+        delete season.standings.A[name];
+        season.groups.A.players = season.groups.A.players.filter(p => p.name !== name);
+        season.groups.B.players.push({ name, seed: null });
+      }
+    }
+
     // Clean up stale promotion flags on Group B players (e.g. after swap-back)
     for (const name of Object.keys(season.standings.B)) {
       delete season.standings.B[name].promotedFrom;
@@ -4136,7 +4150,7 @@ app.post('/api/season/custom-promotion', requireAdmin, async (req, res) => {
       week: season.currentWeek,
       type: 'custom-promotion',
       swaps: {
-        fromAtoB: [],
+        fromAtoB: demoteList,
         fromBtoA: promotePlayers
       },
       removedPlayers: removePlayers || [],

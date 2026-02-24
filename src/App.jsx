@@ -4765,11 +4765,11 @@ const API_BASE = '/api';
                                 {/* Multi-Week Schedule Display */}
                                 {(() => {
                                     const currentWeek = season.currentWeek || 1;
-                                    const swapWeek = 3;
-                                    // Show weeks 1-4 initially, then all remaining weeks after swap
-                                    const weeksToShow = currentWeek <= swapWeek
-                                        ? Array.from({ length: Math.min(4, season.totalWeeks) }, (_, i) => i + 1)
-                                        : Array.from({ length: season.totalWeeks }, (_, i) => i + 1);
+                                    const midSeasonDone = season.midSeasonReview?.completed;
+                                    // Show all weeks after mid-season is done, otherwise just weeks 1-4
+                                    const weeksToShow = midSeasonDone
+                                        ? Array.from({ length: season.totalWeeks }, (_, i) => i + 1)
+                                        : Array.from({ length: Math.min(4, season.totalWeeks) }, (_, i) => i + 1);
 
                                     return weeksToShow.map(weekNum => {
                                         const matches = season?.schedule?.[selectedGroup]?.[weekNum - 1] || [];
