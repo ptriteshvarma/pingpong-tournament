@@ -1348,7 +1348,8 @@ const generateCompetitiveSchedule = (playerNames, standings, gamesPerPlayer, exi
   // Fixup phase: handle any players who still need games
   // This can happen when odd players get left out in round matching
   // Try unique pairs first, then allow rematches as last resort
-  for (let allowRematch = false; ; allowRematch = true) {
+  let allowRematch = false;
+  while (true) {
     const underPlayers = rankedNames.filter(p => playerGameCount[p] < gamesPerPlayer);
     if (underPlayers.length === 0) break;
     let madeProgress = false;
@@ -1389,7 +1390,9 @@ const generateCompetitiveSchedule = (playerNames, standings, gamesPerPlayer, exi
       }
     }
 
-    if (!madeProgress || allowRematch) break;
+    if (madeProgress) continue; // Keep going if we made progress
+    if (allowRematch) break; // Already tried with rematches, give up
+    allowRematch = true; // Try again allowing rematches
   }
 
   return selected;
