@@ -4093,6 +4093,15 @@ app.post('/api/season/custom-promotion', requireAdmin, async (req, res) => {
       }
     }
 
+    // Clean up stale promotion flags on Group B players (e.g. after swap-back)
+    for (const name of Object.keys(season.standings.B)) {
+      delete season.standings.B[name].promotedFrom;
+      delete season.standings.B[name].preSwapStats;
+    }
+    for (const p of season.groups.B.players) {
+      delete p.promotedMidSeason;
+    }
+
     // Step 5: Clear any existing POST matches (for re-runs) then generate new schedules
     const startWeek = 5;
     const endWeek = 10;
@@ -4203,9 +4212,11 @@ app.post('/api/season/swap-groups', requireAdmin, async (req, res) => {
       return res.status(400).json({ error: `${moveToB} not found in Group A` });
     }
 
-    // Move moveToB: A → B
-    const aStats = season.standings.A[moveToB];
-    season.standings.B[moveToB] = { ...aStats };
+    // Move moveToB: A → B (clean promotion flags)
+    const aStats = { ...season.standings.A[moveToB] };
+    delete aStats.promotedFrom;
+    delete aStats.preSwapStats;
+    season.standings.B[moveToB] = aStats;
     delete season.standings.A[moveToB];
     const aPlayer = season.groups.A.players.find(p => p.name === moveToB);
     season.groups.B.players.push(aPlayer || { name: moveToB, seed: null });
