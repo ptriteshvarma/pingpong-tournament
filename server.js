@@ -1347,39 +1347,49 @@ const generateCompetitiveSchedule = (playerNames, standings, gamesPerPlayer, exi
 
   // Fixup phase: handle any players who still need games
   // This can happen when odd players get left out in round matching
-  const underPlayers = rankedNames.filter(p => playerGameCount[p] < gamesPerPlayer);
-  for (const player of underPlayers) {
-    while (playerGameCount[player] < gamesPerPlayer) {
-      let bestOpp = null;
-      let bestScore = Infinity;
+  // Try unique pairs first, then allow rematches as last resort
+  for (let allowRematch = false; ; allowRematch = true) {
+    const underPlayers = rankedNames.filter(p => playerGameCount[p] < gamesPerPlayer);
+    if (underPlayers.length === 0) break;
+    let madeProgress = false;
 
-      for (const opp of rankedNames) {
-        if (opp === player || playerGameCount[opp] >= gamesPerPlayer) continue;
-        const pairKey = [player, opp].sort().join('|');
-        if (usedPairs.has(pairKey)) continue;
+    for (const player of underPlayers) {
+      while (playerGameCount[player] < gamesPerPlayer) {
+        let bestOpp = null;
+        let bestScore = Infinity;
 
-        const rankI = rankedNames.indexOf(player);
-        const rankJ = rankedNames.indexOf(opp);
-        const rankDiff = Math.abs(rankI - rankJ);
-        const alreadyPlayed = existingMatchups.has(pairKey);
-        const score = (alreadyPlayed ? 1000 : 0) + rankDiff * 10 + playerGameCount[opp];
+        for (const opp of rankedNames) {
+          if (opp === player || playerGameCount[opp] >= gamesPerPlayer) continue;
+          const pairKey = [player, opp].sort().join('|');
+          if (!allowRematch && usedPairs.has(pairKey)) continue;
 
-        if (score < bestScore) {
-          bestScore = score;
-          bestOpp = opp;
+          const rankI = rankedNames.indexOf(player);
+          const rankJ = rankedNames.indexOf(opp);
+          const rankDiff = Math.abs(rankI - rankJ);
+          const alreadyPlayed = existingMatchups.has(pairKey);
+          const isRematch = usedPairs.has(pairKey);
+          const score = (isRematch ? 2000 : 0) + (alreadyPlayed ? 1000 : 0) + rankDiff * 10 + playerGameCount[opp];
+
+          if (score < bestScore) {
+            bestScore = score;
+            bestOpp = opp;
+          }
+        }
+
+        if (bestOpp) {
+          const pairKey = [player, bestOpp].sort().join('|');
+          usedPairs.add(pairKey);
+          selected.push({ player1: player, player2: bestOpp });
+          playerGameCount[player]++;
+          playerGameCount[bestOpp]++;
+          madeProgress = true;
+        } else {
+          break;
         }
       }
-
-      if (bestOpp) {
-        const pairKey = [player, bestOpp].sort().join('|');
-        usedPairs.add(pairKey);
-        selected.push({ player1: player, player2: bestOpp });
-        playerGameCount[player]++;
-        playerGameCount[bestOpp]++;
-      } else {
-        break; // No available opponents left
-      }
     }
+
+    if (!madeProgress || allowRematch) break;
   }
 
   return selected;
