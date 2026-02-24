@@ -420,7 +420,7 @@ const API_BASE = '/api';
                                         </tr>
                                         {expandedPlayer === player.name && (
                                             <tr>
-                                                <td colSpan={9} className="p-0">
+                                                <td colSpan={10} className="p-0">
                                                     <div className="bg-gray-50 border-t border-gray-200 px-4 py-3">
                                                         <div className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">
                                                             Season Matches
@@ -3604,12 +3604,13 @@ const API_BASE = '/api';
                 const group = inGroupA ? 'A' : (inGroupB ? 'B' : null);
                 const stats = inGroupA || inGroupB;
 
-                // Get all season matches for this player
+                // Get all season matches for this player (exclude cancelled)
                 const allMatches = [];
                 if (season && group) {
                     const schedule = season.schedule?.[group] || [];
                     schedule.forEach((week, weekIdx) => {
                         week.forEach(match => {
+                            if (match.cancelled) return;
                             if (match.player1 === currentPlayer || match.player2 === currentPlayer) {
                                 allMatches.push({ ...match, week: weekIdx + 1 });
                             }
