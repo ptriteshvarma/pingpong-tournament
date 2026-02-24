@@ -4084,7 +4084,7 @@ app.post('/api/season/custom-promotion', requireAdmin, async (req, res) => {
         fromAtoB: [],
         fromBtoA: promotePlayers
       },
-      removedPlayers: removeList,
+      removedPlayers: removePlayers || [],
       cancelledMatches: cancelledMatches.length,
       newMatchesCreated: { A: distributedA.length, B: distributedB.length },
       statsReset: false,
@@ -4106,9 +4106,9 @@ app.post('/api/season/custom-promotion', requireAdmin, async (req, res) => {
 
     res.json({
       success: true,
-      message: `Promoted ${promotePlayers.length} players to Group A, removed ${removeList.length} players`,
+      message: `Promoted ${promotePlayers.length} players to Group A, removed ${(removePlayers || []).length} players`,
       promoted: promotePlayers,
-      removed: removeList,
+      removed: removePlayers || [],
       cancelledMatches: cancelledMatches.length,
       newMatches: {
         groupA: { total: distributedA.length, perPlayer: verifyA },
