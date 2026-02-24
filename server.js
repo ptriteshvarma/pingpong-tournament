@@ -1266,6 +1266,125 @@ const sortStandings = (standings) => {
   return sortedPlayers;
 };
 
+// Generate competitive schedule: pair players by rank proximity (strong vs strong)
+// Returns array of { player1, player2 } matches
+const generateCompetitiveSchedule = (playerNames, standings, gamesPerPlayer, existingMatchups) => {
+  // Sort players by standings to get rankings
+  const standingsObj = {};
+  playerNames.forEach(name => {
+    standingsObj[name] = standings[name] || { wins: 0, losses: 0, points: 0, headToHead: {}, pointsFor: 0, pointsAgainst: 0 };
+  });
+  const sorted = sortStandings(standingsObj);
+  const rankedNames = sorted.map(p => p.name);
+
+  // Generate all possible pairings scored by rank proximity
+  const allPairings = [];
+  for (let i = 0; i < rankedNames.length; i++) {
+    for (let j = i + 1; j < rankedNames.length; j++) {
+      const key = [rankedNames[i], rankedNames[j]].sort().join('|');
+      const alreadyPlayed = existingMatchups.has(key);
+      allPairings.push({
+        player1: rankedNames[i],
+        player2: rankedNames[j],
+        rankDiff: Math.abs(i - j),
+        alreadyPlayed
+      });
+    }
+  }
+
+  // Sort: unplayed first, then by rank proximity (closest ranks = most competitive)
+  allPairings.sort((a, b) => {
+    if (a.alreadyPlayed !== b.alreadyPlayed) return a.alreadyPlayed ? 1 : -1;
+    return a.rankDiff - b.rankDiff;
+  });
+
+  // Greedy selection
+  const playerGameCount = {};
+  playerNames.forEach(p => { playerGameCount[p] = 0; });
+  const selected = [];
+
+  for (const pairing of allPairings) {
+    if (playerGameCount[pairing.player1] < gamesPerPlayer &&
+        playerGameCount[pairing.player2] < gamesPerPlayer) {
+      selected.push({ player1: pairing.player1, player2: pairing.player2 });
+      playerGameCount[pairing.player1]++;
+      playerGameCount[pairing.player2]++;
+    }
+    if (Object.values(playerGameCount).every(g => g >= gamesPerPlayer)) break;
+  }
+
+  return selected;
+};
+
+// Distribute matches across weeks, max 2 games per player per week
+const distributeMatchesToWeekRange = (matches, startWeek, endWeek, group) => {
+  const numWeeks = endWeek - startWeek + 1;
+  const playerGamesPerWeek = {};
+  const result = [];
+  let matchNum = 1;
+
+  for (const match of matches) {
+    let placed = false;
+    for (let w = startWeek; w <= endWeek; w++) {
+      const p1key = match.player1 + '-' + w;
+      const p2key = match.player2 + '-' + w;
+      const p1g = playerGamesPerWeek[p1key] || 0;
+      const p2g = playerGamesPerWeek[p2key] || 0;
+      if (p1g < 2 && p2g < 2) {
+        result.push({
+          id: `${group}-W${w}-POST-M${matchNum}`,
+          week: w,
+          group,
+          player1: match.player1,
+          player2: match.player2,
+          score1: null,
+          score2: null,
+          winner: null,
+          loser: null,
+          completed: false
+        });
+        playerGamesPerWeek[p1key] = p1g + 1;
+        playerGamesPerWeek[p2key] = p2g + 1;
+        matchNum++;
+        placed = true;
+        break;
+      }
+    }
+    if (!placed) {
+      // Force into last week as fallback
+      result.push({
+        id: `${group}-W${endWeek}-POST-M${matchNum}`,
+        week: endWeek,
+        group,
+        player1: match.player1,
+        player2: match.player2,
+        score1: null,
+        score2: null,
+        winner: null,
+        loser: null,
+        completed: false
+      });
+      matchNum++;
+    }
+  }
+
+  return result;
+};
+
+// Build set of already-played matchups from completed games in standings
+const getCompletedMatchups = (standings) => {
+  const matchups = new Set();
+  Object.entries(standings).forEach(([name, stats]) => {
+    if (stats.headToHead) {
+      Object.keys(stats.headToHead).forEach(opp => {
+        const key = [name, opp].sort().join('|');
+        matchups.add(key);
+      });
+    }
+  });
+  return matchups;
+};
+
 // Generate wildcard round: Group A #5-6 vs Group B #5-6
 // Middle-ranked players from each group compete for wildcard playoff spots
 const generateWildcardRound = (standingsA, standingsB) => {
@@ -3782,6 +3901,181 @@ app.post('/api/season/match/add', requireAdmin, async (req, res) => {
     await client.query('UPDATE season SET data = $1, updated_at = CURRENT_TIMESTAMP WHERE id = 1', [JSON.stringify(season)]);
     await client.query('COMMIT');
     res.json({ success: true, match });
+  } catch (error) {
+    await client.query('ROLLBACK');
+    res.status(500).json({ error: error.message });
+  } finally {
+    client.release();
+  }
+});
+
+// Custom mid-season promotion: promote top players from B to A, remove injured players, reschedule
+app.post('/api/season/custom-promotion', requireAdmin, async (req, res) => {
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+
+    const { promotePlayers, removePlayers, newGamesPerPlayer } = req.body;
+    if (!Array.isArray(promotePlayers) || promotePlayers.length === 0) {
+      await client.query('ROLLBACK');
+      return res.status(400).json({ error: 'promotePlayers must be a non-empty array' });
+    }
+    if (!newGamesPerPlayer || newGamesPerPlayer < 1) {
+      await client.query('ROLLBACK');
+      return res.status(400).json({ error: 'newGamesPerPlayer must be >= 1' });
+    }
+
+    const result = await client.query('SELECT data FROM season WHERE id = 1 FOR UPDATE');
+    if (result.rows.length === 0) {
+      await client.query('ROLLBACK');
+      return res.status(400).json({ error: 'No active season' });
+    }
+    const season = result.rows[0].data;
+
+    // Snapshot for recovery
+    await createSeasonSnapshot(season, 'Before custom mid-season promotion', 'admin');
+
+    // Validate all player names exist in Group B
+    const allMoving = [...promotePlayers, ...(removePlayers || [])];
+    for (const name of allMoving) {
+      if (!season.standings.B[name]) {
+        await client.query('ROLLBACK');
+        return res.status(400).json({ error: `Player "${name}" not found in Group B standings` });
+      }
+    }
+
+    const cancelledMatches = [];
+    const gone = new Set(allMoving);
+
+    // Step 1: Cancel ALL pending matches involving removed/promoted players
+    for (const group of ['A', 'B']) {
+      for (let weekIdx = 0; weekIdx < season.schedule[group].length; weekIdx++) {
+        for (const match of season.schedule[group][weekIdx]) {
+          if (!match.completed && !match.cancelled &&
+              (gone.has(match.player1) || gone.has(match.player2))) {
+            match.cancelled = true;
+            match.cancelReason = gone.has(match.player1) && gone.has(match.player2)
+              ? 'Both players moved/removed'
+              : gone.has(match.player1) ? `${match.player1} moved/removed` : `${match.player2} moved/removed`;
+            cancelledMatches.push({ id: match.id, match: `${match.player1} vs ${match.player2}`, reason: match.cancelReason });
+          }
+        }
+      }
+    }
+
+    // Step 2: Remove players (Jacob)
+    const removeList = removePlayers || [];
+    for (const name of removeList) {
+      delete season.standings.B[name];
+      season.groups.B.players = season.groups.B.players.filter(p => p.name !== name);
+    }
+
+    // Step 3: Move promoted players B → A (keep stats)
+    for (const name of promotePlayers) {
+      const bStats = season.standings.B[name];
+      const bPlayer = season.groups.B.players.find(p => p.name === name);
+
+      // Add to Group A
+      season.standings.A[name] = {
+        ...bStats,
+        promotedFrom: 'B',
+        preSwapStats: { ...bStats }
+      };
+      if (bPlayer) {
+        season.groups.A.players.push({ ...bPlayer, promotedMidSeason: true });
+      } else {
+        season.groups.A.players.push({ name, seed: null, promotedMidSeason: true });
+      }
+
+      // Remove from Group B
+      delete season.standings.B[name];
+      season.groups.B.players = season.groups.B.players.filter(p => p.name !== name);
+    }
+
+    // Step 4: Cancel ALL remaining pending matches in BOTH groups (clean slate)
+    for (const group of ['A', 'B']) {
+      for (let weekIdx = 0; weekIdx < season.schedule[group].length; weekIdx++) {
+        for (const match of season.schedule[group][weekIdx]) {
+          if (!match.completed && !match.cancelled) {
+            match.cancelled = true;
+            match.cancelReason = 'Mid-season schedule reset';
+            cancelledMatches.push({ id: match.id, match: `${match.player1} vs ${match.player2}`, reason: match.cancelReason });
+          }
+        }
+      }
+    }
+
+    // Step 5: Generate new Group A schedule (all current A players, 5 new games each)
+    const groupANames = season.groups.A.players.map(p => p.name);
+    const existingA = getCompletedMatchups(season.standings.A);
+    // Also add cross-group H2H for promoted players (they played B opponents, not relevant for A matchups)
+    const newAMatches = generateCompetitiveSchedule(groupANames, season.standings.A, newGamesPerPlayer, existingA);
+    const startWeek = 5;
+    const endWeek = 10;
+
+    // Ensure schedule arrays exist for weeks 5-10
+    for (const group of ['A', 'B']) {
+      while (season.schedule[group].length < endWeek) {
+        season.schedule[group].push([]);
+      }
+    }
+
+    const distributedA = distributeMatchesToWeekRange(newAMatches, startWeek, endWeek, 'A');
+    for (const match of distributedA) {
+      season.schedule.A[match.week - 1].push(match);
+    }
+
+    // Step 6: Generate new Group B schedule (remaining B players, 5 new games each)
+    const groupBNames = season.groups.B.players.map(p => p.name);
+    const existingB = getCompletedMatchups(season.standings.B);
+    const newBMatches = generateCompetitiveSchedule(groupBNames, season.standings.B, newGamesPerPlayer, existingB);
+    const distributedB = distributeMatchesToWeekRange(newBMatches, startWeek, endWeek, 'B');
+    for (const match of distributedB) {
+      season.schedule.B[match.week - 1].push(match);
+    }
+
+    // Step 7: Record mid-season review
+    season.midSeasonReview = {
+      completed: true,
+      completedAt: new Date().toISOString(),
+      week: season.currentWeek,
+      type: 'custom-promotion',
+      swaps: {
+        fromAtoB: [],
+        fromBtoA: promotePlayers
+      },
+      removedPlayers: removeList,
+      cancelledMatches: cancelledMatches.length,
+      newMatchesCreated: { A: distributedA.length, B: distributedB.length },
+      statsReset: false,
+      priorityMatching: true
+    };
+
+    // Save
+    await client.query('UPDATE season SET data = $1, updated_at = CURRENT_TIMESTAMP WHERE id = 1', [JSON.stringify(season)]);
+    await client.query('COMMIT');
+
+    // Verify game counts
+    const verifyA = {};
+    groupANames.forEach(n => { verifyA[n] = 0; });
+    distributedA.forEach(m => { verifyA[m.player1]++; verifyA[m.player2]++; });
+
+    const verifyB = {};
+    groupBNames.forEach(n => { verifyB[n] = 0; });
+    distributedB.forEach(m => { verifyB[m.player1]++; verifyB[m.player2]++; });
+
+    res.json({
+      success: true,
+      message: `Promoted ${promotePlayers.length} players to Group A, removed ${removeList.length} players`,
+      promoted: promotePlayers,
+      removed: removeList,
+      cancelledMatches: cancelledMatches.length,
+      newMatches: {
+        groupA: { total: distributedA.length, perPlayer: verifyA },
+        groupB: { total: distributedB.length, perPlayer: verifyB }
+      },
+      groupSizes: { A: groupANames.length, B: groupBNames.length }
+    });
   } catch (error) {
     await client.query('ROLLBACK');
     res.status(500).json({ error: error.message });
