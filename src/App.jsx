@@ -3797,7 +3797,7 @@ const API_BASE = '/api';
                             {!playerStats.leagueOnly && playerStats.matches.length > 0 && (
                             <div className="bg-white shadow-sm border border-gray-200 rounded-xl p-4">
                                 <h3 className="text-lg font-bold mb-3">Your Season Matches</h3>
-                                <div className="space-y-2 max-h-96 overflow-y-auto">
+                                <div className="space-y-2">
                                     {playerStats.matches.map((match, idx) => {
                                         const opponent = match.player1 === currentPlayer ? match.player2 : match.player1;
                                         const isWinner = match.winner === currentPlayer;
