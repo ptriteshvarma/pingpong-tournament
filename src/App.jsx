@@ -4766,6 +4766,7 @@ const API_BASE = '/api';
                                 {/* Multi-Week Schedule Display */}
                                 {(() => {
                                     const currentWeek = season.currentWeek || 1;
+                                    const swapWeek = 3;
                                     const midSeasonDone = season.midSeasonReview?.completed;
                                     // Show all weeks after mid-season is done, otherwise just weeks 1-4
                                     const weeksToShow = midSeasonDone
