@@ -3605,17 +3605,20 @@ const API_BASE = '/api';
                 const stats = inGroupA || inGroupB;
 
                 // Get all season matches for this player (exclude cancelled)
+                // Search both groups to include matches from before mid-season promotion/demotion
                 const allMatches = [];
-                if (season && group) {
-                    const schedule = season.schedule?.[group] || [];
-                    schedule.forEach((week, weekIdx) => {
-                        week.forEach(match => {
-                            if (match.cancelled) return;
-                            if (match.player1 === currentPlayer || match.player2 === currentPlayer) {
-                                allMatches.push({ ...match, week: weekIdx + 1 });
-                            }
+                if (season) {
+                    for (const g of ['A', 'B']) {
+                        const schedule = season.schedule?.[g] || [];
+                        schedule.forEach((week, weekIdx) => {
+                            week.forEach(match => {
+                                if (match.cancelled) return;
+                                if (match.player1 === currentPlayer || match.player2 === currentPlayer) {
+                                    allMatches.push({ ...match, week: weekIdx + 1, fromGroup: g });
+                                }
+                            });
                         });
-                    });
+                    }
                 }
 
                 // Calculate rank in group
