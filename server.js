@@ -4398,6 +4398,147 @@ app.post('/api/season/match/remove', requireAdmin, async (req, res) => {
   }
 });
 
+// Verify season integrity (admin only) - checks for common issues after mid-season operations
+app.get('/api/season/verify', requireAdmin, async (req, res) => {
+  try {
+    const result = await pool.query('SELECT data FROM season WHERE id = 1');
+    if (result.rows.length === 0) {
+      return res.status(400).json({ error: 'No active season' });
+    }
+    const season = result.rows[0].data;
+    const issues = [];
+    const info = {};
+
+    // 1. Check match counts per player (completed + pending should equal target)
+    const playerMatches = {};
+    for (const g of ['A', 'B']) {
+      for (let w = 0; w < season.schedule[g].length; w++) {
+        for (const m of (season.schedule[g][w] || [])) {
+          if (m.cancelled) continue;
+          for (const p of [m.player1, m.player2]) {
+            if (!playerMatches[p]) playerMatches[p] = { completed: 0, pending: 0, group: g, weeks: [] };
+            if (m.completed) playerMatches[p].completed++;
+            else playerMatches[p].pending++;
+            if (!playerMatches[p].weeks.includes(w + 1)) playerMatches[p].weeks.push(w + 1);
+          }
+        }
+      }
+    }
+    info.playerMatches = {};
+    const totals = new Set();
+    for (const [name, data] of Object.entries(playerMatches)) {
+      const total = data.completed + data.pending;
+      totals.add(total);
+      info.playerMatches[name] = { completed: data.completed, pending: data.pending, total };
+    }
+    if (totals.size > 1) {
+      const counts = {};
+      for (const [name, data] of Object.entries(playerMatches)) {
+        const t = data.completed + data.pending;
+        if (!counts[t]) counts[t] = [];
+        counts[t].push(name);
+      }
+      issues.push({ type: 'UNEQUAL_TOTALS', message: 'Not all players have the same total games', details: counts });
+    }
+
+    // 2. Check for cancelled matches leaking (non-cancelled refs to removed players)
+    const groupAPlayers = new Set(Object.keys(season.standings?.A || {}));
+    const groupBPlayers = new Set(Object.keys(season.standings?.B || {}));
+    for (const g of ['A', 'B']) {
+      const groupPlayers = g === 'A' ? groupAPlayers : groupBPlayers;
+      for (let w = 0; w < season.schedule[g].length; w++) {
+        for (const m of (season.schedule[g][w] || [])) {
+          if (m.cancelled) continue;
+          if (!m.completed) {
+            if (!groupPlayers.has(m.player1) && !groupPlayers.has(m.player2)) {
+              issues.push({ type: 'ORPHAN_MATCH', message: `Pending match in Group ${g} Week ${w+1} between players not in group: ${m.player1} vs ${m.player2}`, matchId: m.id });
+            }
+          }
+        }
+      }
+    }
+
+    // 3. Check currentWeek alignment
+    let firstPendingWeek = null;
+    for (const g of ['A', 'B']) {
+      for (let w = 0; w < season.schedule[g].length; w++) {
+        const hasPending = (season.schedule[g][w] || []).some(m => !m.cancelled && !m.completed);
+        if (hasPending && (firstPendingWeek === null || w + 1 < firstPendingWeek)) {
+          firstPendingWeek = w + 1;
+        }
+      }
+    }
+    info.currentWeek = season.currentWeek;
+    info.firstPendingWeek = firstPendingWeek;
+    if (firstPendingWeek && season.currentWeek < firstPendingWeek) {
+      issues.push({ type: 'STALE_CURRENT_WEEK', message: `currentWeek is ${season.currentWeek} but first pending matches are in week ${firstPendingWeek}` });
+    }
+
+    // 4. Check promotion flags consistency
+    for (const g of ['A', 'B']) {
+      const standings = season.standings?.[g] || {};
+      for (const [name, data] of Object.entries(standings)) {
+        if (data.promotedFrom === g) {
+          issues.push({ type: 'STALE_PROMOTION_FLAG', message: `${name} in Group ${g} has promotedFrom: '${g}' (same group)`, player: name });
+        }
+      }
+    }
+
+    // 5. Check group balance
+    const groupACount = Object.keys(season.standings?.A || {}).length;
+    const groupBCount = Object.keys(season.standings?.B || {}).length;
+    info.groupSizes = { A: groupACount, B: groupBCount };
+    if (Math.abs(groupACount - groupBCount) > 1) {
+      issues.push({ type: 'GROUP_IMBALANCE', message: `Groups are unbalanced: A has ${groupACount}, B has ${groupBCount}` });
+    }
+
+    // 6. Check for duplicate pending matches (same pair twice in POST weeks)
+    const postPairs = {};
+    for (const g of ['A', 'B']) {
+      for (let w = 0; w < season.schedule[g].length; w++) {
+        for (const m of (season.schedule[g][w] || [])) {
+          if (m.cancelled || m.completed) continue;
+          if (!m.id?.includes('-POST-')) continue;
+          const key = [m.player1, m.player2].sort().join(' vs ');
+          if (!postPairs[key]) postPairs[key] = [];
+          postPairs[key].push({ week: w + 1, group: g, id: m.id });
+        }
+      }
+    }
+    const duplicates = Object.entries(postPairs).filter(([, v]) => v.length > 1);
+    if (duplicates.length > 0) {
+      issues.push({ type: 'DUPLICATE_POST_MATCHES', message: `${duplicates.length} pairs have multiple POST matches`, details: Object.fromEntries(duplicates) });
+    }
+    info.postRematches = duplicates.length;
+
+    // 7. Check max games per player per week (should be <= 2)
+    for (const g of ['A', 'B']) {
+      for (let w = 0; w < season.schedule[g].length; w++) {
+        const weekPlayerCount = {};
+        for (const m of (season.schedule[g][w] || [])) {
+          if (m.cancelled) continue;
+          weekPlayerCount[m.player1] = (weekPlayerCount[m.player1] || 0) + 1;
+          weekPlayerCount[m.player2] = (weekPlayerCount[m.player2] || 0) + 1;
+        }
+        for (const [name, count] of Object.entries(weekPlayerCount)) {
+          if (count > 2) {
+            issues.push({ type: 'TOO_MANY_GAMES_IN_WEEK', message: `${name} has ${count} games in Group ${g} Week ${w+1}`, player: name, week: w+1, group: g });
+          }
+        }
+      }
+    }
+
+    res.json({
+      healthy: issues.length === 0,
+      issueCount: issues.length,
+      issues,
+      info
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Start playoffs (admin only)
 // Start wildcard round (admin only) - before playoffs
 app.post('/api/season/wildcard', requireAdmin, async (req, res) => {
