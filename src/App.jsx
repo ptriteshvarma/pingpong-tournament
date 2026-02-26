@@ -1097,7 +1097,7 @@ const API_BASE = '/api';
                         season.schedule?.[group]?.forEach((week, weekIdx) => {
                             const weekNum = weekIdx + 1;
                             week.forEach(match => {
-                                if (!match.completed && (match.player1 === currentPlayer || match.player2 === currentPlayer)) {
+                                if (!match.completed && !match.cancelled && (match.player1 === currentPlayer || match.player2 === currentPlayer)) {
                                     // Hide matches from Week 3+ until mid-season swap is completed
                                     // This prevents booking matches with opponents who may change after the swap
                                     if (!midSeasonCompleted && weekNum >= MID_SEASON_WEEK) {
