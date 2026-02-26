@@ -716,9 +716,9 @@ const API_BASE = '/api';
                 const getGroupColor = (group) => group === 'A' ? 'text-green-600' : group === 'B' ? 'text-amber-600' : 'text-gray-500';
 
                 const PlayerRow = ({ name, seed, group, isWinner, score }) => {
-                    const getSeedBg = (g) => g === 'A' ? 'bg-emerald-900/40 text-green-400 border-emerald-700' : g === 'B' ? 'bg-amber-900/40 text-amber-400 border-amber-700' : 'bg-gray-700 text-gray-400 border-gray-600';
+                    const getSeedBg = (g) => g === 'A' ? 'bg-emerald-100 text-emerald-700 border-emerald-300' : g === 'B' ? 'bg-amber-100 text-amber-700 border-amber-300' : 'bg-gray-100 text-gray-600 border-gray-300';
                     return (
-                        <div className={`flex items-center gap-2 px-2 py-1.5 ${isWinner ? 'bg-emerald-900/30' : ''}`}>
+                        <div className={`flex items-center gap-2 px-2 py-1.5 ${isWinner ? 'bg-emerald-50' : ''}`}>
                             {showSeeds && seed ? (
                                 <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded border ${getSeedBg(group)} min-w-[32px] text-center`}>{seed}</span>
                             ) : (
@@ -727,13 +727,13 @@ const API_BASE = '/api';
                             {name ? (
                                 <>
                                     <PlayerAvatar name={name} size="sm" />
-                                    <span className={`text-sm truncate flex-1 ${isWinner ? 'text-green-400 font-semibold' : ''}`}>{name}</span>
+                                    <span className={`text-sm truncate flex-1 ${isWinner ? 'text-emerald-700 font-semibold' : 'text-gray-800'}`}>{name}</span>
                                 </>
                             ) : (
-                                <span className="text-gray-500 italic text-sm flex-1">TBD</span>
+                                <span className="text-gray-400 italic text-sm flex-1">TBD</span>
                             )}
                             {match.completed && score !== undefined && (
-                                <span className={`text-sm font-bold min-w-[16px] text-right ${isWinner ? 'text-green-400' : 'text-gray-500'}`}>{score}</span>
+                                <span className={`text-sm font-bold min-w-[16px] text-right ${isWinner ? 'text-emerald-700' : 'text-gray-400'}`}>{score}</span>
                             )}
                         </div>
                     );
@@ -741,11 +741,11 @@ const API_BASE = '/api';
 
                 return (
                     <div className="w-52 flex-shrink-0">
-                        <div className="bg-gray-800 rounded-lg overflow-hidden border border-gray-700 shadow-md">
-                            <div className="bg-gray-750 px-2 py-1 border-b border-gray-700">
-                                <span className="text-[10px] text-gray-400 font-semibold uppercase tracking-wider">{label}</span>
+                        <div className="bg-white rounded-lg overflow-hidden border border-gray-300 shadow-sm">
+                            <div className="bg-gray-100 px-2 py-1 border-b border-gray-200">
+                                <span className="text-[10px] text-gray-500 font-semibold uppercase tracking-wider">{label}</span>
                             </div>
-                            <div className="divide-y divide-gray-700">
+                            <div className="divide-y divide-gray-200">
                                 <PlayerRow
                                     name={match.player1} seed={match.seed1} group={match.player1Group}
                                     isWinner={match.winner === match.player1}
@@ -758,26 +758,26 @@ const API_BASE = '/api';
                                 />
                             </div>
                             {canPlay && (
-                                <button onClick={() => setShowModal(true)} className="w-full text-xs bg-purple-600 hover:bg-purple-700 py-1.5 font-medium">Record Result</button>
+                                <button onClick={() => setShowModal(true)} className="w-full text-xs bg-purple-600 hover:bg-purple-700 text-white py-1.5 font-medium">Record Result</button>
                             )}
                         </div>
 
                         {showModal && (
                             <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50" onClick={() => setShowModal(false)}>
-                                <div className="bg-gray-100 rounded-xl p-6 max-w-sm w-full" onClick={e => e.stopPropagation()}>
+                                <div className="bg-white rounded-xl p-6 max-w-sm w-full shadow-xl" onClick={e => e.stopPropagation()}>
                                     <h3 className="text-lg font-bold mb-4 text-center text-gray-900">{label}</h3>
                                     <div className="grid grid-cols-2 gap-2 mb-4">
                                         {[match.player1, match.player2].map(p => (
-                                            <button key={p} onClick={() => setWinner(p)} className={`p-3 rounded-lg ${winner === p ? 'bg-emerald-600 text-white' : 'bg-gray-200 text-gray-900'}`}>
+                                            <button key={p} onClick={() => setWinner(p)} className={`p-3 rounded-lg ${winner === p ? 'bg-emerald-600 text-white' : 'bg-gray-100 text-gray-900 border border-gray-200'}`}>
                                                 <PlayerAvatar name={p} size="sm" /><div className="mt-1 text-sm">{p}</div>
                                             </button>
                                         ))}
                                     </div>
                                     <p className="text-sm text-gray-500 mb-2 text-center">Score (Best of 3: 2-0 or 2-1)</p>
                                     <div className="flex items-center justify-center gap-4 mb-4">
-                                        <input type="number" min="0" max="2" value={score1} onChange={e => setScore1(e.target.value)} className="w-16 bg-gray-200 text-gray-900 text-center text-xl rounded-lg p-2" placeholder="0" />
+                                        <input type="number" min="0" max="2" value={score1} onChange={e => setScore1(e.target.value)} className="w-16 bg-gray-100 text-gray-900 text-center text-xl rounded-lg p-2 border border-gray-200" placeholder="0" />
                                         <span className="text-gray-900">-</span>
-                                        <input type="number" min="0" max="2" value={score2} onChange={e => setScore2(e.target.value)} className="w-16 bg-gray-200 text-gray-900 text-center text-xl rounded-lg p-2" placeholder="0" />
+                                        <input type="number" min="0" max="2" value={score2} onChange={e => setScore2(e.target.value)} className="w-16 bg-gray-100 text-gray-900 text-center text-xl rounded-lg p-2 border border-gray-200" placeholder="0" />
                                     </div>
                                     <button onClick={handleSubmit} disabled={!winner} className="w-full py-3 bg-emerald-600 disabled:bg-gray-300 rounded-lg font-semibold text-white">Save</button>
                                 </div>
@@ -793,60 +793,103 @@ const API_BASE = '/api';
                 return (
                     <div className="flex-shrink-0 flex items-center" style={{ width: 32, height }}>
                         <svg width="32" height={height} viewBox={`0 0 32 ${height}`} fill="none">
-                            {/* Top match → midpoint */}
-                            <path d={`M 0 ${half / 2} L 16 ${half / 2} L 16 ${half}`} stroke="#7c3aed" strokeWidth="2" fill="none" />
-                            {/* Bottom match → midpoint */}
-                            <path d={`M 0 ${half + half / 2} L 16 ${half + half / 2} L 16 ${half}`} stroke="#7c3aed" strokeWidth="2" fill="none" />
-                            {/* Midpoint → next round */}
-                            <path d={`M 16 ${half} L 32 ${half}`} stroke="#7c3aed" strokeWidth="2" fill="none" />
+                            <path d={`M 0 ${half / 2} L 16 ${half / 2} L 16 ${half}`} stroke="#8b5cf6" strokeWidth="2" fill="none" />
+                            <path d={`M 0 ${half + half / 2} L 16 ${half + half / 2} L 16 ${half}`} stroke="#8b5cf6" strokeWidth="2" fill="none" />
+                            <path d={`M 16 ${half} L 32 ${half}`} stroke="#8b5cf6" strokeWidth="2" fill="none" />
                         </svg>
                     </div>
                 );
             };
 
-            // Card height + gap between cards in a pair
-            const cardH = 82; // approximate height of a match card
-            const pairGap = 16; // gap between two QF matches in a pair
-            const pairH = cardH * 2 + pairGap; // height of a QF pair
-            const bigGap = 32; // gap between upper pair and lower pair
-            const totalH = pairH * 2 + bigGap; // total bracket height
+            // Straight horizontal connector
+            const StraightConnector = ({ height = 82 }) => (
+                <div className="flex-shrink-0 flex items-center" style={{ width: 32, height }}>
+                    <svg width="32" height={height} viewBox={`0 0 32 ${height}`} fill="none">
+                        <path d={`M 0 ${height/2} L 32 ${height/2}`} stroke="#8b5cf6" strokeWidth="2" fill="none" />
+                    </svg>
+                </div>
+            );
+
+            const cardH = 82;
+            const pairGap = 16;
+            const pairH = cardH * 2 + pairGap;
+            const bigGap = 32;
+
+            const hasWildcard = championship.wildcardMatches && championship.wildcardMatches.length > 0;
+            const hasPlayIn = championship.playInGames && championship.playInGames.length > 0;
+
+            // Find play-in matches for each group
+            const playInA = championship.playInGames?.find(p => p.group === 'A');
+            const playInB = championship.playInGames?.find(p => p.group === 'B');
+            const wc1 = championship.wildcardMatches?.[0];
+            const wc2 = championship.wildcardMatches?.[1];
 
             return (
-                <div className="bg-white shadow-sm border border-gray-200 rounded-xl p-6 border border-violet-500 shadow-lg shadow-violet-500/20">
+                <div className="bg-white shadow-sm border border-gray-200 rounded-xl p-6 border-l-4 border-l-violet-500">
                     <div className="flex items-center gap-3 mb-6">
-                        <div className="w-10 h-10 rounded-full bg-violet-900/50 border border-violet-500 flex items-center justify-center">
-                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-6 h-6 text-amber-600">
+                        <div className="w-10 h-10 rounded-full bg-violet-100 border border-violet-300 flex items-center justify-center">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-6 h-6 text-violet-600">
                                 <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 18.75h-9m9 0a3 3 0 0 1 3 3h-15a3 3 0 0 1 3-3m9 0v-3.375c0-.621-.503-1.125-1.125-1.125h-.871M7.5 18.75v-3.375c0-.621.504-1.125 1.125-1.125h.872m5.007 0H9.497m5.007 0a7.454 7.454 0 0 1-.982-3.172M9.497 14.25a7.454 7.454 0 0 0 .981-3.172M5.25 4.236c-.982.143-1.954.317-2.916.52A6.003 6.003 0 0 0 7.73 9.728M5.25 4.236V4.5c0 2.108.966 3.99 2.48 5.228M5.25 4.236V2.721C7.456 2.41 9.71 2.25 12 2.25c2.291 0 4.545.16 6.75.47v1.516M7.73 9.728a6.726 6.726 0 0 0 2.748 1.35m8.272-6.842V4.5c0 2.108-.966 3.99-2.48 5.228m2.48-5.492a46.32 46.32 0 0 1 2.916.52 6.003 6.003 0 0 1-5.395 4.972m0 0a6.726 6.726 0 0 1-2.749 1.35m0 0a6.772 6.772 0 0 1-2.992 0" />
                             </svg>
                         </div>
                         <div>
-                            <h3 className="text-xl font-bold text-violet-300">Championship Bracket</h3>
-                            <p className="text-xs text-gray-500">Top 4 from each group compete for the title</p>
+                            <h3 className="text-xl font-bold text-violet-700">Championship Bracket</h3>
+                            <p className="text-xs text-gray-500">Top 4 from each group + wildcard winners compete for the title</p>
                         </div>
                     </div>
 
                     {/* Round Headers */}
                     <div className="overflow-x-auto pb-4">
-                        <div className="flex items-start" style={{ minWidth: 780 }}>
-                            <div className="w-52 flex-shrink-0 text-center text-xs text-purple-400 font-semibold uppercase tracking-wider mb-2">Quarterfinals</div>
+                        <div className="flex items-start" style={{ minWidth: (hasWildcard || hasPlayIn) ? 1100 : 780 }}>
+                            {hasWildcard && <>
+                                <div className="w-52 flex-shrink-0 text-center text-xs text-purple-600 font-semibold uppercase tracking-wider mb-2">Wildcard</div>
+                                <div style={{ width: 32 }} className="flex-shrink-0"></div>
+                            </>}
+                            {hasPlayIn && <>
+                                <div className="w-52 flex-shrink-0 text-center text-xs text-purple-600 font-semibold uppercase tracking-wider mb-2">Play-In</div>
+                                <div style={{ width: 32 }} className="flex-shrink-0"></div>
+                            </>}
+                            <div className="w-52 flex-shrink-0 text-center text-xs text-purple-600 font-semibold uppercase tracking-wider mb-2">Quarterfinals</div>
                             <div style={{ width: 32 }} className="flex-shrink-0"></div>
-                            <div className="w-52 flex-shrink-0 text-center text-xs text-purple-400 font-semibold uppercase tracking-wider mb-2">Semifinals</div>
+                            <div className="w-52 flex-shrink-0 text-center text-xs text-purple-600 font-semibold uppercase tracking-wider mb-2">Semifinals</div>
                             <div style={{ width: 32 }} className="flex-shrink-0"></div>
-                            <div className="w-52 flex-shrink-0 text-center text-xs text-amber-400 font-semibold uppercase tracking-wider mb-2">Final</div>
+                            <div className="w-52 flex-shrink-0 text-center text-xs text-amber-600 font-semibold uppercase tracking-wider mb-2">Final</div>
                         </div>
 
                         {/* Bracket Tree */}
-                        <div className="flex items-center" style={{ minWidth: 780 }}>
+                        <div className="flex items-center" style={{ minWidth: (hasWildcard || hasPlayIn) ? 1100 : 780 }}>
+
+                            {/* Wildcard Column */}
+                            {hasWildcard && <>
+                                <div className="flex flex-col flex-shrink-0 justify-center" style={{ gap: pairH + bigGap - cardH }}>
+                                    {wc1 && <MatchCard match={wc1} label="WC1: #5 Seeds" />}
+                                    {wc2 && <MatchCard match={wc2} label="WC2: #6 Seeds" />}
+                                </div>
+                                <div className="flex flex-col flex-shrink-0 justify-center" style={{ gap: pairH + bigGap - cardH }}>
+                                    <StraightConnector height={cardH} />
+                                    <StraightConnector height={cardH} />
+                                </div>
+                            </>}
+
+                            {/* Play-In Column */}
+                            {hasPlayIn && <>
+                                <div className="flex flex-col flex-shrink-0 justify-center" style={{ gap: pairH + bigGap - cardH }}>
+                                    {playInB ? <MatchCard match={playInB} label="Play-In: Group B" /> : <div style={{ height: cardH, width: 208 }}></div>}
+                                    {playInA ? <MatchCard match={playInA} label="Play-In: Group A" /> : <div style={{ height: cardH, width: 208 }}></div>}
+                                </div>
+                                <div className="flex flex-col flex-shrink-0 justify-center" style={{ gap: pairH + bigGap - cardH }}>
+                                    <StraightConnector height={cardH} />
+                                    <StraightConnector height={cardH} />
+                                </div>
+                            </>}
+
                             {/* QF Column */}
                             <div className="flex flex-col flex-shrink-0" style={{ gap: pairGap }}>
-                                {/* Upper pair: QF1 + QF2 */}
                                 <div className="flex flex-col" style={{ gap: pairGap }}>
                                     <MatchCard match={championship.quarterfinals[0]} label="QF1: A#1 vs B#4" />
                                     <MatchCard match={championship.quarterfinals[1]} label="QF2: B#2 vs A#3" />
                                 </div>
-                                {/* Spacer between pairs */}
                                 <div style={{ height: bigGap }}></div>
-                                {/* Lower pair: QF3 + QF4 */}
                                 <div className="flex flex-col" style={{ gap: pairGap }}>
                                     <MatchCard match={championship.quarterfinals[2]} label="QF3: A#2 vs B#3" />
                                     <MatchCard match={championship.quarterfinals[3]} label="QF4: B#1 vs A#4" />
@@ -859,7 +902,7 @@ const API_BASE = '/api';
                                 <BracketConnector height={pairH} />
                             </div>
 
-                            {/* SF Column - vertically centered between their QF pairs */}
+                            {/* SF Column */}
                             <div className="flex flex-col flex-shrink-0 justify-center" style={{ gap: pairH + bigGap - cardH }}>
                                 <MatchCard match={championship.semifinals[0]} label="Semifinal 1" showSeeds={false} />
                                 <MatchCard match={championship.semifinals[1]} label="Semifinal 2" showSeeds={false} />
@@ -872,13 +915,13 @@ const API_BASE = '/api';
                             <div className="flex flex-col items-center flex-shrink-0">
                                 <MatchCard match={championship.final} label="Grand Final" showSeeds={false} />
                                 {championship.champion && (
-                                    <div className="mt-3 text-center px-4 py-2 rounded-lg bg-gradient-to-r from-amber-900/50 to-violet-900/50 border border-amber-500">
-                                        <div className="text-[10px] text-gray-400 uppercase tracking-wider">Champion</div>
+                                    <div className="mt-3 text-center px-4 py-2 rounded-lg bg-gradient-to-r from-amber-50 to-violet-50 border border-amber-300">
+                                        <div className="text-[10px] text-gray-500 uppercase tracking-wider">Champion</div>
                                         <div className="flex items-center justify-center gap-2 mt-1">
-                                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-5 h-5 text-amber-500">
+                                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-5 h-5 text-amber-600">
                                                 <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 18.75h-9m9 0a3 3 0 0 1 3 3h-15a3 3 0 0 1 3-3m9 0v-3.375c0-.621-.503-1.125-1.125-1.125h-.871M7.5 18.75v-3.375c0-.621.504-1.125 1.125-1.125h.872m5.007 0H9.497m5.007 0a7.454 7.454 0 0 1-.982-3.172M9.497 14.25a7.454 7.454 0 0 0 .981-3.172M5.25 4.236c-.982.143-1.954.317-2.916.52A6.003 6.003 0 0 0 7.73 9.728M5.25 4.236V4.5c0 2.108.966 3.99 2.48 5.228M5.25 4.236V2.721C7.456 2.41 9.71 2.25 12 2.25c2.291 0 4.545.16 6.75.47v1.516M7.73 9.728a6.726 6.726 0 0 0 2.748 1.35m8.272-6.842V4.5c0 2.108-.966 3.99-2.48 5.228m2.48-5.492a46.32 46.32 0 0 1 2.916.52 6.003 6.003 0 0 1-5.395 4.972m0 0a6.726 6.726 0 0 1-2.749 1.35m0 0a6.772 6.772 0 0 1-2.992 0" />
                                             </svg>
-                                            <span className="font-bold text-amber-500">{championship.champion}</span>
+                                            <span className="font-bold text-amber-700">{championship.champion}</span>
                                         </div>
                                     </div>
                                 )}
@@ -887,11 +930,12 @@ const API_BASE = '/api';
                     </div>
 
                     {/* Seed Legend */}
-                    <div className="mt-4 pt-4 border-t border-gray-700">
+                    <div className="mt-4 pt-4 border-t border-gray-200">
                         <div className="flex flex-wrap gap-4 text-xs text-gray-500">
-                            <span><span className="text-green-500">A#1-4</span> = Group A seeds</span>
-                            <span><span className="text-amber-500">B#1-4</span> = Group B seeds</span>
-                            <span><span className="text-purple-400">WC</span> = Wildcard winner</span>
+                            <span><span className="text-emerald-600 font-semibold">A#1-6</span> = Group A seeds</span>
+                            <span><span className="text-amber-600 font-semibold">B#1-6</span> = Group B seeds</span>
+                            <span><span className="text-purple-600 font-semibold">WC</span> = Wildcard</span>
+                            <span><span className="text-violet-600 font-semibold">PI</span> = Play-In (WC winner vs #4 seed)</span>
                         </div>
                     </div>
                 </div>
@@ -4622,7 +4666,7 @@ const API_BASE = '/api';
                                     <StandingsTable standings={season.standings.B} groupName="B" groupLabel={season.groups.B.name} schedule={season.schedule?.B} />
                                 </div>
 
-                                {/* Projected Championship Bracket */}
+                                {/* Projected Championship Bracket (with WC + Play-In) */}
                                 {season?.standings && (() => {
                                     const sortS = (st) => {
                                         const arr = Object.entries(st).map(([name, s]) => ({ name, ...s }));
@@ -4633,19 +4677,26 @@ const API_BASE = '/api';
                                     const sB = sortS(season.standings.B || {});
                                     const pick = (arr, i) => arr[i]?.name || 'TBD';
 
-                                    // Use real championship data if in playoffs, otherwise projected
                                     const bracket = season.championship || {
+                                        wildcardMatches: [
+                                            { id: 'P-WC1', player1: pick(sA,4), player2: pick(sB,4), seed1: 'A#5', seed2: 'B#5', player1Group: 'A', player2Group: 'B' },
+                                            { id: 'P-WC2', player1: pick(sA,5), player2: pick(sB,5), seed1: 'A#6', seed2: 'B#6', player1Group: 'A', player2Group: 'B' },
+                                        ],
+                                        playInGames: [
+                                            { id: 'P-PI-B', group: 'B', player1: pick(sB,3), player2: null, seed1: 'B#4', seed2: 'WC', player1Group: 'B', player2Group: null, matchName: 'Play-In: Group B' },
+                                            { id: 'P-PI-A', group: 'A', player1: pick(sA,3), player2: null, seed1: 'A#4', seed2: 'WC', player1Group: 'A', player2Group: null, matchName: 'Play-In: Group A' },
+                                        ],
                                         quarterfinals: [
-                                            { id: 'P-QF1', player1: pick(sA,0), player2: pick(sB,3), seed1: 'A#1', seed2: 'B#4', player1Group: 'A', player2Group: 'B' },
+                                            { id: 'P-QF1', player1: pick(sA,0), player2: null, seed1: 'A#1', seed2: 'PI-B', player1Group: 'A', player2Group: 'B' },
                                             { id: 'P-QF2', player1: pick(sB,1), player2: pick(sA,2), seed1: 'B#2', seed2: 'A#3', player1Group: 'B', player2Group: 'A' },
                                             { id: 'P-QF3', player1: pick(sA,1), player2: pick(sB,2), seed1: 'A#2', seed2: 'B#3', player1Group: 'A', player2Group: 'B' },
-                                            { id: 'P-QF4', player1: pick(sB,0), player2: pick(sA,3), seed1: 'B#1', seed2: 'A#4', player1Group: 'B', player2Group: 'A' },
+                                            { id: 'P-QF4', player1: pick(sB,0), player2: null, seed1: 'B#1', seed2: 'PI-A', player1Group: 'B', player2Group: 'A' },
                                         ],
                                         semifinals: [
-                                            { id: 'P-SF1', player1: null, player2: null, seed1: 'QF1 Winner', seed2: 'QF2 Winner' },
-                                            { id: 'P-SF2', player1: null, player2: null, seed1: 'QF3 Winner', seed2: 'QF4 Winner' },
+                                            { id: 'P-SF1', player1: null, player2: null, seed1: 'QF1 W', seed2: 'QF2 W' },
+                                            { id: 'P-SF2', player1: null, player2: null, seed1: 'QF3 W', seed2: 'QF4 W' },
                                         ],
-                                        final: { id: 'P-FINAL', player1: null, player2: null, seed1: 'SF1 Winner', seed2: 'SF2 Winner' },
+                                        final: { id: 'P-FINAL', player1: null, player2: null, seed1: 'SF1 W', seed2: 'SF2 W' },
                                         champion: null
                                     };
                                     const isProjected = !season.championship;
@@ -4653,45 +4704,6 @@ const API_BASE = '/api';
                                         <div className="relative">
                                             {isProjected && <div className="absolute top-3 right-3 z-10 bg-purple-600/80 text-white text-xs px-2 py-1 rounded font-semibold">PROJECTED</div>}
                                             <ChampionshipBracket championship={bracket} onRecordResult={isProjected ? () => {} : handleRecordResult} />
-                                        </div>
-                                    );
-                                })()}
-
-                                {/* Wildcard Preview */}
-                                {season?.standings && !season?.championship && (() => {
-                                    const sortS = (st) => {
-                                        const arr = Object.entries(st).map(([name, s]) => ({ name, ...s }));
-                                        arr.sort((a, b) => (b.wins - b.losses) - (a.wins - a.losses) || b.wins - a.wins);
-                                        return arr;
-                                    };
-                                    const sA = sortS(season.standings.A || {});
-                                    const sB = sortS(season.standings.B || {});
-                                    const pick = (arr, i) => arr[i]?.name || 'TBD';
-                                    return (
-                                        <div className="bg-white shadow-sm border border-gray-200 rounded-xl p-4 border border-purple-500/30">
-                                            <h3 className="text-lg font-bold mb-3 flex items-center gap-2">
-                                                <span className="text-purple-500">🃏</span> Wildcard Round
-                                                <span className="text-xs bg-purple-600/80 text-white px-2 py-0.5 rounded font-semibold ml-auto">PROJECTED</span>
-                                            </h3>
-                                            <p className="text-xs text-gray-500 mb-3">Winners earn a play-in game vs #4 seed from their group</p>
-                                            <div className="grid md:grid-cols-2 gap-3">
-                                                <div className="bg-gray-800 rounded-lg p-3 border border-gray-700">
-                                                    <div className="text-[10px] text-gray-400 uppercase tracking-wider mb-2">Wildcard 1: #5 Seeds</div>
-                                                    <div className="flex items-center justify-between">
-                                                        <div className="flex items-center gap-2"><span className="text-[10px] font-bold px-1.5 py-0.5 rounded border bg-emerald-900/40 text-green-400 border-emerald-700">A#5</span><PlayerAvatar name={pick(sA,4)} size="sm" /><span className="text-sm">{pick(sA,4)}</span></div>
-                                                        <span className="text-gray-500 text-xs font-bold">vs</span>
-                                                        <div className="flex items-center gap-2"><span className="text-sm">{pick(sB,4)}</span><PlayerAvatar name={pick(sB,4)} size="sm" /><span className="text-[10px] font-bold px-1.5 py-0.5 rounded border bg-amber-900/40 text-amber-400 border-amber-700">B#5</span></div>
-                                                    </div>
-                                                </div>
-                                                <div className="bg-gray-800 rounded-lg p-3 border border-gray-700">
-                                                    <div className="text-[10px] text-gray-400 uppercase tracking-wider mb-2">Wildcard 2: #6 Seeds</div>
-                                                    <div className="flex items-center justify-between">
-                                                        <div className="flex items-center gap-2"><span className="text-[10px] font-bold px-1.5 py-0.5 rounded border bg-emerald-900/40 text-green-400 border-emerald-700">A#6</span><PlayerAvatar name={pick(sA,5)} size="sm" /><span className="text-sm">{pick(sA,5)}</span></div>
-                                                        <span className="text-gray-500 text-xs font-bold">vs</span>
-                                                        <div className="flex items-center gap-2"><span className="text-sm">{pick(sB,5)}</span><PlayerAvatar name={pick(sB,5)} size="sm" /><span className="text-[10px] font-bold px-1.5 py-0.5 rounded border bg-amber-900/40 text-amber-400 border-amber-700">B#6</span></div>
-                                                    </div>
-                                                </div>
-                                            </div>
                                         </div>
                                     );
                                 })()}
