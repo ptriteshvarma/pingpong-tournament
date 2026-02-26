@@ -740,7 +740,7 @@ const API_BASE = '/api';
                 };
 
                 return (
-                    <div className="flex-shrink-0" style={{ width: 240 }}>
+                    <div className="w-full">
                         <div className="bg-white rounded-lg overflow-hidden border border-gray-300 shadow-sm">
                             <div className="bg-gray-100 px-2 py-1 border-b border-gray-200">
                                 <span className="text-[10px] text-gray-500 font-semibold uppercase tracking-wider">{label}</span>
@@ -841,29 +841,29 @@ const API_BASE = '/api';
                     </div>
 
                     {/* Round Headers */}
-                    <div className="overflow-x-auto pb-4">
-                        <div className="flex items-start">
+                    <div className="pb-4">
+                        <div className="flex items-start w-full">
                             {hasWildcard && <>
-                                <div className="flex-shrink-0 text-center text-xs text-purple-600 font-semibold uppercase tracking-wider mb-2" style={{ width: 240 }}>Wildcard</div>
+                                <div className="flex-1 min-w-0 text-center text-xs text-purple-600 font-semibold uppercase tracking-wider mb-2">Wildcard</div>
                                 <div style={{ width: connW }} className="flex-shrink-0"></div>
                             </>}
                             {hasPlayIn && <>
-                                <div className="flex-shrink-0 text-center text-xs text-purple-600 font-semibold uppercase tracking-wider mb-2" style={{ width: 240 }}>Play-In</div>
+                                <div className="flex-1 min-w-0 text-center text-xs text-purple-600 font-semibold uppercase tracking-wider mb-2">Play-In</div>
                                 <div style={{ width: connW }} className="flex-shrink-0"></div>
                             </>}
-                            <div className="flex-shrink-0 text-center text-xs text-purple-600 font-semibold uppercase tracking-wider mb-2" style={{ width: 240 }}>Quarterfinals</div>
+                            <div className="flex-1 min-w-0 text-center text-xs text-purple-600 font-semibold uppercase tracking-wider mb-2">Quarterfinals</div>
                             <div style={{ width: connW }} className="flex-shrink-0"></div>
-                            <div className="flex-shrink-0 text-center text-xs text-purple-600 font-semibold uppercase tracking-wider mb-2" style={{ width: 240 }}>Semifinals</div>
+                            <div className="flex-1 min-w-0 text-center text-xs text-purple-600 font-semibold uppercase tracking-wider mb-2">Semifinals</div>
                             <div style={{ width: connW }} className="flex-shrink-0"></div>
-                            <div className="flex-shrink-0 text-center text-xs text-amber-600 font-semibold uppercase tracking-wider mb-2" style={{ width: 240 }}>Final</div>
+                            <div className="flex-1 min-w-0 text-center text-xs text-amber-600 font-semibold uppercase tracking-wider mb-2">Final</div>
                         </div>
 
                         {/* Bracket Tree */}
-                        <div className="flex items-center" style={{ minWidth: 0 }}>
+                        <div className="flex items-center w-full">
 
                             {/* Wildcard Column */}
                             {hasWildcard && <>
-                                <div className="flex flex-col flex-shrink-0 justify-center" style={{ gap: pairH + bigGap - cardH }}>
+                                <div className="flex flex-col flex-1 min-w-0 justify-center" style={{ gap: pairH + bigGap - cardH }}>
                                     {wc1 && <MatchCard match={wc1} label="WC1: #5 Seeds" />}
                                     {wc2 && <MatchCard match={wc2} label="WC2: #6 Seeds" />}
                                 </div>
@@ -875,9 +875,9 @@ const API_BASE = '/api';
 
                             {/* Play-In Column */}
                             {hasPlayIn && <>
-                                <div className="flex flex-col flex-shrink-0 justify-center" style={{ gap: pairH + bigGap - cardH }}>
-                                    {playInB ? <MatchCard match={playInB} label="Play-In: Group B" /> : <div style={{ height: cardH, width: 240 }}></div>}
-                                    {playInA ? <MatchCard match={playInA} label="Play-In: Group A" /> : <div style={{ height: cardH, width: 240 }}></div>}
+                                <div className="flex flex-col flex-1 min-w-0 justify-center" style={{ gap: pairH + bigGap - cardH }}>
+                                    {playInB ? <MatchCard match={playInB} label="Play-In: Group B" /> : <div style={{ height: cardH }}></div>}
+                                    {playInA ? <MatchCard match={playInA} label="Play-In: Group A" /> : <div style={{ height: cardH }}></div>}
                                 </div>
                                 <div className="flex flex-col flex-shrink-0 justify-center" style={{ gap: pairH + bigGap - cardH }}>
                                     <StraightConnector height={cardH} />
@@ -886,7 +886,7 @@ const API_BASE = '/api';
                             </>}
 
                             {/* QF Column */}
-                            <div className="flex flex-col flex-shrink-0" style={{ gap: pairGap }}>
+                            <div className="flex flex-col flex-1 min-w-0" style={{ gap: pairGap }}>
                                 <div className="flex flex-col" style={{ gap: pairGap }}>
                                     <MatchCard match={championship.quarterfinals[0]} label="QF1: A#1 vs B#4" />
                                     <MatchCard match={championship.quarterfinals[1]} label="QF2: B#2 vs A#3" />
@@ -905,7 +905,7 @@ const API_BASE = '/api';
                             </div>
 
                             {/* SF Column */}
-                            <div className="flex flex-col flex-shrink-0 justify-center" style={{ gap: pairH + bigGap - cardH }}>
+                            <div className="flex flex-col flex-1 min-w-0 justify-center" style={{ gap: pairH + bigGap - cardH }}>
                                 <MatchCard match={championship.semifinals[0]} label="Semifinal 1" showSeeds={false} />
                                 <MatchCard match={championship.semifinals[1]} label="Semifinal 2" showSeeds={false} />
                             </div>
@@ -914,7 +914,7 @@ const API_BASE = '/api';
                             <BracketConnector height={pairH + bigGap} />
 
                             {/* Final + Champion */}
-                            <div className="flex flex-col items-center flex-shrink-0">
+                            <div className="flex flex-col items-center flex-1 min-w-0">
                                 <MatchCard match={championship.final} label="Grand Final" showSeeds={false} />
                                 {championship.champion && (
                                     <div className="mt-3 text-center px-4 py-2 rounded-lg bg-gradient-to-r from-amber-50 to-violet-50 border border-amber-300">
