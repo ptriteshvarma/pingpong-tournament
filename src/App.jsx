@@ -740,7 +740,7 @@ const API_BASE = '/api';
                 };
 
                 return (
-                    <div className="w-52 flex-shrink-0">
+                    <div className="flex-shrink-0" style={{ width: 240 }}>
                         <div className="bg-white rounded-lg overflow-hidden border border-gray-300 shadow-sm">
                             <div className="bg-gray-100 px-2 py-1 border-b border-gray-200">
                                 <span className="text-[10px] text-gray-500 font-semibold uppercase tracking-wider">{label}</span>
@@ -788,14 +788,16 @@ const API_BASE = '/api';
             };
 
             // Connector that merges two matches into one (bracket lines)
+            const connW = 48;
             const BracketConnector = ({ height = 120 }) => {
                 const half = height / 2;
+                const mid = connW / 2;
                 return (
-                    <div className="flex-shrink-0 flex items-center" style={{ width: 32, height }}>
-                        <svg width="32" height={height} viewBox={`0 0 32 ${height}`} fill="none">
-                            <path d={`M 0 ${half / 2} L 16 ${half / 2} L 16 ${half}`} stroke="#8b5cf6" strokeWidth="2" fill="none" />
-                            <path d={`M 0 ${half + half / 2} L 16 ${half + half / 2} L 16 ${half}`} stroke="#8b5cf6" strokeWidth="2" fill="none" />
-                            <path d={`M 16 ${half} L 32 ${half}`} stroke="#8b5cf6" strokeWidth="2" fill="none" />
+                    <div className="flex-shrink-0 flex items-center" style={{ width: connW, height }}>
+                        <svg width={connW} height={height} viewBox={`0 0 ${connW} ${height}`} fill="none">
+                            <path d={`M 0 ${half / 2} L ${mid} ${half / 2} L ${mid} ${half}`} stroke="#8b5cf6" strokeWidth="2" fill="none" />
+                            <path d={`M 0 ${half + half / 2} L ${mid} ${half + half / 2} L ${mid} ${half}`} stroke="#8b5cf6" strokeWidth="2" fill="none" />
+                            <path d={`M ${mid} ${half} L ${connW} ${half}`} stroke="#8b5cf6" strokeWidth="2" fill="none" />
                         </svg>
                     </div>
                 );
@@ -803,9 +805,9 @@ const API_BASE = '/api';
 
             // Straight horizontal connector
             const StraightConnector = ({ height = 82 }) => (
-                <div className="flex-shrink-0 flex items-center" style={{ width: 32, height }}>
-                    <svg width="32" height={height} viewBox={`0 0 32 ${height}`} fill="none">
-                        <path d={`M 0 ${height/2} L 32 ${height/2}`} stroke="#8b5cf6" strokeWidth="2" fill="none" />
+                <div className="flex-shrink-0 flex items-center" style={{ width: connW, height }}>
+                    <svg width={connW} height={height} viewBox={`0 0 ${connW} ${height}`} fill="none">
+                        <path d={`M 0 ${height/2} L ${connW} ${height/2}`} stroke="#8b5cf6" strokeWidth="2" fill="none" />
                     </svg>
                 </div>
             );
@@ -840,24 +842,24 @@ const API_BASE = '/api';
 
                     {/* Round Headers */}
                     <div className="overflow-x-auto pb-4">
-                        <div className="flex items-start" style={{ minWidth: (hasWildcard || hasPlayIn) ? 1100 : 780 }}>
+                        <div className="flex items-start">
                             {hasWildcard && <>
-                                <div className="w-52 flex-shrink-0 text-center text-xs text-purple-600 font-semibold uppercase tracking-wider mb-2">Wildcard</div>
-                                <div style={{ width: 32 }} className="flex-shrink-0"></div>
+                                <div className="flex-shrink-0 text-center text-xs text-purple-600 font-semibold uppercase tracking-wider mb-2" style={{ width: 240 }}>Wildcard</div>
+                                <div style={{ width: connW }} className="flex-shrink-0"></div>
                             </>}
                             {hasPlayIn && <>
-                                <div className="w-52 flex-shrink-0 text-center text-xs text-purple-600 font-semibold uppercase tracking-wider mb-2">Play-In</div>
-                                <div style={{ width: 32 }} className="flex-shrink-0"></div>
+                                <div className="flex-shrink-0 text-center text-xs text-purple-600 font-semibold uppercase tracking-wider mb-2" style={{ width: 240 }}>Play-In</div>
+                                <div style={{ width: connW }} className="flex-shrink-0"></div>
                             </>}
-                            <div className="w-52 flex-shrink-0 text-center text-xs text-purple-600 font-semibold uppercase tracking-wider mb-2">Quarterfinals</div>
-                            <div style={{ width: 32 }} className="flex-shrink-0"></div>
-                            <div className="w-52 flex-shrink-0 text-center text-xs text-purple-600 font-semibold uppercase tracking-wider mb-2">Semifinals</div>
-                            <div style={{ width: 32 }} className="flex-shrink-0"></div>
-                            <div className="w-52 flex-shrink-0 text-center text-xs text-amber-600 font-semibold uppercase tracking-wider mb-2">Final</div>
+                            <div className="flex-shrink-0 text-center text-xs text-purple-600 font-semibold uppercase tracking-wider mb-2" style={{ width: 240 }}>Quarterfinals</div>
+                            <div style={{ width: connW }} className="flex-shrink-0"></div>
+                            <div className="flex-shrink-0 text-center text-xs text-purple-600 font-semibold uppercase tracking-wider mb-2" style={{ width: 240 }}>Semifinals</div>
+                            <div style={{ width: connW }} className="flex-shrink-0"></div>
+                            <div className="flex-shrink-0 text-center text-xs text-amber-600 font-semibold uppercase tracking-wider mb-2" style={{ width: 240 }}>Final</div>
                         </div>
 
                         {/* Bracket Tree */}
-                        <div className="flex items-center" style={{ minWidth: (hasWildcard || hasPlayIn) ? 1100 : 780 }}>
+                        <div className="flex items-center" style={{ minWidth: 0 }}>
 
                             {/* Wildcard Column */}
                             {hasWildcard && <>
@@ -874,8 +876,8 @@ const API_BASE = '/api';
                             {/* Play-In Column */}
                             {hasPlayIn && <>
                                 <div className="flex flex-col flex-shrink-0 justify-center" style={{ gap: pairH + bigGap - cardH }}>
-                                    {playInB ? <MatchCard match={playInB} label="Play-In: Group B" /> : <div style={{ height: cardH, width: 208 }}></div>}
-                                    {playInA ? <MatchCard match={playInA} label="Play-In: Group A" /> : <div style={{ height: cardH, width: 208 }}></div>}
+                                    {playInB ? <MatchCard match={playInB} label="Play-In: Group B" /> : <div style={{ height: cardH, width: 240 }}></div>}
+                                    {playInA ? <MatchCard match={playInA} label="Play-In: Group A" /> : <div style={{ height: cardH, width: 240 }}></div>}
                                 </div>
                                 <div className="flex flex-col flex-shrink-0 justify-center" style={{ gap: pairH + bigGap - cardH }}>
                                     <StraightConnector height={cardH} />
