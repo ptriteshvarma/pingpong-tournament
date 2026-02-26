@@ -4622,6 +4622,80 @@ const API_BASE = '/api';
                                     <StandingsTable standings={season.standings.B} groupName="B" groupLabel={season.groups.B.name} schedule={season.schedule?.B} />
                                 </div>
 
+                                {/* Projected Championship Bracket */}
+                                {season?.standings && (() => {
+                                    const sortS = (st) => {
+                                        const arr = Object.entries(st).map(([name, s]) => ({ name, ...s }));
+                                        arr.sort((a, b) => (b.wins - b.losses) - (a.wins - a.losses) || b.wins - a.wins);
+                                        return arr;
+                                    };
+                                    const sA = sortS(season.standings.A || {});
+                                    const sB = sortS(season.standings.B || {});
+                                    const pick = (arr, i) => arr[i]?.name || 'TBD';
+
+                                    // Use real championship data if in playoffs, otherwise projected
+                                    const bracket = season.championship || {
+                                        quarterfinals: [
+                                            { id: 'P-QF1', player1: pick(sA,0), player2: pick(sB,3), seed1: 'A#1', seed2: 'B#4', player1Group: 'A', player2Group: 'B' },
+                                            { id: 'P-QF2', player1: pick(sB,1), player2: pick(sA,2), seed1: 'B#2', seed2: 'A#3', player1Group: 'B', player2Group: 'A' },
+                                            { id: 'P-QF3', player1: pick(sA,1), player2: pick(sB,2), seed1: 'A#2', seed2: 'B#3', player1Group: 'A', player2Group: 'B' },
+                                            { id: 'P-QF4', player1: pick(sB,0), player2: pick(sA,3), seed1: 'B#1', seed2: 'A#4', player1Group: 'B', player2Group: 'A' },
+                                        ],
+                                        semifinals: [
+                                            { id: 'P-SF1', player1: null, player2: null, seed1: 'QF1 Winner', seed2: 'QF2 Winner' },
+                                            { id: 'P-SF2', player1: null, player2: null, seed1: 'QF3 Winner', seed2: 'QF4 Winner' },
+                                        ],
+                                        final: { id: 'P-FINAL', player1: null, player2: null, seed1: 'SF1 Winner', seed2: 'SF2 Winner' },
+                                        champion: null
+                                    };
+                                    const isProjected = !season.championship;
+                                    return (
+                                        <div className="relative">
+                                            {isProjected && <div className="absolute top-3 right-3 z-10 bg-purple-600/80 text-white text-xs px-2 py-1 rounded font-semibold">PROJECTED</div>}
+                                            <ChampionshipBracket championship={bracket} onRecordResult={isProjected ? () => {} : handleRecordResult} />
+                                        </div>
+                                    );
+                                })()}
+
+                                {/* Wildcard Preview */}
+                                {season?.standings && !season?.championship && (() => {
+                                    const sortS = (st) => {
+                                        const arr = Object.entries(st).map(([name, s]) => ({ name, ...s }));
+                                        arr.sort((a, b) => (b.wins - b.losses) - (a.wins - a.losses) || b.wins - a.wins);
+                                        return arr;
+                                    };
+                                    const sA = sortS(season.standings.A || {});
+                                    const sB = sortS(season.standings.B || {});
+                                    const pick = (arr, i) => arr[i]?.name || 'TBD';
+                                    return (
+                                        <div className="bg-white shadow-sm border border-gray-200 rounded-xl p-4 border border-purple-500/30">
+                                            <h3 className="text-lg font-bold mb-3 flex items-center gap-2">
+                                                <span className="text-purple-500">🃏</span> Wildcard Round
+                                                <span className="text-xs bg-purple-600/80 text-white px-2 py-0.5 rounded font-semibold ml-auto">PROJECTED</span>
+                                            </h3>
+                                            <p className="text-xs text-gray-500 mb-3">Winners earn a play-in game vs #4 seed from their group</p>
+                                            <div className="grid md:grid-cols-2 gap-3">
+                                                <div className="bg-gray-800 rounded-lg p-3 border border-gray-700">
+                                                    <div className="text-[10px] text-gray-400 uppercase tracking-wider mb-2">Wildcard 1: #5 Seeds</div>
+                                                    <div className="flex items-center justify-between">
+                                                        <div className="flex items-center gap-2"><span className="text-[10px] font-bold px-1.5 py-0.5 rounded border bg-emerald-900/40 text-green-400 border-emerald-700">A#5</span><PlayerAvatar name={pick(sA,4)} size="sm" /><span className="text-sm">{pick(sA,4)}</span></div>
+                                                        <span className="text-gray-500 text-xs font-bold">vs</span>
+                                                        <div className="flex items-center gap-2"><span className="text-sm">{pick(sB,4)}</span><PlayerAvatar name={pick(sB,4)} size="sm" /><span className="text-[10px] font-bold px-1.5 py-0.5 rounded border bg-amber-900/40 text-amber-400 border-amber-700">B#5</span></div>
+                                                    </div>
+                                                </div>
+                                                <div className="bg-gray-800 rounded-lg p-3 border border-gray-700">
+                                                    <div className="text-[10px] text-gray-400 uppercase tracking-wider mb-2">Wildcard 2: #6 Seeds</div>
+                                                    <div className="flex items-center justify-between">
+                                                        <div className="flex items-center gap-2"><span className="text-[10px] font-bold px-1.5 py-0.5 rounded border bg-emerald-900/40 text-green-400 border-emerald-700">A#6</span><PlayerAvatar name={pick(sA,5)} size="sm" /><span className="text-sm">{pick(sA,5)}</span></div>
+                                                        <span className="text-gray-500 text-xs font-bold">vs</span>
+                                                        <div className="flex items-center gap-2"><span className="text-sm">{pick(sB,5)}</span><PlayerAvatar name={pick(sB,5)} size="sm" /><span className="text-[10px] font-bold px-1.5 py-0.5 rounded border bg-amber-900/40 text-amber-400 border-amber-700">B#6</span></div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    );
+                                })()}
+
                                 {/* League Info Section */}
                                 <div className="bg-white shadow-sm border border-gray-200 rounded-xl p-4">
                                     <h3 className="text-lg font-bold mb-4 flex items-center gap-2">
@@ -4652,37 +4726,12 @@ const API_BASE = '/api';
                                             </ol>
                                         </div>
 
-                                        {/* Championship Bracket */}
-                                        <div>
-                                            <h4 className="font-semibold text-cyan-400 mb-2">Championship Bracket (8 Players)</h4>
-                                            <ul className="space-y-1 text-gray-700">
-                                                <li>• Top 4 from each group compete together</li>
-                                                <li>• <strong>Quarterfinals:</strong> Cross-group matchups</li>
-                                                <li className="ml-4 text-xs">QF1: A#1 vs B#4 | QF2: B#2 vs A#3</li>
-                                                <li className="ml-4 text-xs">QF3: A#2 vs B#3 | QF4: B#1 vs A#4</li>
-                                                <li>• <strong>Semifinals:</strong> QF winners advance</li>
-                                                <li className="ml-4 text-xs">SF1: QF1 vs QF2 | SF2: QF3 vs QF4</li>
-                                                <li>• <strong>Final:</strong> SF winners for championship</li>
-                                            </ul>
-                                        </div>
-
-                                        {/* Wildcard Round */}
-                                        <div>
-                                            <h4 className="font-semibold text-purple-600 mb-2">Wildcard Round</h4>
-                                            <ul className="space-y-1 text-gray-700">
-                                                <li>• Group A #5 vs Group B #5</li>
-                                                <li>• Group A #6 vs Group B #6</li>
-                                                <li>• Winners replace #4 seed from their group</li>
-                                                <li>• Ensures best performers advance to championship</li>
-                                            </ul>
-                                        </div>
-
                                         {/* Mid-Season Review */}
                                         <div>
-                                            <h4 className="font-semibold text-red-500 mb-2">Mid-Season Review (Week 5)</h4>
+                                            <h4 className="font-semibold text-red-500 mb-2">Mid-Season Review</h4>
                                             <ul className="space-y-1 text-gray-700">
-                                                <li>• Bottom 3 from Group A move to Group B</li>
-                                                <li>• Top 3 from Group B move to Group A</li>
+                                                <li>• Bottom players from Group A move to Group B</li>
+                                                <li>• Top players from Group B move to Group A</li>
                                                 <li>• Keeps groups competitive and balanced</li>
                                                 <li>• New matches generated for swapped players</li>
                                             </ul>
@@ -5391,37 +5440,6 @@ const API_BASE = '/api';
                                     <ChampionshipBracket championship={season.championship} onRecordResult={handleRecordResult} />
                                 )}
 
-                                {/* Preview bracket during regular season - shows projected seedings */}
-                                {season?.status === 'regular' && !season?.championship && season?.standings && (() => {
-                                    const sortS = (st) => {
-                                        const arr = Object.entries(st).map(([name, s]) => ({ name, ...s }));
-                                        arr.sort((a, b) => (b.wins - b.losses) - (a.wins - a.losses) || b.wins - a.wins);
-                                        return arr;
-                                    };
-                                    const sA = sortS(season.standings.A || {});
-                                    const sB = sortS(season.standings.B || {});
-                                    const pick = (arr, i) => arr[i]?.name || 'TBD';
-                                    const preview = {
-                                        quarterfinals: [
-                                            { id: 'P-QF1', player1: pick(sA,0), player2: pick(sB,3), seed1: 'A#1', seed2: 'B#4', player1Group: 'A', player2Group: 'B' },
-                                            { id: 'P-QF2', player1: pick(sB,1), player2: pick(sA,2), seed1: 'B#2', seed2: 'A#3', player1Group: 'B', player2Group: 'A' },
-                                            { id: 'P-QF3', player1: pick(sA,1), player2: pick(sB,2), seed1: 'A#2', seed2: 'B#3', player1Group: 'A', player2Group: 'B' },
-                                            { id: 'P-QF4', player1: pick(sB,0), player2: pick(sA,3), seed1: 'B#1', seed2: 'A#4', player1Group: 'B', player2Group: 'A' },
-                                        ],
-                                        semifinals: [
-                                            { id: 'P-SF1', player1: null, player2: null, seed1: 'QF1 Winner', seed2: 'QF2 Winner' },
-                                            { id: 'P-SF2', player1: null, player2: null, seed1: 'QF3 Winner', seed2: 'QF4 Winner' },
-                                        ],
-                                        final: { id: 'P-FINAL', player1: null, player2: null, seed1: 'SF1 Winner', seed2: 'SF2 Winner' },
-                                        champion: null
-                                    };
-                                    return (
-                                        <div className="relative">
-                                            <div className="absolute top-3 right-3 z-10 bg-purple-600/80 text-white text-xs px-2 py-1 rounded font-semibold">PROJECTED</div>
-                                            <ChampionshipBracket championship={preview} onRecordResult={() => {}} />
-                                        </div>
-                                    );
-                                })()}
 
                                 {/* Legacy playoff brackets (separate group brackets + super bowl) */}
                                 {season?.playoffs && !season?.championship && (
