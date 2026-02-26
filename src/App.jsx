@@ -715,61 +715,101 @@ const API_BASE = '/api';
                 const canPlay = match.player1 && match.player2 && !match.completed;
                 const getGroupColor = (group) => group === 'A' ? 'text-green-600' : group === 'B' ? 'text-amber-600' : 'text-gray-500';
 
+                const PlayerRow = ({ name, seed, group, isWinner, score }) => {
+                    const getSeedBg = (g) => g === 'A' ? 'bg-emerald-900/40 text-green-400 border-emerald-700' : g === 'B' ? 'bg-amber-900/40 text-amber-400 border-amber-700' : 'bg-gray-700 text-gray-400 border-gray-600';
+                    return (
+                        <div className={`flex items-center gap-2 px-2 py-1.5 ${isWinner ? 'bg-emerald-900/30' : ''}`}>
+                            {showSeeds && seed ? (
+                                <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded border ${getSeedBg(group)} min-w-[32px] text-center`}>{seed}</span>
+                            ) : (
+                                <span className="min-w-[32px]"></span>
+                            )}
+                            {name ? (
+                                <>
+                                    <PlayerAvatar name={name} size="sm" />
+                                    <span className={`text-sm truncate flex-1 ${isWinner ? 'text-green-400 font-semibold' : ''}`}>{name}</span>
+                                </>
+                            ) : (
+                                <span className="text-gray-500 italic text-sm flex-1">TBD</span>
+                            )}
+                            {match.completed && score !== undefined && (
+                                <span className={`text-sm font-bold min-w-[16px] text-right ${isWinner ? 'text-green-400' : 'text-gray-500'}`}>{score}</span>
+                            )}
+                        </div>
+                    );
+                };
+
                 return (
-                    <div className="bg-gray-100 rounded-lg p-3 w-52">
-                        <div className="text-xs text-gray-500 mb-2 font-semibold">{label}</div>
-                        <div className={`flex items-center gap-2 mb-1 ${match.winner === match.player1 ? 'text-green-600 font-semibold' : ''}`}>
-                            {match.player1 ? (
-                                <>
-                                    <PlayerAvatar name={match.player1} size="sm" />
-                                    <span className="text-sm truncate flex-1">{match.player1}</span>
-                                    {showSeeds && match.seed1 && <span className={`text-xs ${getGroupColor(match.player1Group)}`}>{match.seed1}</span>}
-                                </>
-                            ) : (
-                                <span className="text-gray-500 italic text-sm">TBD</span>
+                    <div className="w-52 flex-shrink-0">
+                        <div className="bg-gray-800 rounded-lg overflow-hidden border border-gray-700 shadow-md">
+                            <div className="bg-gray-750 px-2 py-1 border-b border-gray-700">
+                                <span className="text-[10px] text-gray-400 font-semibold uppercase tracking-wider">{label}</span>
+                            </div>
+                            <div className="divide-y divide-gray-700">
+                                <PlayerRow
+                                    name={match.player1} seed={match.seed1} group={match.player1Group}
+                                    isWinner={match.winner === match.player1}
+                                    score={match.winner === match.player1 ? match.score1 : match.winner === match.player2 ? match.score2 : undefined}
+                                />
+                                <PlayerRow
+                                    name={match.player2} seed={match.seed2} group={match.player2Group}
+                                    isWinner={match.winner === match.player2}
+                                    score={match.winner === match.player2 ? match.score1 : match.winner === match.player1 ? match.score2 : undefined}
+                                />
+                            </div>
+                            {canPlay && (
+                                <button onClick={() => setShowModal(true)} className="w-full text-xs bg-purple-600 hover:bg-purple-700 py-1.5 font-medium">Record Result</button>
                             )}
                         </div>
-                        <div className={`flex items-center gap-2 ${match.winner === match.player2 ? 'text-green-600 font-semibold' : ''}`}>
-                            {match.player2 ? (
-                                <>
-                                    <PlayerAvatar name={match.player2} size="sm" />
-                                    <span className="text-sm truncate flex-1">{match.player2}</span>
-                                    {showSeeds && match.seed2 && <span className={`text-xs ${getGroupColor(match.player2Group)}`}>{match.seed2}</span>}
-                                </>
-                            ) : (
-                                <span className="text-gray-500 italic text-sm">TBD</span>
-                            )}
-                        </div>
-                        {match.completed ? (
-                            <div className="mt-2 text-center text-green-600 font-semibold text-sm">{match.score1} - {match.score2}</div>
-                        ) : canPlay ? (
-                            <button onClick={() => setShowModal(true)} className="mt-2 w-full text-xs bg-purple-600 hover:bg-purple-700 py-1 rounded">Record</button>
-                        ) : null}
 
                         {showModal && (
                             <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50" onClick={() => setShowModal(false)}>
                                 <div className="bg-gray-100 rounded-xl p-6 max-w-sm w-full" onClick={e => e.stopPropagation()}>
-                                    <h3 className="text-lg font-bold mb-4 text-center">{label}</h3>
+                                    <h3 className="text-lg font-bold mb-4 text-center text-gray-900">{label}</h3>
                                     <div className="grid grid-cols-2 gap-2 mb-4">
                                         {[match.player1, match.player2].map(p => (
-                                            <button key={p} onClick={() => setWinner(p)} className={`p-3 rounded-lg ${winner === p ? 'bg-emerald-600' : 'bg-gray-200'}`}>
+                                            <button key={p} onClick={() => setWinner(p)} className={`p-3 rounded-lg ${winner === p ? 'bg-emerald-600 text-white' : 'bg-gray-200 text-gray-900'}`}>
                                                 <PlayerAvatar name={p} size="sm" /><div className="mt-1 text-sm">{p}</div>
                                             </button>
                                         ))}
                                     </div>
                                     <p className="text-sm text-gray-500 mb-2 text-center">Score (Best of 3: 2-0 or 2-1)</p>
                                     <div className="flex items-center justify-center gap-4 mb-4">
-                                        <input type="number" min="0" max="2" value={score1} onChange={e => setScore1(e.target.value)} className="w-16 bg-gray-200 text-center text-xl rounded-lg p-2" placeholder="0" />
-                                        <span>-</span>
-                                        <input type="number" min="0" max="2" value={score2} onChange={e => setScore2(e.target.value)} className="w-16 bg-gray-200 text-center text-xl rounded-lg p-2" placeholder="0" />
+                                        <input type="number" min="0" max="2" value={score1} onChange={e => setScore1(e.target.value)} className="w-16 bg-gray-200 text-gray-900 text-center text-xl rounded-lg p-2" placeholder="0" />
+                                        <span className="text-gray-900">-</span>
+                                        <input type="number" min="0" max="2" value={score2} onChange={e => setScore2(e.target.value)} className="w-16 bg-gray-200 text-gray-900 text-center text-xl rounded-lg p-2" placeholder="0" />
                                     </div>
-                                    <button onClick={handleSubmit} disabled={!winner} className="w-full py-3 bg-emerald-600 disabled:bg-gray-200 rounded-lg font-semibold">Save</button>
+                                    <button onClick={handleSubmit} disabled={!winner} className="w-full py-3 bg-emerald-600 disabled:bg-gray-300 rounded-lg font-semibold text-white">Save</button>
                                 </div>
                             </div>
                         )}
                     </div>
                 );
             };
+
+            // Connector that merges two matches into one (bracket lines)
+            const BracketConnector = ({ height = 120 }) => {
+                const half = height / 2;
+                return (
+                    <div className="flex-shrink-0 flex items-center" style={{ width: 32, height }}>
+                        <svg width="32" height={height} viewBox={`0 0 32 ${height}`} fill="none">
+                            {/* Top match → midpoint */}
+                            <path d={`M 0 ${half / 2} L 16 ${half / 2} L 16 ${half}`} stroke="#7c3aed" strokeWidth="2" fill="none" />
+                            {/* Bottom match → midpoint */}
+                            <path d={`M 0 ${half + half / 2} L 16 ${half + half / 2} L 16 ${half}`} stroke="#7c3aed" strokeWidth="2" fill="none" />
+                            {/* Midpoint → next round */}
+                            <path d={`M 16 ${half} L 32 ${half}`} stroke="#7c3aed" strokeWidth="2" fill="none" />
+                        </svg>
+                    </div>
+                );
+            };
+
+            // Card height + gap between cards in a pair
+            const cardH = 82; // approximate height of a match card
+            const pairGap = 16; // gap between two QF matches in a pair
+            const pairH = cardH * 2 + pairGap; // height of a QF pair
+            const bigGap = 32; // gap between upper pair and lower pair
+            const totalH = pairH * 2 + bigGap; // total bracket height
 
             return (
                 <div className="bg-white shadow-sm border border-gray-200 rounded-xl p-6 border border-violet-500 shadow-lg shadow-violet-500/20">
@@ -785,68 +825,73 @@ const API_BASE = '/api';
                         </div>
                     </div>
 
-                    <div className="flex gap-4 items-start overflow-x-auto pb-4">
-                        {/* Quarterfinals */}
-                        <div className="flex flex-col gap-4">
-                            <div className="text-xs text-purple-600 font-semibold text-center uppercase tracking-wide mb-1">Quarterfinals</div>
-                            <div className="flex flex-col gap-8">
-                                <MatchCard match={championship.quarterfinals[0]} label="QF1: A#1 vs B#4" />
-                                <MatchCard match={championship.quarterfinals[1]} label="QF2: B#2 vs A#3" />
-                            </div>
-                            <div className="h-4"></div>
-                            <div className="flex flex-col gap-8">
-                                <MatchCard match={championship.quarterfinals[2]} label="QF3: A#2 vs B#3" />
-                                <MatchCard match={championship.quarterfinals[3]} label="QF4: B#1 vs A#4" />
-                            </div>
+                    {/* Round Headers */}
+                    <div className="overflow-x-auto pb-4">
+                        <div className="flex items-start" style={{ minWidth: 780 }}>
+                            <div className="w-52 flex-shrink-0 text-center text-xs text-purple-400 font-semibold uppercase tracking-wider mb-2">Quarterfinals</div>
+                            <div style={{ width: 32 }} className="flex-shrink-0"></div>
+                            <div className="w-52 flex-shrink-0 text-center text-xs text-purple-400 font-semibold uppercase tracking-wider mb-2">Semifinals</div>
+                            <div style={{ width: 32 }} className="flex-shrink-0"></div>
+                            <div className="w-52 flex-shrink-0 text-center text-xs text-amber-400 font-semibold uppercase tracking-wider mb-2">Final</div>
                         </div>
 
-                        {/* Arrow */}
-                        <div className="text-purple-600 px-2 pt-24">
-                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor" className="w-8 h-8">
-                                <path strokeLinecap="round" strokeLinejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
-                            </svg>
-                        </div>
-
-                        {/* Semifinals */}
-                        <div className="flex flex-col gap-4 pt-8">
-                            <div className="text-xs text-purple-600 font-semibold text-center uppercase tracking-wide mb-1">Semifinals</div>
-                            <div className="flex flex-col gap-32">
-                                <MatchCard match={championship.semifinals[0]} label="SF1: QF1 Winner vs QF2 Winner" showSeeds={false} />
-                                <MatchCard match={championship.semifinals[1]} label="SF2: QF3 Winner vs QF4 Winner" showSeeds={false} />
-                            </div>
-                        </div>
-
-                        {/* Arrow */}
-                        <div className="text-purple-600 px-2 pt-32">
-                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor" className="w-8 h-8">
-                                <path strokeLinecap="round" strokeLinejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
-                            </svg>
-                        </div>
-
-                        {/* Final */}
-                        <div className="flex flex-col items-center pt-24">
-                            <div className="text-xs text-amber-600 font-semibold text-center uppercase tracking-wide mb-1">Championship Final</div>
-                            <MatchCard match={championship.final} label="Grand Final" showSeeds={false} />
-                            {championship.champion && (
-                                <div className="mt-4 text-center px-6 py-3 rounded-lg bg-gradient-to-r from-amber-900/50 to-violet-900/50 border border-amber-500">
-                                    <div className="text-xs text-gray-500 uppercase">Season Champion</div>
-                                    <div className="flex items-center justify-center gap-2 mt-1">
-                                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-6 h-6 text-amber-600">
-                                            <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 18.75h-9m9 0a3 3 0 0 1 3 3h-15a3 3 0 0 1 3-3m9 0v-3.375c0-.621-.503-1.125-1.125-1.125h-.871M7.5 18.75v-3.375c0-.621.504-1.125 1.125-1.125h.872m5.007 0H9.497m5.007 0a7.454 7.454 0 0 1-.982-3.172M9.497 14.25a7.454 7.454 0 0 0 .981-3.172M5.25 4.236c-.982.143-1.954.317-2.916.52A6.003 6.003 0 0 0 7.73 9.728M5.25 4.236V4.5c0 2.108.966 3.99 2.48 5.228M5.25 4.236V2.721C7.456 2.41 9.71 2.25 12 2.25c2.291 0 4.545.16 6.75.47v1.516M7.73 9.728a6.726 6.726 0 0 0 2.748 1.35m8.272-6.842V4.5c0 2.108-.966 3.99-2.48 5.228m2.48-5.492a46.32 46.32 0 0 1 2.916.52 6.003 6.003 0 0 1-5.395 4.972m0 0a6.726 6.726 0 0 1-2.749 1.35m0 0a6.772 6.772 0 0 1-2.992 0" />
-                                        </svg>
-                                        <span className="font-bold text-lg text-amber-600">{championship.champion}</span>
-                                    </div>
+                        {/* Bracket Tree */}
+                        <div className="flex items-center" style={{ minWidth: 780 }}>
+                            {/* QF Column */}
+                            <div className="flex flex-col flex-shrink-0" style={{ gap: pairGap }}>
+                                {/* Upper pair: QF1 + QF2 */}
+                                <div className="flex flex-col" style={{ gap: pairGap }}>
+                                    <MatchCard match={championship.quarterfinals[0]} label="QF1: A#1 vs B#4" />
+                                    <MatchCard match={championship.quarterfinals[1]} label="QF2: B#2 vs A#3" />
                                 </div>
-                            )}
+                                {/* Spacer between pairs */}
+                                <div style={{ height: bigGap }}></div>
+                                {/* Lower pair: QF3 + QF4 */}
+                                <div className="flex flex-col" style={{ gap: pairGap }}>
+                                    <MatchCard match={championship.quarterfinals[2]} label="QF3: A#2 vs B#3" />
+                                    <MatchCard match={championship.quarterfinals[3]} label="QF4: B#1 vs A#4" />
+                                </div>
+                            </div>
+
+                            {/* QF → SF Connectors */}
+                            <div className="flex flex-col flex-shrink-0" style={{ gap: bigGap }}>
+                                <BracketConnector height={pairH} />
+                                <BracketConnector height={pairH} />
+                            </div>
+
+                            {/* SF Column - vertically centered between their QF pairs */}
+                            <div className="flex flex-col flex-shrink-0 justify-center" style={{ gap: pairH + bigGap - cardH }}>
+                                <MatchCard match={championship.semifinals[0]} label="Semifinal 1" showSeeds={false} />
+                                <MatchCard match={championship.semifinals[1]} label="Semifinal 2" showSeeds={false} />
+                            </div>
+
+                            {/* SF → Final Connector */}
+                            <BracketConnector height={pairH + bigGap} />
+
+                            {/* Final + Champion */}
+                            <div className="flex flex-col items-center flex-shrink-0">
+                                <MatchCard match={championship.final} label="Grand Final" showSeeds={false} />
+                                {championship.champion && (
+                                    <div className="mt-3 text-center px-4 py-2 rounded-lg bg-gradient-to-r from-amber-900/50 to-violet-900/50 border border-amber-500">
+                                        <div className="text-[10px] text-gray-400 uppercase tracking-wider">Champion</div>
+                                        <div className="flex items-center justify-center gap-2 mt-1">
+                                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-5 h-5 text-amber-500">
+                                                <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 18.75h-9m9 0a3 3 0 0 1 3 3h-15a3 3 0 0 1 3-3m9 0v-3.375c0-.621-.503-1.125-1.125-1.125h-.871M7.5 18.75v-3.375c0-.621.504-1.125 1.125-1.125h.872m5.007 0H9.497m5.007 0a7.454 7.454 0 0 1-.982-3.172M9.497 14.25a7.454 7.454 0 0 0 .981-3.172M5.25 4.236c-.982.143-1.954.317-2.916.52A6.003 6.003 0 0 0 7.73 9.728M5.25 4.236V4.5c0 2.108.966 3.99 2.48 5.228M5.25 4.236V2.721C7.456 2.41 9.71 2.25 12 2.25c2.291 0 4.545.16 6.75.47v1.516M7.73 9.728a6.726 6.726 0 0 0 2.748 1.35m8.272-6.842V4.5c0 2.108-.966 3.99-2.48 5.228m2.48-5.492a46.32 46.32 0 0 1 2.916.52 6.003 6.003 0 0 1-5.395 4.972m0 0a6.726 6.726 0 0 1-2.749 1.35m0 0a6.772 6.772 0 0 1-2.992 0" />
+                                            </svg>
+                                            <span className="font-bold text-amber-500">{championship.champion}</span>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
                         </div>
                     </div>
 
                     {/* Seed Legend */}
-                    <div className="mt-4 pt-4 border-t border-gray-300">
+                    <div className="mt-4 pt-4 border-t border-gray-700">
                         <div className="flex flex-wrap gap-4 text-xs text-gray-500">
-                            <span><span className="text-green-600">A#1-4</span> = Group A seeds</span>
-                            <span><span className="text-amber-600">B#1-4</span> = Group B seeds</span>
-                            <span><span className="text-purple-600">WC</span> = Wildcard winner</span>
+                            <span><span className="text-green-500">A#1-4</span> = Group A seeds</span>
+                            <span><span className="text-amber-500">B#1-4</span> = Group B seeds</span>
+                            <span><span className="text-purple-400">WC</span> = Wildcard winner</span>
                         </div>
                     </div>
                 </div>
