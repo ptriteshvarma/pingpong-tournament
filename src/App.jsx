@@ -5391,6 +5391,38 @@ const API_BASE = '/api';
                                     <ChampionshipBracket championship={season.championship} onRecordResult={handleRecordResult} />
                                 )}
 
+                                {/* Preview bracket during regular season - shows projected seedings */}
+                                {season?.status === 'regular' && !season?.championship && season?.standings && (() => {
+                                    const sortS = (st) => {
+                                        const arr = Object.entries(st).map(([name, s]) => ({ name, ...s }));
+                                        arr.sort((a, b) => (b.wins - b.losses) - (a.wins - a.losses) || b.wins - a.wins);
+                                        return arr;
+                                    };
+                                    const sA = sortS(season.standings.A || {});
+                                    const sB = sortS(season.standings.B || {});
+                                    const pick = (arr, i) => arr[i]?.name || 'TBD';
+                                    const preview = {
+                                        quarterfinals: [
+                                            { id: 'P-QF1', player1: pick(sA,0), player2: pick(sB,3), seed1: 'A#1', seed2: 'B#4', player1Group: 'A', player2Group: 'B' },
+                                            { id: 'P-QF2', player1: pick(sB,1), player2: pick(sA,2), seed1: 'B#2', seed2: 'A#3', player1Group: 'B', player2Group: 'A' },
+                                            { id: 'P-QF3', player1: pick(sA,1), player2: pick(sB,2), seed1: 'A#2', seed2: 'B#3', player1Group: 'A', player2Group: 'B' },
+                                            { id: 'P-QF4', player1: pick(sB,0), player2: pick(sA,3), seed1: 'B#1', seed2: 'A#4', player1Group: 'B', player2Group: 'A' },
+                                        ],
+                                        semifinals: [
+                                            { id: 'P-SF1', player1: null, player2: null, seed1: 'QF1 Winner', seed2: 'QF2 Winner' },
+                                            { id: 'P-SF2', player1: null, player2: null, seed1: 'QF3 Winner', seed2: 'QF4 Winner' },
+                                        ],
+                                        final: { id: 'P-FINAL', player1: null, player2: null, seed1: 'SF1 Winner', seed2: 'SF2 Winner' },
+                                        champion: null
+                                    };
+                                    return (
+                                        <div className="relative">
+                                            <div className="absolute top-3 right-3 z-10 bg-purple-600/80 text-white text-xs px-2 py-1 rounded font-semibold">PROJECTED</div>
+                                            <ChampionshipBracket championship={preview} onRecordResult={() => {}} />
+                                        </div>
+                                    );
+                                })()}
+
                                 {/* Legacy playoff brackets (separate group brackets + super bowl) */}
                                 {season?.playoffs && !season?.championship && (
                                     <>
