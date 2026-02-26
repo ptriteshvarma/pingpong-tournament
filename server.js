@@ -4585,24 +4585,17 @@ app.post('/api/season/playoffs', requireAdmin, async (req, res) => {
     let wildcardWinnerForB = null;
 
     if (season.wildcard) {
+      // Process WC matches in order (WC1 = #5 seeds first, WC2 = #6 seeds second)
+      // Each group can only have ONE wildcard challenger (higher seed takes priority)
       season.wildcard.matches.forEach(match => {
         if (match.completed && match.winner) {
-          // Winner goes to their OWN group playoffs
-          if (match.winner === match.player1) {
-            // Player 1 won - they go to their own group (player1Group)
-            if (match.player1Group === 'A') {
-              wildcardWinnerForA = match.winner;
-            } else {
-              wildcardWinnerForB = match.winner;
-            }
-          } else {
-            // Player 2 won - they go to their own group (player2Group)
-            if (match.player2Group === 'A') {
-              wildcardWinnerForA = match.winner;
-            } else {
-              wildcardWinnerForB = match.winner;
-            }
+          const winnerGroup = match.winner === match.player1 ? match.player1Group : match.player2Group;
+          if (winnerGroup === 'A' && !wildcardWinnerForA) {
+            wildcardWinnerForA = match.winner;
+          } else if (winnerGroup === 'B' && !wildcardWinnerForB) {
+            wildcardWinnerForB = match.winner;
           }
+          // If slot already taken (two winners from same group), second winner is eliminated
         }
       });
     }
