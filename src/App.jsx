@@ -1538,7 +1538,7 @@ const API_BASE = '/api';
 
                     {/* My Availability Grid */}
                     <div className="bg-white shadow-sm border border-gray-200 rounded-xl p-4">
-                        <h3 className="text-lg font-bold mb-3">Set My Availability (3 Weeks)</h3>
+                        <h3 className="text-lg font-bold mb-3">Set My Availability</h3>
                         <p className="text-sm text-gray-500 mb-4">Tap slots when you're free to play. Your opponents will see when you overlap!</p>
                         <div className="overflow-x-auto">
                             <table className="w-full text-sm">
@@ -1548,6 +1548,7 @@ const API_BASE = '/api';
                                         {weekDates.map((date, i) => {
                                             const d = new Date(date + 'T12:00');
                                             const dayOfWeek = d.getDay(); // 0=Sun
+                                            const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
                                             // Compute which calendar week this date belongs to (0, 1, or 2)
                                             const diffFromFirst = weekDates.length > 0 ? Math.floor((new Date(date + 'T12:00') - new Date(weekDates[0] + 'T12:00')) / 86400000) : 0;
                                             const firstDayOfWeek = new Date(weekDates[0] + 'T12:00').getDay();
@@ -1555,13 +1556,14 @@ const API_BASE = '/api';
                                             const weekStyle = weekNum >= 2 ? 'bg-green-50' : weekNum >= 1 ? 'bg-blue-50' : '';
                                             const isNewWeek = i > 0 && dayOfWeek === 0;
                                             const borderStyle = isNewWeek ? 'border-l-2 border-blue-300' : '';
-                                            const showWeekLabel = i === 0 || (dayOfWeek === 0 && isNewWeek);
-                                            const weekColors = ['text-purple-600', 'text-blue-600', 'text-green-600'];
+                                            // Show month label on first date or when month changes
+                                            const prevMonth = i > 0 ? new Date(weekDates[i - 1] + 'T12:00').getMonth() : -1;
+                                            const showMonth = i === 0 || d.getMonth() !== prevMonth;
                                             return (
                                                 <th key={date} className={`p-1 text-center ${weekStyle} ${borderStyle}`}>
                                                     <div className="text-gray-500 text-xs">{dayNames[dayOfWeek]}</div>
                                                     <div className="font-semibold">{d.getDate()}</div>
-                                                    {showWeekLabel && <div className={`text-[10px] ${weekColors[weekNum] || 'text-gray-500'}`}>Week {weekNum + 1}</div>}
+                                                    {showMonth && <div className="text-[10px] text-purple-600 font-medium">{monthNames[d.getMonth()]}</div>}
                                                 </th>
                                             );
                                         })}
