@@ -2591,7 +2591,7 @@ const API_BASE = '/api';
                         <div className="flex items-center justify-between mb-4">
                             <h2 className="text-xl font-bold">Table Availability Calendar</h2>
                             <span className="text-sm text-gray-500 bg-blue-50 px-3 py-1 rounded-full">
-                                📅 View only - Use "Book Table" tab to schedule games
+                                📅 View only - Use "Book & Availability" tab to schedule games
                             </span>
                         </div>
 
@@ -4647,10 +4647,9 @@ const API_BASE = '/api';
                                     { id: 'register', icon: Icons.Snowflake, label: 'Register' },
                                     { id: 'league', icon: Icons.ChartBar, label: 'League' },
                                     { id: 'mygames', icon: Icons.User, label: 'My Games' },
-                                    { id: 'table', icon: Icons.Clock, label: 'Table' },
                                     { id: 'playoffs', icon: Icons.Trophy, label: 'Playoffs' },
                                 ].map(tab => (
-                                    <button key={tab.id} onClick={() => setView(tab.id)} className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm whitespace-nowrap transition-colors ${view === tab.id || (tab.id === 'league' && ['standings', 'schedule'].includes(view)) || (tab.id === 'mygames' && view === 'profile') || (tab.id === 'table' && ['book', 'calendar'].includes(view)) || (tab.id === 'playoffs' && ['brackets', 'history', 'archive'].includes(view)) ? 'bg-purple-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-purple-100 hover:text-purple-700'}`}>
+                                    <button key={tab.id} onClick={() => setView(tab.id)} className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm whitespace-nowrap transition-colors ${view === tab.id || (tab.id === 'league' && ['standings', 'schedule'].includes(view)) || (tab.id === 'mygames' && ['profile', 'book', 'calendar'].includes(view)) || (tab.id === 'playoffs' && ['history', 'archive'].includes(view)) ? 'bg-purple-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-purple-100 hover:text-purple-700'}`}>
                                         <tab.icon />{tab.label}
                                     </button>
                                 ))}
@@ -5372,38 +5371,19 @@ const API_BASE = '/api';
                             </div>
                         )}
 
-                        {/* Combined Table View (Book + Calendar) */}
-                        {(view === 'table' || view === 'book' || view === 'calendar') && (
-                            <div className="space-y-4">
-                                {/* Sub-tabs */}
-                                <div className="flex gap-2 border-b border-gray-200 pb-2">
-                                    <button onClick={() => setView('book')} className={`px-4 py-2 text-sm font-medium rounded-t-lg ${view === 'book' || view === 'table' ? 'bg-purple-100 text-purple-700 border-b-2 border-purple-600' : 'text-gray-500 hover:text-gray-700'}`}>
-                                        Book Table
-                                    </button>
-                                    <button onClick={() => setView('calendar')} className={`px-4 py-2 text-sm font-medium rounded-t-lg ${view === 'calendar' ? 'bg-purple-100 text-purple-700 border-b-2 border-purple-600' : 'text-gray-500 hover:text-gray-700'}`}>
-                                        Calendar
-                                    </button>
-                                </div>
-
-                                {/* Book Table Content */}
-                                {(view === 'table' || view === 'book') && (
-                                    <PlayerSchedule players={players} season={season} currentPlayer={currentPlayer} onSelectPlayer={handleSelectPlayer} />
-                                )}
-
-                                {/* Calendar Content */}
-                                {view === 'calendar' && (
-                                    <TableCalendar />
-                                )}
-                            </div>
-                        )}
-
-                        {/* Combined My Games View (My Matches + Profile) */}
-                        {(view === 'mygames' || view === 'profile') && (
+                        {/* Combined My Games View (My Matches + Book & Availability + Calendar + Profile) */}
+                        {(view === 'mygames' || view === 'profile' || view === 'book' || view === 'calendar' || view === 'table') && (
                             <div className="space-y-4">
                                 {/* Sub-tabs */}
                                 <div className="flex gap-2 border-b border-gray-200 pb-2">
                                     <button onClick={() => setView('mygames')} className={`px-4 py-2 text-sm font-medium rounded-t-lg ${view === 'mygames' ? 'bg-purple-100 text-purple-700 border-b-2 border-purple-600' : 'text-gray-500 hover:text-gray-700'}`}>
                                         My Matches
+                                    </button>
+                                    <button onClick={() => setView('book')} className={`px-4 py-2 text-sm font-medium rounded-t-lg ${view === 'book' || view === 'table' ? 'bg-purple-100 text-purple-700 border-b-2 border-purple-600' : 'text-gray-500 hover:text-gray-700'}`}>
+                                        Book & Availability
+                                    </button>
+                                    <button onClick={() => setView('calendar')} className={`px-4 py-2 text-sm font-medium rounded-t-lg ${view === 'calendar' ? 'bg-purple-100 text-purple-700 border-b-2 border-purple-600' : 'text-gray-500 hover:text-gray-700'}`}>
+                                        Calendar
                                     </button>
                                     <button onClick={() => setView('profile')} className={`px-4 py-2 text-sm font-medium rounded-t-lg ${view === 'profile' ? 'bg-purple-100 text-purple-700 border-b-2 border-purple-600' : 'text-gray-500 hover:text-gray-700'}`}>
                                         Profile
@@ -5415,6 +5395,16 @@ const API_BASE = '/api';
                                     <MyGames players={players} season={season} currentPlayer={currentPlayer} onSelectPlayer={handleSelectPlayer} />
                                 )}
 
+                                {/* Book & Availability Content */}
+                                {(view === 'book' || view === 'table') && (
+                                    <PlayerSchedule players={players} season={season} currentPlayer={currentPlayer} onSelectPlayer={handleSelectPlayer} />
+                                )}
+
+                                {/* Calendar Content */}
+                                {view === 'calendar' && (
+                                    <TableCalendar />
+                                )}
+
                                 {/* Profile Content */}
                                 {view === 'profile' && (
                                     <PlayerProfile playerName={currentPlayer} onSelectPlayer={(name) => { setView('profile'); }} />
@@ -5422,13 +5412,13 @@ const API_BASE = '/api';
                             </div>
                         )}
 
-                        {/* Combined Playoffs View (Brackets + History) */}
+                        {/* Combined Playoffs View (Playoffs + History) */}
                         {(view === 'playoffs' || view === 'brackets' || view === 'history' || view === 'archive') && (
                             <div className="space-y-4">
                                 {/* Sub-tabs */}
                                 <div className="flex gap-2 border-b border-gray-200 pb-2">
                                     <button onClick={() => setView('playoffs')} className={`px-4 py-2 text-sm font-medium rounded-t-lg ${view === 'playoffs' || view === 'brackets' ? 'bg-purple-100 text-purple-700 border-b-2 border-purple-600' : 'text-gray-500 hover:text-gray-700'}`}>
-                                        Brackets
+                                        Playoffs
                                     </button>
                                     <button onClick={() => setView('history')} className={`px-4 py-2 text-sm font-medium rounded-t-lg ${view === 'history' ? 'bg-purple-100 text-purple-700 border-b-2 border-purple-600' : 'text-gray-500 hover:text-gray-700'}`}>
                                         History
