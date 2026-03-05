@@ -1181,6 +1181,7 @@ const API_BASE = '/api';
                 // Check if mid-season swap is completed (happens at Week 3)
                 const midSeasonCompleted = season?.midSeasonReview?.completed || false;
                 const MID_SEASON_WEEK = 3;
+                const currentWeek = season?.currentWeek || 1;
 
                 // Add season matches
                 if (season) {
@@ -1189,10 +1190,12 @@ const API_BASE = '/api';
                             const weekNum = weekIdx + 1;
                             week.forEach(match => {
                                 if (!match.completed && !match.cancelled && (match.player1 === currentPlayer || match.player2 === currentPlayer)) {
+                                    // Hide matches from past weeks (unplayed = missed)
+                                    if (weekNum < currentWeek) return;
+
                                     // Hide matches from Week 3+ until mid-season swap is completed
-                                    // This prevents booking matches with opponents who may change after the swap
                                     if (!midSeasonCompleted && weekNum >= MID_SEASON_WEEK) {
-                                        return; // Skip this match
+                                        return;
                                     }
 
                                     matches.push({
