@@ -260,7 +260,7 @@ const API_BASE = '/api';
 
                     <div className="grid md:grid-cols-2 gap-4">
                         {/* Relegation Zone */}
-                        <div className="bg-rose-900/30 border border-rose-600/50 rounded-lg p-3">
+                        <div className="bg-rose-50 border border-rose-300 rounded-lg p-3">
                             <div className="flex items-center gap-2 mb-2">
                                 <div className="text-red-400"><SwapIcons.ArrowDown /></div>
                                 <span className="font-bold text-red-400 uppercase tracking-wide text-sm">RELEGATION ZONE</span>
@@ -268,7 +268,7 @@ const API_BASE = '/api';
                             <p className="text-xs text-rose-200 mb-2">Bottom 3 of Group A move DOWN to Group B</p>
                             <div className="space-y-1">
                                 {swapZone.relegationZone?.map(player => (
-                                    <div key={player.name} className="flex items-center justify-between bg-rose-900/40 rounded px-2 py-1">
+                                    <div key={player.name} className="flex items-center justify-between bg-rose-100 rounded px-2 py-1">
                                         <div className="flex items-center gap-2">
                                             <span className="text-red-400 font-bold">#{player.rank}</span>
                                             <PlayerAvatar name={player.name} size="sm" />
@@ -284,15 +284,15 @@ const API_BASE = '/api';
                         </div>
 
                         {/* Promotion Zone */}
-                        <div className="bg-emerald-900/30 border border-emerald-600/50 rounded-lg p-3">
+                        <div className="bg-emerald-50 border border-emerald-300 rounded-lg p-3">
                             <div className="flex items-center gap-2 mb-2">
                                 <div className="text-emerald-400"><SwapIcons.ArrowUp /></div>
-                                <span className="font-bold text-emerald-300 uppercase tracking-wide text-sm">PROMOTION ZONE</span>
+                                <span className="font-bold text-emerald-700 uppercase tracking-wide text-sm">PROMOTION ZONE</span>
                             </div>
                             <p className="text-xs text-emerald-200 mb-2">Top 3 of Group B move UP to Group A</p>
                             <div className="space-y-1">
                                 {swapZone.promotionZone?.map(player => (
-                                    <div key={player.name} className="flex items-center justify-between bg-emerald-900/40 rounded px-2 py-1">
+                                    <div key={player.name} className="flex items-center justify-between bg-emerald-100 rounded px-2 py-1">
                                         <div className="flex items-center gap-2">
                                             <span className="text-emerald-400 font-bold">#{player.rank}</span>
                                             <PlayerAvatar name={player.name} size="sm" />
@@ -317,7 +317,7 @@ const API_BASE = '/api';
                             </div>
                             <div className="flex flex-wrap gap-2">
                                 {swapZone.bubble.map(player => (
-                                    <div key={player.name} className="flex items-center gap-2 bg-amber-900/30 border border-amber-600/50 rounded px-2 py-1 text-sm">
+                                    <div key={player.name} className="flex items-center gap-2 bg-amber-50 border border-amber-300 rounded px-2 py-1 text-sm">
                                         <span className="text-amber-400">#{player.rank} G{player.group}</span>
                                         <span className="text-white">{player.name}</span>
                                         <span className="text-xs text-amber-200">- {player.message}</span>
@@ -632,8 +632,8 @@ const API_BASE = '/api';
             };
 
             const groupColors = {
-                A: { bg: 'bg-emerald-900/30', border: 'border-emerald-500', accent: 'text-green-600', glow: 'shadow-emerald-500/20' },
-                B: { bg: 'bg-amber-900/30', border: 'border-amber-500', accent: 'text-amber-600', glow: 'shadow-amber-500/20' }
+                A: { bg: 'bg-emerald-50', border: 'border-emerald-500', accent: 'text-green-600', glow: 'shadow-emerald-500/20' },
+                B: { bg: 'bg-amber-50', border: 'border-amber-500', accent: 'text-amber-600', glow: 'shadow-amber-500/20' }
             };
             const colors = groupColors[groupName] || groupColors.A;
 
@@ -1341,7 +1341,7 @@ const API_BASE = '/api';
                         setSelectedSlot(null);
                     } else {
                         const err = await res.json();
-                        alert(err.error || 'Failed to book');
+                        alert(err.message || err.error || 'Failed to book');
                     }
                 } catch (e) {
                     alert('Failed to book');
@@ -1489,12 +1489,20 @@ const API_BASE = '/api';
                                     const overlap = weekDates.flatMap(d => getOverlapSlots(match.opponent, d)
                                         .filter(s => d > todayDate || (d === todayDate && s > currentTime))
                                         .map(s => ({ date: d, slot: s })));
+
+                                    // Check if this match already has an active booking
+                                    const existingBooking = tableBookings.find(b =>
+                                        b.status !== 'cancelled' &&
+                                        ((b.player1 === currentPlayer && b.player2 === match.opponent) ||
+                                         (b.player2 === currentPlayer && b.player1 === match.opponent))
+                                    );
+
                                     return (
                                         <div key={match.id} className="bg-gray-100 rounded-lg p-4">
                                             <div className="flex items-center justify-between mb-2">
                                                 <div className="flex items-center gap-2">
                                                     <span className="text-xs bg-gray-200 px-2 py-1 rounded">Week {match.weekNum}</span>
-                                                    <span className={`text-xs px-2 py-1 rounded ${match.group === 'A' ? 'bg-emerald-900/50 text-green-600' : 'bg-amber-900/50 text-amber-600'}`}>
+                                                    <span className={`text-xs px-2 py-1 rounded ${match.group === 'A' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
                                                         Group {match.group}
                                                     </span>
                                                 </div>
@@ -1504,7 +1512,15 @@ const API_BASE = '/api';
                                                 <PlayerAvatar name={match.opponent} size="sm" />
                                                 <span className="font-semibold">{match.opponent}</span>
                                             </div>
-                                            {overlap.length > 0 ? (
+                                            {existingBooking ? (
+                                                <div className="flex items-center gap-2 bg-purple-50 border border-purple-200 rounded-lg px-3 py-2">
+                                                    <span className="text-purple-600 text-sm font-semibold">Booked:</span>
+                                                    <span className="text-sm text-gray-700">
+                                                        {new Date(existingBooking.booking_date.split('T')[0] + 'T12:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
+                                                        {' '}{formatTime(existingBooking.start_time?.substring(0, 5))}
+                                                    </span>
+                                                </div>
+                                            ) : overlap.length > 0 ? (
                                                 <div>
                                                     <p className="text-xs text-gray-700 font-medium mb-2">{overlap.length} mutual available slots:</p>
                                                     <div className="flex flex-wrap gap-1">
@@ -1606,8 +1622,8 @@ const API_BASE = '/api';
                                                             title={existingBooking ? `${existingBooking.player1} vs ${existingBooking.player2}${bookingGroup ? ` (Group ${bookingGroup})` : ''}` : ''}
                                                             className={`w-full h-8 rounded text-xs relative ${
                                                                 myBooking ? 'bg-purple-600 text-white' :
-                                                                isTableBooked && bookingGroup === 'A' ? 'bg-emerald-900/60 text-green-600 cursor-not-allowed border border-emerald-700' :
-                                                                isTableBooked && bookingGroup === 'B' ? 'bg-amber-900/60 text-amber-600 cursor-not-allowed border border-amber-700' :
+                                                                isTableBooked && bookingGroup === 'A' ? 'bg-emerald-200 text-green-600 cursor-not-allowed border border-emerald-300' :
+                                                                isTableBooked && bookingGroup === 'B' ? 'bg-amber-200 text-amber-600 cursor-not-allowed border border-amber-300' :
                                                                 isTableBooked ? 'bg-gray-200 text-gray-500 cursor-not-allowed' :
                                                                 isAvailable ? 'bg-emerald-600 text-white' :
                                                                 'bg-gray-100 hover:bg-gray-200'
@@ -1649,8 +1665,8 @@ const API_BASE = '/api';
                         <div className="mt-3 pt-3 border-t border-gray-200 flex gap-4 text-xs flex-wrap justify-center">
                             <span className="flex items-center gap-1"><span className="w-3 h-3 bg-emerald-600 rounded"></span> I'm available</span>
                             <span className="flex items-center gap-1"><span className="w-3 h-3 bg-purple-600 rounded"></span> My booking</span>
-                            <span className="flex items-center gap-1"><span className="w-3 h-3 bg-emerald-900/60 border border-emerald-700 rounded"></span> Group A</span>
-                            <span className="flex items-center gap-1"><span className="w-3 h-3 bg-amber-900/60 border border-amber-700 rounded"></span> Group B</span>
+                            <span className="flex items-center gap-1"><span className="w-3 h-3 bg-emerald-200 border border-emerald-300 rounded"></span> Group A</span>
+                            <span className="flex items-center gap-1"><span className="w-3 h-3 bg-amber-200 border border-amber-300 rounded"></span> Group B</span>
                             <span className="flex items-center gap-1"><span className="w-3 h-3 bg-gray-200 rounded"></span> Other</span>
                         </div>
                     </div>
@@ -1679,7 +1695,7 @@ const API_BASE = '/api';
                                                 <button onClick={() => openMoveModal(b)} className="text-amber-600 hover:text-amber-300 text-sm">
                                                     Move
                                                 </button>
-                                                <button onClick={() => handleCancelBooking(b.id)} className="text-red-500 hover:text-rose-300 text-sm">
+                                                <button onClick={() => handleCancelBooking(b.id)} className="text-red-500 hover:text-rose-700 text-sm">
                                                     Cancel
                                                 </button>
                                             </div>
@@ -1995,7 +2011,7 @@ const API_BASE = '/api';
 
                                 {config?.registration_open ? (
                                     <div className="mt-4 inline-block bg-emerald-500/20 border border-emerald-400/50 rounded-full px-6 py-2">
-                                        <span className="text-emerald-300 font-semibold">
+                                        <span className="text-emerald-700 font-semibold">
                                             ✓ Registration Open
                                             {daysUntilClose !== null && daysUntilClose > 0 && (
                                                 <span className="text-emerald-200 ml-2">({daysUntilClose} days left)</span>
@@ -2004,7 +2020,7 @@ const API_BASE = '/api';
                                     </div>
                                 ) : (
                                     <div className="mt-4 inline-block bg-rose-500/20 border border-rose-400/50 rounded-full px-6 py-2">
-                                        <span className="text-rose-300 font-semibold">Registration Closed</span>
+                                        <span className="text-rose-700 font-semibold">Registration Closed</span>
                                     </div>
                                 )}
 
@@ -2052,7 +2068,7 @@ const API_BASE = '/api';
                                     </div>
 
                                     {message && (
-                                        <div className={`p-4 rounded-lg ${message.type === 'success' ? 'bg-emerald-900/50 text-emerald-300 border border-emerald-500/50' : 'bg-rose-900/50 text-rose-300 border border-rose-500/50'}`}>
+                                        <div className={`p-4 rounded-lg ${message.type === 'success' ? 'bg-emerald-50 text-emerald-700 border border-emerald-300' : 'bg-rose-50 text-rose-700 border border-rose-300'}`}>
                                             {message.text}
                                         </div>
                                     )}
@@ -2174,7 +2190,7 @@ const API_BASE = '/api';
                             ) : (
                                 <div className="grid gap-2">
                                     {registrations.map((reg, idx) => (
-                                        <div key={reg.player_name} className={`flex items-center justify-between p-3 rounded-lg ${reg.is_ranked ? 'bg-violet-900/30 border border-violet-500/30' : 'bg-gray-100'}`}>
+                                        <div key={reg.player_name} className={`flex items-center justify-between p-3 rounded-lg ${reg.is_ranked ? 'bg-violet-50 border border-violet-300' : 'bg-gray-100'}`}>
                                             <div className="flex items-center gap-3">
                                                 <span className="text-gray-500 w-8">{idx + 1}.</span>
                                                 <span className="font-semibold">{reg.player_name}</span>
@@ -3190,7 +3206,7 @@ const API_BASE = '/api';
                                         <div key={p.name} className="flex items-center justify-between bg-gray-200 rounded px-2 py-1 text-sm">
                                             <span>{p.name} {p.seed ? `(#${p.seed})` : ''}</span>
                                             <div className="flex gap-1">
-                                                <button onClick={() => addToGroup(p, 'A')} className="text-green-600 hover:text-emerald-300 text-xs">→A</button>
+                                                <button onClick={() => addToGroup(p, 'A')} className="text-green-600 hover:text-emerald-700 text-xs">→A</button>
                                                 <button onClick={() => addToGroup(p, 'B')} className="text-amber-600 hover:text-amber-300 text-xs">→B</button>
                                             </div>
                                         </div>
@@ -3199,7 +3215,7 @@ const API_BASE = '/api';
                             </div>
                             <div>
                                 <h3 className="text-sm font-semibold text-green-600 mb-2">Group A: Seeded ({groupA.length})</h3>
-                                <div className="bg-emerald-900/20 border border-emerald-800 rounded-lg p-2 min-h-[200px] max-h-[300px] overflow-y-auto space-y-1">
+                                <div className="bg-emerald-50 border border-emerald-300 rounded-lg p-2 min-h-[200px] max-h-[300px] overflow-y-auto space-y-1">
                                     {groupA.map(p => (
                                         <div key={p.name} className="flex items-center justify-between bg-gray-200 rounded px-2 py-1 text-sm">
                                             <span>{p.name}</span>
@@ -3210,7 +3226,7 @@ const API_BASE = '/api';
                             </div>
                             <div>
                                 <h3 className="text-sm font-semibold text-amber-600 mb-2">Group B: Unseeded ({groupB.length})</h3>
-                                <div className="bg-amber-900/20 border border-amber-800 rounded-lg p-2 min-h-[200px] max-h-[300px] overflow-y-auto space-y-1">
+                                <div className="bg-amber-50 border border-amber-800 rounded-lg p-2 min-h-[200px] max-h-[300px] overflow-y-auto space-y-1">
                                     {groupB.map(p => (
                                         <div key={p.name} className="flex items-center justify-between bg-gray-200 rounded px-2 py-1 text-sm">
                                             <span>{p.name}</span>
@@ -3322,7 +3338,7 @@ const API_BASE = '/api';
                     <p className="text-sm text-gray-500 mb-4">Register to be added to the next season</p>
 
                     {message && (
-                        <div className={`p-3 rounded-lg mb-4 ${message.type === 'success' ? 'bg-emerald-900/50 text-green-600' : 'bg-rose-900/50 text-red-500'}`}>
+                        <div className={`p-3 rounded-lg mb-4 ${message.type === 'success' ? 'bg-emerald-100 text-green-600' : 'bg-rose-100 text-red-500'}`}>
                             {message.text}
                         </div>
                     )}
@@ -3356,68 +3372,6 @@ const API_BASE = '/api';
         }
 
         // Season History Archive Component
-        function SeasonHistory() {
-            const [history, setHistory] = useState([]);
-            const [loading, setLoading] = useState(true);
-            const [selectedSeason, setSelectedSeason] = useState(null);
-
-            useEffect(() => {
-                fetch(`${API_BASE}/seasons/history`)
-                    .then(res => res.json())
-                    .then(data => {
-                        setHistory(Array.isArray(data) ? data : []);
-                        setLoading(false);
-                    })
-                    .catch(() => setLoading(false));
-            }, []);
-
-            if (loading) return <div className="text-center py-8 text-gray-500">Loading history...</div>;
-
-            if (history.length === 0) {
-                return (
-                    <div className="bg-white shadow-sm border border-gray-200 rounded-xl p-6 text-center">
-                        <h3 className="text-lg font-bold mb-2">Season History</h3>
-                        <p className="text-gray-500">No archived seasons yet. History will appear here after each completed season.</p>
-                    </div>
-                );
-            }
-
-            return (
-                <div className="space-y-4">
-                    <h3 className="text-lg font-bold">Season History</h3>
-                    <div className="grid gap-4">
-                        {history.map(season => (
-                            <div key={season.season_number} className="bg-white shadow-sm border border-gray-200 rounded-xl p-4">
-                                <div className="flex items-center justify-between">
-                                    <div>
-                                        <h4 className="font-bold text-lg">{season.name}</h4>
-                                        <p className="text-sm text-gray-500">
-                                            {new Date(season.created_at).toLocaleDateString()} • {season.total_matches} matches
-                                        </p>
-                                    </div>
-                                    <div className="text-right">
-                                        <div className="flex items-center gap-2 justify-end">
-                                            <span className="text-2xl">🏆</span>
-                                            <span className="font-bold text-green-600">{season.champion}</span>
-                                        </div>
-                                        <p className="text-sm text-gray-500">Runner-up: {season.runner_up}</p>
-                                    </div>
-                                </div>
-                                <div className="mt-3 pt-3 border-t border-gray-200 grid grid-cols-2 gap-4 text-sm">
-                                    <div>
-                                        <span className="text-green-600">Group A Champion:</span> {season.group_a_champion}
-                                    </div>
-                                    <div>
-                                        <span className="text-amber-600">Group B Champion:</span> {season.group_b_champion}
-                                    </div>
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                </div>
-            );
-        }
-
         // Service Worker Registration for Web Push
         const registerServiceWorker = async () => {
             if (!('serviceWorker' in navigator)) {
@@ -3802,7 +3756,7 @@ const API_BASE = '/api';
                         <>
                             {/* Player Card */}
                             {!playerStats.leagueOnly && (
-                            <div className={`bg-gradient-to-r ${playerStats.group === 'A' ? 'from-green-100 to-white' : 'from-amber-100 to-white'} rounded-xl p-6 border ${playerStats.group === 'A' ? 'border-emerald-700' : 'border-amber-700'}`}>
+                            <div className={`bg-gradient-to-r ${playerStats.group === 'A' ? 'from-green-100 to-white' : 'from-amber-100 to-white'} rounded-xl p-6 border ${playerStats.group === 'A' ? 'border-emerald-300' : 'border-amber-300'}`}>
                                 <div className="flex items-center gap-4 mb-4">
                                     <div className="relative group">
                                         <PlayerAvatar name={currentPlayer} size="lg" onClick={() => setShowAvatarPicker(true)} />
@@ -3860,18 +3814,18 @@ const API_BASE = '/api';
                             {!playerStats.leagueOnly && (
                             <div className="flex flex-wrap gap-2">
                                 {playerStats.rank <= 4 && (
-                                    <span className="bg-emerald-900/50 text-green-600 px-3 py-1 rounded-full text-sm">✓ Playoff Qualified</span>
+                                    <span className="bg-emerald-100 text-green-600 px-3 py-1 rounded-full text-sm">✓ Playoff Qualified</span>
                                 )}
                                 {playerStats.rank === 5 || playerStats.rank === 6 ? (
                                     <span className="bg-violet-900/50 text-purple-600 px-3 py-1 rounded-full text-sm">⚡ Wildcard Eligible</span>
                                 ) : null}
                                 {playerStats.wildcardMatch && (
-                                    <span className="bg-amber-900/50 text-amber-600 px-3 py-1 rounded-full text-sm">
+                                    <span className="bg-amber-100 text-amber-600 px-3 py-1 rounded-full text-sm">
                                         🎯 Wildcard: vs {playerStats.wildcardMatch.player1 === currentPlayer ? playerStats.wildcardMatch.player2 : playerStats.wildcardMatch.player1}
                                     </span>
                                 )}
                                 {playerStats.inPlayoffs && (
-                                    <span className="bg-cyan-900/50 text-cyan-400 px-3 py-1 rounded-full text-sm">🏆 In Playoffs</span>
+                                    <span className="bg-cyan-100 text-cyan-600 px-3 py-1 rounded-full text-sm">🏆 In Playoffs</span>
                                 )}
                             </div>
                             )}
@@ -3921,7 +3875,7 @@ const API_BASE = '/api';
                                         const isLoser = match.loser === currentPlayer;
 
                                         return (
-                                            <div key={idx} className={`flex items-center justify-between p-3 rounded-lg ${match.completed ? (isWinner ? 'bg-emerald-900/20 border border-emerald-800' : 'bg-rose-900/20 border border-rose-800') : 'bg-gray-100'}`}>
+                                            <div key={idx} className={`flex items-center justify-between p-3 rounded-lg ${match.completed ? (isWinner ? 'bg-emerald-50 border border-emerald-300' : 'bg-rose-50 border border-rose-300') : 'bg-gray-100'}`}>
                                                 <div className="flex items-center gap-3">
                                                     <span className="text-xs text-gray-500 w-12">Wk {match.week}</span>
                                                     <PlayerAvatar name={opponent} size="sm" />
@@ -4148,9 +4102,9 @@ const API_BASE = '/api';
             };
 
             const getEventColor = (group) => {
-                if (group === 'A') return 'border-emerald-500 bg-emerald-900/20';
-                if (group === 'B') return 'border-amber-500 bg-amber-900/20';
-                return 'border-violet-500 bg-violet-900/20';
+                if (group === 'A') return 'border-emerald-500 bg-emerald-50';
+                if (group === 'B') return 'border-amber-500 bg-amber-50';
+                return 'border-violet-500 bg-violet-50';
             };
 
             return (
@@ -4804,7 +4758,7 @@ const API_BASE = '/api';
                                 {/* Recent Match Feed */}
                                 <div className="bg-white shadow-sm border border-gray-200 rounded-xl p-4">
                                     <h3 className="text-lg font-bold mb-4 flex items-center gap-2">
-                                        <span className="text-cyan-400">📰</span> Recent Match Results
+                                        <span className="text-cyan-600">📰</span> Recent Match Results
                                     </h3>
                                     <div className="max-h-[400px] overflow-y-auto scrollbar-thin space-y-2">
                                         {(() => {
@@ -4855,11 +4809,11 @@ const API_BASE = '/api';
                                             return sorted.map((m, i) => (
                                                 <div key={i} className={`flex items-center gap-3 p-2 rounded-lg ${
                                                     m.type === 'superbowl' ? 'bg-gradient-to-r from-amber-900/30 to-rose-900/30 border border-amber-600' :
-                                                    m.type === 'final' ? 'bg-amber-900/20 border-l-4 border-amber-500' :
-                                                    m.type === 'playoff' ? 'bg-cyan-900/20 border-l-4 border-cyan-500' :
-                                                    m.type === 'wildcard' ? 'bg-violet-900/20 border-l-4 border-violet-500' :
-                                                    m.group === 'A' ? 'bg-emerald-900/10 border-l-4 border-emerald-600' :
-                                                    'bg-amber-900/10 border-l-4 border-amber-600'
+                                                    m.type === 'final' ? 'bg-amber-50 border-l-4 border-amber-500' :
+                                                    m.type === 'playoff' ? 'bg-cyan-50 border-l-4 border-cyan-500' :
+                                                    m.type === 'wildcard' ? 'bg-violet-50 border-l-4 border-violet-500' :
+                                                    m.group === 'A' ? 'bg-emerald-50 border-l-4 border-emerald-600' :
+                                                    'bg-amber-50 border-l-4 border-amber-600'
                                                 }`}>
                                                     <span className="text-lg">
                                                         {m.type === 'superbowl' ? '🏆' : m.type === 'final' ? '👑' : m.type === 'playoff' ? '⚔️' : m.type === 'wildcard' ? '⚡' : '🏓'}
