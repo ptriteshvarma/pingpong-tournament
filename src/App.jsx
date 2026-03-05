@@ -1480,7 +1480,12 @@ const API_BASE = '/api';
                         ) : (
                             <div className="space-y-3">
                                 {myMatches.map(match => {
-                                    const overlap = weekDates.flatMap(d => getOverlapSlots(match.opponent, d).map(s => ({ date: d, slot: s })));
+                                    const now = new Date();
+                                    const todayDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+                                    const currentTime = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+                                    const overlap = weekDates.flatMap(d => getOverlapSlots(match.opponent, d)
+                                        .filter(s => d > todayDate || (d === todayDate && s > currentTime))
+                                        .map(s => ({ date: d, slot: s })));
                                     return (
                                         <div key={match.id} className="bg-gray-100 rounded-lg p-4">
                                             <div className="flex items-center justify-between mb-2">
@@ -1510,7 +1515,7 @@ const API_BASE = '/api';
                                                                 setSelectedDate(date);
                                                                 setSelectedSlot(slot);
                                                                 setShowBookingModal(true);
-                                                            }} className="text-xs bg-emerald-900/50 text-emerald-200 px-2 py-1 rounded hover:bg-emerald-800">
+                                                            }} className="text-xs bg-emerald-100 text-emerald-700 border border-emerald-300 px-2 py-1 rounded hover:bg-emerald-200">
                                                                 {dateStr}, {formatTime(slot)}
                                                             </button>
                                                         );})}
