@@ -1397,7 +1397,7 @@ const API_BASE = '/api';
                 return `${h12}:${m} ${ampm}`;
             };
 
-            // Generate 3 weeks of dates starting from NEXT Sunday
+            // Generate dates starting from today through end of 3rd week
             const weekDates = useMemo(() => {
                 const dates = [];
                 const today = new Date();
@@ -1408,15 +1408,20 @@ const API_BASE = '/api';
                 const currentSunday = new Date(today);
                 currentSunday.setDate(today.getDate() - daysSinceSunday);
 
-                // Generate 21 days starting from current week's Sunday
+                // Format today as YYYY-MM-DD for comparison
+                const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+
+                // Generate 21 days starting from current week's Sunday, but only include today onward
                 for (let i = 0; i < 21; i++) {
                     const d = new Date(currentSunday);
                     d.setDate(currentSunday.getDate() + i);
-                    // Use local date string to avoid timezone issues
                     const year = d.getFullYear();
                     const month = String(d.getMonth() + 1).padStart(2, '0');
                     const day = String(d.getDate()).padStart(2, '0');
-                    dates.push(`${year}-${month}-${day}`);
+                    const dateStr = `${year}-${month}-${day}`;
+                    if (dateStr >= todayStr) {
+                        dates.push(dateStr);
+                    }
                 }
                 return dates;
             }, []);
@@ -1542,15 +1547,21 @@ const API_BASE = '/api';
                                         <th className="p-1 text-left text-gray-500">Time</th>
                                         {weekDates.map((date, i) => {
                                             const d = new Date(date + 'T12:00');
-                                            const weekStyle = i >= 14 ? 'bg-green-50' : i >= 7 ? 'bg-blue-50' : '';
-                                            const borderStyle = i === 7 || i === 14 ? 'border-l-2 border-blue-300' : '';
+                                            const dayOfWeek = d.getDay(); // 0=Sun
+                                            // Compute which calendar week this date belongs to (0, 1, or 2)
+                                            const diffFromFirst = weekDates.length > 0 ? Math.floor((new Date(date + 'T12:00') - new Date(weekDates[0] + 'T12:00')) / 86400000) : 0;
+                                            const firstDayOfWeek = new Date(weekDates[0] + 'T12:00').getDay();
+                                            const weekNum = Math.floor((diffFromFirst + firstDayOfWeek) / 7);
+                                            const weekStyle = weekNum >= 2 ? 'bg-green-50' : weekNum >= 1 ? 'bg-blue-50' : '';
+                                            const isNewWeek = i > 0 && dayOfWeek === 0;
+                                            const borderStyle = isNewWeek ? 'border-l-2 border-blue-300' : '';
+                                            const showWeekLabel = i === 0 || (dayOfWeek === 0 && isNewWeek);
+                                            const weekColors = ['text-purple-600', 'text-blue-600', 'text-green-600'];
                                             return (
                                                 <th key={date} className={`p-1 text-center ${weekStyle} ${borderStyle}`}>
-                                                    <div className="text-gray-500 text-xs">{dayNames[d.getDay()]}</div>
+                                                    <div className="text-gray-500 text-xs">{dayNames[dayOfWeek]}</div>
                                                     <div className="font-semibold">{d.getDate()}</div>
-                                                    {i === 0 && <div className="text-[10px] text-purple-600">Week 1</div>}
-                                                    {i === 7 && <div className="text-[10px] text-blue-600">Week 2</div>}
-                                                    {i === 14 && <div className="text-[10px] text-green-600">Week 3</div>}
+                                                    {showWeekLabel && <div className={`text-[10px] ${weekColors[weekNum] || 'text-gray-500'}`}>Week {weekNum + 1}</div>}
                                                 </th>
                                             );
                                         })}
@@ -1570,8 +1581,13 @@ const API_BASE = '/api';
                                                 const isTableBooked = !!existingBooking;
                                                 const myBooking = existingBooking && (existingBooking.player1 === currentPlayer || existingBooking.player2 === currentPlayer);
                                                 const bookingGroup = existingBooking?.group_name;
-                                                const weekBg = i >= 14 ? 'bg-green-50/30' : i >= 7 ? 'bg-blue-50/30' : '';
-                                                const borderStyle = i === 7 || i === 14 ? 'border-l-2 border-blue-300' : '';
+                                                const diffFromFirst = weekDates.length > 0 ? Math.floor((new Date(date + 'T12:00') - new Date(weekDates[0] + 'T12:00')) / 86400000) : 0;
+                                                const firstDayOfWeek = new Date(weekDates[0] + 'T12:00').getDay();
+                                                const weekNum = Math.floor((diffFromFirst + firstDayOfWeek) / 7);
+                                                const weekBg = weekNum >= 2 ? 'bg-green-50/30' : weekNum >= 1 ? 'bg-blue-50/30' : '';
+                                                const dayOfWeek = new Date(date + 'T12:00').getDay();
+                                                const isNewWeek = i > 0 && dayOfWeek === 0;
+                                                const borderStyle = isNewWeek ? 'border-l-2 border-blue-300' : '';
                                                 return (
                                                     <td key={date} className={`p-1 ${weekBg} ${borderStyle}`}>
                                                         <button
