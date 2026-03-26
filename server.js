@@ -2768,6 +2768,36 @@ app.get('/api/season', cacheResponse(30), async (req, res) => {
       }
     }
 
+    // DYNAMIC BRACKET REGENERATION: If championship bracket exists, regenerate it with current standings
+    // This ensures seeding always reflects current win/loss records and head-to-head matchups
+    if (season.championship && season.standings && season.standings.A && season.standings.B) {
+      // Find any wildcard winners that might exist
+      let wildcardWinnerA = null;
+      let wildcardWinnerB = null;
+
+      if (season.wildcard && season.wildcard) {
+        if (season.wildcard.wc1 && season.wildcard.wc1.winner) {
+          // WC1 winner is either from A or B based on their group
+          const wc1Player = season.standings.A[season.wildcard.wc1.winner] ? 'A' : 'B';
+          if (wc1Player === 'A') wildcardWinnerA = season.wildcard.wc1.winner;
+          else wildcardWinnerB = season.wildcard.wc1.winner;
+        }
+        if (season.wildcard.wc2 && season.wildcard.wc2.winner) {
+          const wc2Player = season.standings.A[season.wildcard.wc2.winner] ? 'A' : 'B';
+          if (wc2Player === 'A') wildcardWinnerA = season.wildcard.wc2.winner;
+          else wildcardWinnerB = season.wildcard.wc2.winner;
+        }
+      }
+
+      // Regenerate championship bracket with current standings
+      season.championship = generateChampionshipBracket(
+        season.standings.A,
+        season.standings.B,
+        wildcardWinnerA,
+        wildcardWinnerB
+      );
+    }
+
     res.json(season);
   } catch (error) {
     // Table might not exist yet
