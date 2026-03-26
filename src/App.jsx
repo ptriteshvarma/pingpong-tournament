@@ -789,15 +789,54 @@ const API_BASE = '/api';
 
             // Connector that merges two matches into one (bracket lines)
             const connW = 48;
+            
+            // Standard connector for matching pairs (equal spacing)
             const BracketConnector = ({ height = 120 }) => {
-                const half = height / 2;
-                const mid = connW / 2;
+                // Calculate positions based on actual card heights and gaps
+                // cardH = 82, pairGap = 16, so pairH = 180
+                // For a pair of cards in height H: first card center at H*41/180, second at H*139/180
+                const midX = connW / 2;
+                const midY = height / 2;
+                
+                // Position of first match center (82px card = center at 41px in 180px layout)
+                const top1Y = height * (41 / 180);
+                // Position of second match center (82 + 16 + 41 = 139px in 180px layout)
+                const top2Y = height * (139 / 180);
+                
                 return (
                     <div className="flex-shrink-0 flex items-center" style={{ width: connW, height }}>
                         <svg width={connW} height={height} viewBox={`0 0 ${connW} ${height}`} fill="none">
-                            <path d={`M 0 ${half / 2} L ${mid} ${half / 2} L ${mid} ${half}`} stroke="#8b5cf6" strokeWidth="2" fill="none" />
-                            <path d={`M 0 ${half + half / 2} L ${mid} ${half + half / 2} L ${mid} ${half}`} stroke="#8b5cf6" strokeWidth="2" fill="none" />
-                            <path d={`M ${mid} ${half} L ${connW} ${half}`} stroke="#8b5cf6" strokeWidth="2" fill="none" />
+                            {/* Line from left at first match center */}
+                            <path d={`M 0 ${top1Y} L ${midX} ${top1Y} L ${midX} ${midY}`} stroke="#8b5cf6" strokeWidth="2" fill="none" />
+                            {/* Line from left at second match center */}
+                            <path d={`M 0 ${top2Y} L ${midX} ${top2Y} L ${midX} ${midY}`} stroke="#8b5cf6" strokeWidth="2" fill="none" />
+                            {/* Line to right from center point */}
+                            <path d={`M ${midX} ${midY} L ${connW} ${midY}`} stroke="#8b5cf6" strokeWidth="2" fill="none" />
+                        </svg>
+                    </div>
+                );
+            };
+            
+            // Connector for SF to Final with custom spacing
+            const FinalConnector = () => {
+                const height = cardH + sfGap + cardH; // SF1 + gap + SF2 = 82 + 130 + 82 = 294
+                const midX = connW / 2;
+                const midY = height / 2;
+                
+                // SF1 center: at 41px (82/2)
+                // SF2 center: at 82 + 130 + 41 = 253px
+                const sf1CenterY = cardH / 2;
+                const sf2CenterY = cardH + sfGap + cardH / 2;
+                
+                return (
+                    <div className="flex-shrink-0 flex items-center" style={{ width: connW, height }}>
+                        <svg width={connW} height={height} viewBox={`0 0 ${connW} ${height}`} fill="none">
+                            {/* Line from SF1 center */}
+                            <path d={`M 0 ${sf1CenterY} L ${midX} ${sf1CenterY} L ${midX} ${midY}`} stroke="#8b5cf6" strokeWidth="2" fill="none" />
+                            {/* Line from SF2 center */}
+                            <path d={`M 0 ${sf2CenterY} L ${midX} ${sf2CenterY} L ${midX} ${midY}`} stroke="#8b5cf6" strokeWidth="2" fill="none" />
+                            {/* Line to right from center point */}
+                            <path d={`M ${midX} ${midY} L ${connW} ${midY}`} stroke="#8b5cf6" strokeWidth="2" fill="none" />
                         </svg>
                     </div>
                 );
@@ -814,8 +853,9 @@ const API_BASE = '/api';
 
             const cardH = 82;
             const pairGap = 16;
-            const pairH = cardH * 2 + pairGap;
+            const pairH = cardH * 2 + pairGap;     // 180 - height of two cards + gap
             const bigGap = 32;
+            const sfGap = pairH + bigGap - cardH;  // 130 - gap between two SF matches
 
             const hasWildcard = championship.wildcardMatches && championship.wildcardMatches.length > 0;
             const hasPlayIn = championship.playInGames && championship.playInGames.length > 0;
@@ -863,11 +903,11 @@ const API_BASE = '/api';
 
                             {/* Wildcard Column */}
                             {hasWildcard && <>
-                                <div className="flex flex-col flex-1 min-w-0 justify-center" style={{ gap: pairH + bigGap - cardH }}>
+                                <div className="flex flex-col flex-1 min-w-0" style={{ gap: sfGap }}>
                                     {wc1 && <MatchCard match={wc1} label="WC1: #5 Seeds" />}
                                     {wc2 && <MatchCard match={wc2} label="WC2: #6 Seeds" />}
                                 </div>
-                                <div className="flex flex-col flex-shrink-0 justify-center" style={{ gap: pairH + bigGap - cardH }}>
+                                <div className="flex flex-col flex-shrink-0 justify-center" style={{ gap: sfGap }}>
                                     <StraightConnector height={cardH} />
                                     <StraightConnector height={cardH} />
                                 </div>
@@ -875,11 +915,11 @@ const API_BASE = '/api';
 
                             {/* Play-In Column */}
                             {hasPlayIn && <>
-                                <div className="flex flex-col flex-1 min-w-0 justify-center" style={{ gap: pairH + bigGap - cardH }}>
+                                <div className="flex flex-col flex-1 min-w-0" style={{ gap: sfGap }}>
                                     {playInB ? <MatchCard match={playInB} label="Play-In: Group B" /> : <div style={{ height: cardH }}></div>}
                                     {playInA ? <MatchCard match={playInA} label="Play-In: Group A" /> : <div style={{ height: cardH }}></div>}
                                 </div>
-                                <div className="flex flex-col flex-shrink-0 justify-center" style={{ gap: pairH + bigGap - cardH }}>
+                                <div className="flex flex-col flex-shrink-0 justify-center" style={{ gap: sfGap }}>
                                     <StraightConnector height={cardH} />
                                     <StraightConnector height={cardH} />
                                 </div>
@@ -905,13 +945,13 @@ const API_BASE = '/api';
                             </div>
 
                             {/* SF Column */}
-                            <div className="flex flex-col flex-1 min-w-0 justify-center" style={{ gap: pairH + bigGap - cardH }}>
+                            <div className="flex flex-col flex-1 min-w-0" style={{ gap: sfGap }}>
                                 <MatchCard match={championship.semifinals[0]} label="Semifinal 1" showSeeds={false} />
                                 <MatchCard match={championship.semifinals[1]} label="Semifinal 2" showSeeds={false} />
                             </div>
 
                             {/* SF → Final Connector */}
-                            <BracketConnector height={pairH + bigGap} />
+                            <FinalConnector />
 
                             {/* Final + Champion */}
                             <div className="flex flex-col items-center flex-1 min-w-0">
