@@ -851,28 +851,21 @@ const API_BASE = '/api';
                 </div>
             );
 
-            // Special connector for Play-In to QF with different vertical spacing
-            // Play-In: B (41px) + gap(130px) + A (41px) = 212px apart
-            // QF: need custom mapping to connect B→QF1 and A→QF4
+            // Special connector for Play-In to QF with bent lines merging at center
             const PlayInConnector = () => {
-                // Play-In layout: PlayInB center at 41, PlayInA center at 82+130+41=253
-                // QF layout within this connector's viewBox: QF1 center should be at 41, QF4 mapped flexibly
                 const height = cardH + sfGap + cardH; // 294px total height of Play-In column
-                const qfHeight = cardH + pairGap + cardH + bigGap + cardH + pairGap + cardH; // 392px full QF height
-                
-                // Calculate QF positions relative to the Play-In width
-                const qf1Center = cardH / 2;           // 41px
-                const qf4Center = 212 + 82 / 2;         // 253px (aligned with PlayInA for visual flow)
-                
+                const playInBCenter = cardH / 2;      // 41px
+                const playInACenter = cardH + sfGap + cardH / 2; // 253px
                 const midX = connW / 2;
+                const centerY = height / 2;           // Center merge point
                 
                 return (
                     <div className="flex-shrink-0 flex items-center" style={{ width: connW, height }}>
                         <svg width={connW} height={height} viewBox={`0 0 ${connW} ${height}`} fill="none">
-                            {/* Line from PlayInB (41px) to QF1 */}
-                            <path d={`M 0 ${qf1Center} L ${connW} ${qf1Center}`} stroke="#8b5cf6" strokeWidth="2" fill="none" />
-                            {/* Line from PlayInA (253px) to QF4 */}
-                            <path d={`M 0 ${qf4Center} L ${connW} ${qf4Center}`} stroke="#8b5cf6" strokeWidth="2" fill="none" />
+                            {/* Line from PlayInB - horizontal to center, then vertical to merge, then horizontal out */}
+                            <path d={`M 0 ${playInBCenter} L ${midX} ${playInBCenter} L ${midX} ${centerY} L ${connW} ${centerY}`} stroke="#8b5cf6" strokeWidth="2" fill="none" />
+                            {/* Line from PlayInA - horizontal to center, then vertical to merge, then horizontal out */}
+                            <path d={`M 0 ${playInACenter} L ${midX} ${playInACenter} L ${midX} ${centerY} L ${connW} ${centerY}`} stroke="#8b5cf6" strokeWidth="2" fill="none" />
                         </svg>
                     </div>
                 );
