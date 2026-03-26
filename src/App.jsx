@@ -928,13 +928,29 @@ const API_BASE = '/api';
                             {/* QF Column */}
                             <div className="flex flex-col flex-1 min-w-0" style={{ gap: pairGap }}>
                                 <div className="flex flex-col" style={{ gap: pairGap }}>
-                                    <MatchCard match={championship.quarterfinals[0]} label="QF1: A#1 vs B#4" />
+                                    {(() => {
+                                        const qf1 = championship.quarterfinals[0];
+                                        const qf1Label = qf1?.feedsFromPlayIn === 'PLAYIN-B' 
+                                            ? `QF1: A#1 vs ${qf1.player2 || 'PLAYIN-B Winner'}`
+                                            : qf1?.feedsFromPlayIn 
+                                            ? `QF1: A#1 vs ${qf1.seed2 || 'TBD'}`
+                                            : 'QF1: A#1 vs B#4';
+                                        return <MatchCard match={qf1} label={qf1Label} />;
+                                    })()}
                                     <MatchCard match={championship.quarterfinals[1]} label="QF2: B#2 vs A#3" />
                                 </div>
                                 <div style={{ height: bigGap }}></div>
                                 <div className="flex flex-col" style={{ gap: pairGap }}>
                                     <MatchCard match={championship.quarterfinals[2]} label="QF3: A#2 vs B#3" />
-                                    <MatchCard match={championship.quarterfinals[3]} label="QF4: B#1 vs A#4" />
+                                    {(() => {
+                                        const qf4 = championship.quarterfinals[3];
+                                        const qf4Label = qf4?.feedsFromPlayIn === 'PLAYIN-A' 
+                                            ? `QF4: B#1 vs ${qf4.player2 || 'PLAYIN-A Winner'}`
+                                            : qf4?.feedsFromPlayIn 
+                                            ? `QF4: B#1 vs ${qf4.seed2 || 'TBD'}`
+                                            : 'QF4: B#1 vs A#4';
+                                        return <MatchCard match={qf4} label={qf4Label} />;
+                                    })()}
                                 </div>
                             </div>
 
