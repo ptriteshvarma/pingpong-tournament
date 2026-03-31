@@ -789,54 +789,15 @@ const API_BASE = '/api';
 
             // Connector that merges two matches into one (bracket lines)
             const connW = 48;
-            
-            // Standard connector for matching pairs (equal spacing)
             const BracketConnector = ({ height = 120 }) => {
-                // Calculate positions based on actual card heights and gaps
-                // cardH = 82, pairGap = 16, so pairH = 180
-                // For a pair of cards in height H: first card center at H*41/180, second at H*139/180
-                const midX = connW / 2;
-                const midY = height / 2;
-                
-                // Position of first match center (82px card = center at 41px in 180px layout)
-                const top1Y = height * (41 / 180);
-                // Position of second match center (82 + 16 + 41 = 139px in 180px layout)
-                const top2Y = height * (139 / 180);
-                
+                const half = height / 2;
+                const mid = connW / 2;
                 return (
                     <div className="flex-shrink-0 flex items-center" style={{ width: connW, height }}>
                         <svg width={connW} height={height} viewBox={`0 0 ${connW} ${height}`} fill="none">
-                            {/* Line from left at first match center */}
-                            <path d={`M 0 ${top1Y} L ${midX} ${top1Y} L ${midX} ${midY}`} stroke="#8b5cf6" strokeWidth="2" fill="none" />
-                            {/* Line from left at second match center */}
-                            <path d={`M 0 ${top2Y} L ${midX} ${top2Y} L ${midX} ${midY}`} stroke="#8b5cf6" strokeWidth="2" fill="none" />
-                            {/* Line to right from center point */}
-                            <path d={`M ${midX} ${midY} L ${connW} ${midY}`} stroke="#8b5cf6" strokeWidth="2" fill="none" />
-                        </svg>
-                    </div>
-                );
-            };
-            
-            // Connector for SF to Final with custom spacing
-            const FinalConnector = () => {
-                const height = cardH + sfGap + cardH; // SF1 + gap + SF2 = 82 + 130 + 82 = 294
-                const midX = connW / 2;
-                const midY = height / 2;
-                
-                // SF1 center: at 41px (82/2)
-                // SF2 center: at 82 + 130 + 41 = 253px
-                const sf1CenterY = cardH / 2;
-                const sf2CenterY = cardH + sfGap + cardH / 2;
-                
-                return (
-                    <div className="flex-shrink-0 flex items-center" style={{ width: connW, height }}>
-                        <svg width={connW} height={height} viewBox={`0 0 ${connW} ${height}`} fill="none">
-                            {/* Line from SF1 center */}
-                            <path d={`M 0 ${sf1CenterY} L ${midX} ${sf1CenterY} L ${midX} ${midY}`} stroke="#8b5cf6" strokeWidth="2" fill="none" />
-                            {/* Line from SF2 center */}
-                            <path d={`M 0 ${sf2CenterY} L ${midX} ${sf2CenterY} L ${midX} ${midY}`} stroke="#8b5cf6" strokeWidth="2" fill="none" />
-                            {/* Line to right from center point */}
-                            <path d={`M ${midX} ${midY} L ${connW} ${midY}`} stroke="#8b5cf6" strokeWidth="2" fill="none" />
+                            <path d={`M 0 ${half / 2} L ${mid} ${half / 2} L ${mid} ${half}`} stroke="#8b5cf6" strokeWidth="2" fill="none" />
+                            <path d={`M 0 ${half + half / 2} L ${mid} ${half + half / 2} L ${mid} ${half}`} stroke="#8b5cf6" strokeWidth="2" fill="none" />
+                            <path d={`M ${mid} ${half} L ${connW} ${half}`} stroke="#8b5cf6" strokeWidth="2" fill="none" />
                         </svg>
                     </div>
                 );
@@ -851,31 +812,12 @@ const API_BASE = '/api';
                 </div>
             );
 
-            // Special connector for Play-In to QF with bent lines merging at center
-            const PlayInConnector = () => {
-                const height = cardH + sfGap + cardH; // 294px total height of Play-In column
-                const playInBCenter = cardH / 2;      // 41px
-                const playInACenter = cardH + sfGap + cardH / 2; // 253px
-                const midX = connW / 2;
-                const centerY = height / 2;           // Center merge point
-                
-                return (
-                    <div className="flex-shrink-0 flex items-center" style={{ width: connW, height }}>
-                        <svg width={connW} height={height} viewBox={`0 0 ${connW} ${height}`} fill="none">
-                            {/* Line from PlayInB - horizontal to center, then vertical to merge, then horizontal out */}
-                            <path d={`M 0 ${playInBCenter} L ${midX} ${playInBCenter} L ${midX} ${centerY} L ${connW} ${centerY}`} stroke="#8b5cf6" strokeWidth="2" fill="none" />
-                            {/* Line from PlayInA - horizontal to center, then vertical to merge, then horizontal out */}
-                            <path d={`M 0 ${playInACenter} L ${midX} ${playInACenter} L ${midX} ${centerY} L ${connW} ${centerY}`} stroke="#8b5cf6" strokeWidth="2" fill="none" />
-                        </svg>
-                    </div>
-                );
-            };
-
             const cardH = 82;
             const pairGap = 16;
-            const pairH = cardH * 2 + pairGap;     // 180 - height of two cards + gap
+            const pairH = cardH * 2 + pairGap;
             const bigGap = 32;
-            const sfGap = pairH + bigGap - cardH;  // 130 - gap between two SF matches
+            // Gap to align WC/PI items with QF1 (top) and QF4 (bottom)
+            const wcPiGap = 2 * cardH + 2 * pairGap + bigGap;
 
             const hasWildcard = championship.wildcardMatches && championship.wildcardMatches.length > 0;
             const hasPlayIn = championship.playInGames && championship.playInGames.length > 0;
@@ -923,11 +865,11 @@ const API_BASE = '/api';
 
                             {/* Wildcard Column */}
                             {hasWildcard && <>
-                                <div className="flex flex-col flex-1 min-w-0" style={{ gap: sfGap }}>
+                                <div className="flex flex-col flex-1 min-w-0 justify-center" style={{ gap: wcPiGap }}>
                                     {wc1 && <MatchCard match={wc1} label="WC1: #5 Seeds" />}
                                     {wc2 && <MatchCard match={wc2} label="WC2: #6 Seeds" />}
                                 </div>
-                                <div className="flex flex-col flex-shrink-0 justify-center" style={{ gap: sfGap }}>
+                                <div className="flex flex-col flex-shrink-0 justify-center" style={{ gap: wcPiGap }}>
                                     <StraightConnector height={cardH} />
                                     <StraightConnector height={cardH} />
                                 </div>
@@ -935,39 +877,26 @@ const API_BASE = '/api';
 
                             {/* Play-In Column */}
                             {hasPlayIn && <>
-                                <div className="flex flex-col flex-1 min-w-0" style={{ gap: sfGap }}>
+                                <div className="flex flex-col flex-1 min-w-0 justify-center" style={{ gap: wcPiGap }}>
                                     {playInB ? <MatchCard match={playInB} label="Play-In: Group B" /> : <div style={{ height: cardH }}></div>}
                                     {playInA ? <MatchCard match={playInA} label="Play-In: Group A" /> : <div style={{ height: cardH }}></div>}
                                 </div>
-                                <PlayInConnector />
+                                <div className="flex flex-col flex-shrink-0 justify-center" style={{ gap: wcPiGap }}>
+                                    <StraightConnector height={cardH} />
+                                    <StraightConnector height={cardH} />
+                                </div>
                             </>}
 
                             {/* QF Column */}
                             <div className="flex flex-col flex-1 min-w-0" style={{ gap: pairGap }}>
                                 <div className="flex flex-col" style={{ gap: pairGap }}>
-                                    {(() => {
-                                        const qf1 = championship.quarterfinals[0];
-                                        const qf1Label = qf1?.feedsFromPlayIn === 'PLAYIN-B' 
-                                            ? `QF1: A#1 vs ${qf1.player2 || 'PLAYIN-B Winner'}`
-                                            : qf1?.feedsFromPlayIn 
-                                            ? `QF1: A#1 vs ${qf1.seed2 || 'TBD'}`
-                                            : 'QF1: A#1 vs B#4';
-                                        return <MatchCard match={qf1} label={qf1Label} />;
-                                    })()}
+                                    <MatchCard match={championship.quarterfinals[0]} label="QF1: A#1 vs B#4" />
                                     <MatchCard match={championship.quarterfinals[1]} label="QF2: B#2 vs A#3" />
                                 </div>
                                 <div style={{ height: bigGap }}></div>
                                 <div className="flex flex-col" style={{ gap: pairGap }}>
                                     <MatchCard match={championship.quarterfinals[2]} label="QF3: A#2 vs B#3" />
-                                    {(() => {
-                                        const qf4 = championship.quarterfinals[3];
-                                        const qf4Label = qf4?.feedsFromPlayIn === 'PLAYIN-A' 
-                                            ? `QF4: B#1 vs ${qf4.player2 || 'PLAYIN-A Winner'}`
-                                            : qf4?.feedsFromPlayIn 
-                                            ? `QF4: B#1 vs ${qf4.seed2 || 'TBD'}`
-                                            : 'QF4: B#1 vs A#4';
-                                        return <MatchCard match={qf4} label={qf4Label} />;
-                                    })()}
+                                    <MatchCard match={championship.quarterfinals[3]} label="QF4: B#1 vs A#4" />
                                 </div>
                             </div>
 
@@ -978,13 +907,13 @@ const API_BASE = '/api';
                             </div>
 
                             {/* SF Column */}
-                            <div className="flex flex-col flex-1 min-w-0" style={{ gap: sfGap }}>
+                            <div className="flex flex-col flex-1 min-w-0 justify-center" style={{ gap: pairH + bigGap - cardH }}>
                                 <MatchCard match={championship.semifinals[0]} label="Semifinal 1" showSeeds={false} />
                                 <MatchCard match={championship.semifinals[1]} label="Semifinal 2" showSeeds={false} />
                             </div>
 
                             {/* SF → Final Connector */}
-                            <FinalConnector />
+                            <BracketConnector height={pairH + bigGap} />
 
                             {/* Final + Champion */}
                             <div className="flex flex-col items-center flex-1 min-w-0">
@@ -4346,9 +4275,9 @@ const API_BASE = '/api';
                 }
             };
 
-            // Lazy load data only when needed
-            const loadData = useCallback(async () => {
-                if (season && players.length > 0) return; // Already loaded
+            // Load/refresh data from API
+            const loadData = useCallback(async (forceRefresh = false) => {
+                if (!forceRefresh && season && players.length > 0) return; // Already loaded
 
                 try {
                     const [seasonRes, playersRes, swapZoneRes, leagueMatchesRes] = await Promise.all([
@@ -4371,7 +4300,7 @@ const API_BASE = '/api';
                     console.error('Error loading:', e);
                 }
                 setLoading(false);
-            }, [season, players]);
+            }, []);
 
             // Only load data for tabs that need it
             useEffect(() => {
@@ -4433,7 +4362,7 @@ const API_BASE = '/api';
                     });
 
                     if (res.ok) {
-                        await loadData();
+                        await loadData(true);
                         // Notify user that notifications were sent
                         alert(`✅ Result recorded!\n\n🔔 Notifications sent to:\n- ${winner}\n- ${loser}\n\nPlayers: Go to "My Games" tab and select your name to view notifications.`);
                     } else {
