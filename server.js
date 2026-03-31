@@ -2768,34 +2768,41 @@ app.get('/api/season', cacheResponse(30), async (req, res) => {
       }
     }
 
-    // DYNAMIC BRACKET REGENERATION: If championship bracket exists, regenerate it with current standings
-    // This ensures seeding always reflects current win/loss records and head-to-head matchups
+    // DYNAMIC BRACKET REGENERATION: Only regenerate if no championship matches have been played yet.
+    // Once matches start, preserve existing results and advancement — only refresh player names in unplayed slots.
     if (season.championship && season.standings && season.standings.A && season.standings.B) {
-      // Find any wildcard winners that might exist
-      let wildcardWinnerA = null;
-      let wildcardWinnerB = null;
+      const anyChampionshipPlayed =
+        season.championship.quarterfinals?.some(qf => qf.completed) ||
+        season.championship.semifinals?.some(sf => sf.completed) ||
+        season.championship.final?.completed ||
+        season.championship.playInGames?.some(p => p.completed);
 
-      if (season.wildcard && season.wildcard) {
-        if (season.wildcard.wc1 && season.wildcard.wc1.winner) {
-          // WC1 winner is either from A or B based on their group
-          const wc1Player = season.standings.A[season.wildcard.wc1.winner] ? 'A' : 'B';
-          if (wc1Player === 'A') wildcardWinnerA = season.wildcard.wc1.winner;
-          else wildcardWinnerB = season.wildcard.wc1.winner;
+      if (!anyChampionshipPlayed) {
+        // Safe to fully regenerate — no results to lose
+        let wildcardWinnerA = null;
+        let wildcardWinnerB = null;
+
+        if (season.wildcard) {
+          if (season.wildcard.wc1?.winner) {
+            const wc1Player = season.standings.A[season.wildcard.wc1.winner] ? 'A' : 'B';
+            if (wc1Player === 'A') wildcardWinnerA = season.wildcard.wc1.winner;
+            else wildcardWinnerB = season.wildcard.wc1.winner;
+          }
+          if (season.wildcard.wc2?.winner) {
+            const wc2Player = season.standings.A[season.wildcard.wc2.winner] ? 'A' : 'B';
+            if (wc2Player === 'A') wildcardWinnerA = season.wildcard.wc2.winner;
+            else wildcardWinnerB = season.wildcard.wc2.winner;
+          }
         }
-        if (season.wildcard.wc2 && season.wildcard.wc2.winner) {
-          const wc2Player = season.standings.A[season.wildcard.wc2.winner] ? 'A' : 'B';
-          if (wc2Player === 'A') wildcardWinnerA = season.wildcard.wc2.winner;
-          else wildcardWinnerB = season.wildcard.wc2.winner;
-        }
+
+        season.championship = generateChampionshipBracket(
+          season.standings.A,
+          season.standings.B,
+          wildcardWinnerA,
+          wildcardWinnerB
+        );
       }
-
-      // Regenerate championship bracket with current standings
-      season.championship = generateChampionshipBracket(
-        season.standings.A,
-        season.standings.B,
-        wildcardWinnerA,
-        wildcardWinnerB
-      );
+      // If matches have been played, leave the bracket as-is (results + advancement are preserved in DB)
     }
 
     res.json(season);
