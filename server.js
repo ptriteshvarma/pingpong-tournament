@@ -2810,17 +2810,16 @@ app.get('/api/season', cacheResponse(30), async (req, res) => {
       }
     }
 
-    // DYNAMIC BRACKET REGENERATION: Only regenerate if no championship matches have been played yet.
-    // Once matches start, preserve existing results and advancement — only refresh player names in unplayed slots.
-    if (season.championship && season.standings && season.standings.A && season.standings.B) {
-      const anyChampionshipPlayed =
-        season.championship.quarterfinals?.some(qf => qf.completed) ||
-        season.championship.semifinals?.some(sf => sf.completed) ||
-        season.championship.final?.completed ||
-        season.championship.playInGames?.some(p => p.completed);
+    // DYNAMIC BRACKET GENERATION/REGENERATION
+    if (season.standings && season.standings.A && season.standings.B) {
+      const bracketNeedsRegen = !season.championship ||
+        (season.championship && !season.championship.quarterfinals?.some(qf => qf.completed) &&
+         !season.championship.semifinals?.some(sf => sf.completed) &&
+         !season.championship.final?.completed &&
+         !season.championship.playInGames?.some(p => p.completed));
 
-      if (!anyChampionshipPlayed) {
-        // Safe to fully regenerate — no results to lose
+      if (bracketNeedsRegen) {
+        // Safe to fully regenerate — no results to lose (or bracket doesn't exist yet)
         let wildcardWinnerA = null;
         let wildcardWinnerB = null;
 
