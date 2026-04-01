@@ -4610,6 +4610,95 @@ app.get('/api/season/verify', requireAdmin, async (req, res) => {
   }
 });
 
+// Regenerate championship bracket from current standings (admin only)
+app.post('/api/championship/regenerate', requireAdmin, async (req, res) => {
+  try {
+    const result = await pool.query('SELECT data FROM season WHERE id = 1');
+    if (result.rows.length === 0) {
+      return res.status(400).json({ error: 'No active season' });
+    }
+
+    const season = result.rows[0].data;
+
+    if (!season.standings?.A || !season.standings?.B) {
+      return res.status(400).json({ error: 'No standings data available' });
+    }
+
+    // Check if any championship matches have been played
+    const anyChampionshipPlayed =
+      season.championship?.quarterfinals?.some(qf => qf.completed) ||
+      season.championship?.semifinals?.some(sf => sf.completed) ||
+      season.championship?.final?.completed ||
+      season.championship?.playInGames?.some(p => p.completed);
+
+    if (anyChampionshipPlayed) {
+      return res.status(400).json({
+        error: 'Cannot regenerate bracket - championship matches have already been played',
+        message: 'To preserve match results, manually edit the bracket or delete completed matches first'
+      });
+    }
+
+    // Extract wildcard winners if they exist
+    let wildcardWinnerA = null;
+    let wildcardWinnerB = null;
+
+    if (season.wildcard) {
+      if (season.wildcard.wc1?.winner) {
+        const wc1Player = season.standings.A[season.wildcard.wc1.winner] ? 'A' : 'B';
+        if (wc1Player === 'A') wildcardWinnerA = season.wildcard.wc1.winner;
+        else wildcardWinnerB = season.wildcard.wc1.winner;
+      }
+      if (season.wildcard.wc2?.winner) {
+        const wc2Player = season.standings.A[season.wildcard.wc2.winner] ? 'A' : 'B';
+        if (wc2Player === 'A') wildcardWinnerA = season.wildcard.wc2.winner;
+        else wildcardWinnerB = season.wildcard.wc2.winner;
+      }
+    }
+
+    // Regenerate the bracket
+    season.championship = generateChampionshipBracket(
+      season.standings.A,
+      season.standings.B,
+      wildcardWinnerA,
+      wildcardWinnerB
+    );
+
+    // Save to database
+    await pool.query(
+      'UPDATE season SET data = $1, updated_at = CURRENT_TIMESTAMP WHERE id = 1',
+      [JSON.stringify(season)]
+    );
+
+    res.json({
+      success: true,
+      message: 'Championship bracket regenerated from current standings',
+      championship: {
+        quarterfinals: season.championship.quarterfinals.map(q => ({
+          id: q.id,
+          matchName: q.matchName,
+          player1: q.player1,
+          player2: q.player2,
+          seed1: q.seed1,
+          seed2: q.seed2
+        })),
+        semifinals: season.championship.semifinals.map(s => ({
+          id: s.id,
+          matchName: s.matchName,
+          player1: s.player1,
+          player2: s.player2
+        })),
+        final: {
+          id: season.championship.final.id,
+          player1: season.championship.final.player1,
+          player2: season.championship.final.player2
+        }
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Start playoffs (admin only)
 // Start wildcard round (admin only) - before playoffs
 app.post('/api/season/wildcard', requireAdmin, async (req, res) => {
