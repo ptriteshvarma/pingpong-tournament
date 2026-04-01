@@ -1556,54 +1556,68 @@ const generateChampionshipBracket = (standingsA, standingsB, wildcardWinnerA = n
     });
   }
 
-  // FAIRNESS FIX: Wildcard winners must BEAT #4 seeds in play-in games to earn playoff spots
-  // Instead of directly replacing #4, we create play-in matches
+  // Always build WC matches from #5/#6 seeds (use existing matches if provided, else build from standings)
+  const a5 = sortedA[4] || null;
+  const a6 = sortedA[5] || null;
+  const b5 = sortedB[4] || null;
+  const b6 = sortedB[5] || null;
+
+  let builtWildcardMatches = wildcardMatches;
+  if (!builtWildcardMatches) {
+    builtWildcardMatches = [];
+    if (a5 && b5) {
+      builtWildcardMatches.push({
+        id: 'WC-1', round: 'wildcard',
+        matchName: 'Wildcard 1',
+        player1: a5.name, player1Group: 'A', player1Seed: 'A#5',
+        player2: b5.name, player2Group: 'B', player2Seed: 'B#5',
+        winner: null, loser: null, score1: null, score2: null, completed: false
+      });
+    }
+    if (a6 && b6) {
+      builtWildcardMatches.push({
+        id: 'WC-2', round: 'wildcard',
+        matchName: 'Wildcard 2',
+        player1: a6.name, player1Group: 'A', player1Seed: 'A#6',
+        player2: b6.name, player2Group: 'B', player2Seed: 'B#6',
+        winner: null, loser: null, score1: null, score2: null, completed: false
+      });
+    }
+  }
+
+  // Always build play-in games: #4 seed vs WC winner (TBD if not played yet)
   const playInGames = [];
   let finalA4 = a4, finalB4 = b4;
 
-  if (wildcardWinnerA && a4.name) {
-    // Create play-in game: Wildcard winner vs #4 seed
+  if (a4.name) {
     playInGames.push({
-      id: 'PLAYIN-A',
-      round: 'playin',
+      id: 'PLAYIN-A', round: 'playin',
       matchName: 'Play-In: Group A',
-      player1: a4.name, // #4 seed (earned their spot)
-      player2: wildcardWinnerA, // Wildcard winner (must prove themselves)
-      player1Seed: 'A#4',
-      player2Seed: 'A#WC',
+      player1: a4.name, player1Seed: 'A#4', player1Group: 'A',
+      player2: wildcardWinnerA || null, player2Seed: 'WC', player2Group: 'A',
       group: 'A',
-      description: '#4 seed defends their playoff spot against wildcard winner',
       winner: null, loser: null, score1: null, score2: null, completed: false
     });
-  } else if (wildcardWinnerA) {
-    // No #4 seed exists, wildcard winner automatically gets spot
-    finalA4 = { name: wildcardWinnerA, group: 'A', seed: 'WC', isWildcard: true };
+    if (wildcardWinnerA) finalA4 = a4; // QF4 player2 stays TBD until play-in done
   }
 
-  if (wildcardWinnerB && b4.name) {
-    // Create play-in game: Wildcard winner vs #4 seed
+  if (b4.name) {
     playInGames.push({
-      id: 'PLAYIN-B',
-      round: 'playin',
+      id: 'PLAYIN-B', round: 'playin',
       matchName: 'Play-In: Group B',
-      player1: b4.name, // #4 seed (earned their spot)
-      player2: wildcardWinnerB, // Wildcard winner (must prove themselves)
-      player1Seed: 'B#4',
-      player2Seed: 'B#WC',
+      player1: b4.name, player1Seed: 'B#4', player1Group: 'B',
+      player2: wildcardWinnerB || null, player2Seed: 'WC', player2Group: 'B',
       group: 'B',
-      description: '#4 seed defends their playoff spot against wildcard winner',
       winner: null, loser: null, score1: null, score2: null, completed: false
     });
-  } else if (wildcardWinnerB) {
-    // No #4 seed exists, wildcard winner automatically gets spot
-    finalB4 = { name: wildcardWinnerB, group: 'B', seed: 'WC', isWildcard: true };
+    if (wildcardWinnerB) finalB4 = b4;
   }
 
   return {
     format: 'combined',
-    description: 'Top 4 from each group compete for championship (with play-in games if wildcard winners exist)',
+    description: 'Top 4 from each group compete for championship',
     seeds: { a1, a2, a3, a4: finalA4, b1, b2, b3, b4: finalB4 },
-    wildcardMatches: wildcardMatches && wildcardMatches.length > 0 ? wildcardMatches : null,
+    wildcardMatches: builtWildcardMatches.length > 0 ? builtWildcardMatches : null,
     playInGames: playInGames.length > 0 ? playInGames : null,
     // Quarterfinals: Cross-group matchups with traditional seeding
     // #1 seeds face #4 from other group, #2 seeds face #3 from other group
