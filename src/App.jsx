@@ -4730,6 +4730,91 @@ const API_BASE = '/api';
                                     );
                                 })()}
 
+                                {/* Championship Seeding Rankings */}
+                                {season?.standings && (
+                                    <div className="grid md:grid-cols-2 gap-4">
+                                        {/* Group A Top 6 */}
+                                        <div className="bg-white shadow-sm border border-gray-200 rounded-xl p-4">
+                                            <h3 className="text-lg font-bold mb-3 flex items-center gap-2 text-gray-900">
+                                                <span className="text-purple-600">●</span>Group A Seeding
+                                            </h3>
+                                            <div className="space-y-2">
+                                                {(() => {
+                                                    const sA = Object.entries(season.standings.A || {}).map(([name, s]) => ({ name, ...s }));
+                                                    sA.sort((a, b) => {
+                                                        const netA = (a.wins || 0) - (a.losses || 0);
+                                                        const netB = (b.wins || 0) - (b.losses || 0);
+                                                        if (netB !== netA) return netB - netA;
+                                                        if ((b.wins || 0) !== (a.wins || 0)) return (b.wins || 0) - (a.wins || 0);
+                                                        const h2hA = a.headToHead?.[b.name]?.wins || 0;
+                                                        const h2hB = b.headToHead?.[a.name]?.wins || 0;
+                                                        if (h2hA !== h2hB) return h2hA - h2hB;
+                                                        const diffA = (a.pointsFor || 0) - (a.pointsAgainst || 0);
+                                                        const diffB = (b.pointsFor || 0) - (b.pointsAgainst || 0);
+                                                        return diffB - diffA;
+                                                    });
+                                                    return sA.slice(0, 6).map((p, i) => (
+                                                        <div key={p.name} className={`flex items-center justify-between px-3 py-2 rounded ${i < 4 ? 'bg-purple-50' : 'bg-gray-50'}`}>
+                                                            <div className="flex items-center gap-2 flex-1 min-w-0">
+                                                                <span className={`font-bold min-w-[20px] ${i < 4 ? 'text-purple-600' : 'text-gray-400'}`}>{i + 1}</span>
+                                                                <PlayerAvatar name={p.name} size="sm" />
+                                                                <span className="font-medium text-sm truncate text-gray-900">{p.name}</span>
+                                                            </div>
+                                                            <div className="flex gap-3 text-xs text-gray-600 ml-2">
+                                                                <span className="font-semibold text-green-600">{p.wins}W</span>
+                                                                <span className="font-semibold text-red-500">{p.losses}L</span>
+                                                                <span className={`font-semibold min-w-[24px] text-right ${(p.pointsFor - p.pointsAgainst) >= 0 ? 'text-green-600' : 'text-red-500'}`}>
+                                                                    {(p.pointsFor - p.pointsAgainst) >= 0 ? '+' : ''}{p.pointsFor - p.pointsAgainst}
+                                                                </span>
+                                                            </div>
+                                                        </div>
+                                                    ));
+                                                })()}
+                                            </div>
+                                        </div>
+
+                                        {/* Group B Top 6 */}
+                                        <div className="bg-white shadow-sm border border-gray-200 rounded-xl p-4">
+                                            <h3 className="text-lg font-bold mb-3 flex items-center gap-2 text-gray-900">
+                                                <span className="text-amber-500">●</span>Group B Seeding
+                                            </h3>
+                                            <div className="space-y-2">
+                                                {(() => {
+                                                    const sB = Object.entries(season.standings.B || {}).map(([name, s]) => ({ name, ...s }));
+                                                    sB.sort((a, b) => {
+                                                        const netA = (a.wins || 0) - (a.losses || 0);
+                                                        const netB = (b.wins || 0) - (b.losses || 0);
+                                                        if (netB !== netA) return netB - netA;
+                                                        if ((b.wins || 0) !== (a.wins || 0)) return (b.wins || 0) - (a.wins || 0);
+                                                        const h2hA = a.headToHead?.[b.name]?.wins || 0;
+                                                        const h2hB = b.headToHead?.[a.name]?.wins || 0;
+                                                        if (h2hA !== h2hB) return h2hA - h2hB;
+                                                        const diffA = (a.pointsFor || 0) - (a.pointsAgainst || 0);
+                                                        const diffB = (b.pointsFor || 0) - (b.pointsAgainst || 0);
+                                                        return diffB - diffA;
+                                                    });
+                                                    return sB.slice(0, 6).map((p, i) => (
+                                                        <div key={p.name} className={`flex items-center justify-between px-3 py-2 rounded ${i < 4 ? 'bg-amber-50' : 'bg-gray-50'}`}>
+                                                            <div className="flex items-center gap-2 flex-1 min-w-0">
+                                                                <span className={`font-bold min-w-[20px] ${i < 4 ? 'text-amber-600' : 'text-gray-400'}`}>{i + 1}</span>
+                                                                <PlayerAvatar name={p.name} size="sm" />
+                                                                <span className="font-medium text-sm truncate text-gray-900">{p.name}</span>
+                                                            </div>
+                                                            <div className="flex gap-3 text-xs text-gray-600 ml-2">
+                                                                <span className="font-semibold text-green-600">{p.wins}W</span>
+                                                                <span className="font-semibold text-red-500">{p.losses}L</span>
+                                                                <span className={`font-semibold min-w-[24px] text-right ${(p.pointsFor - p.pointsAgainst) >= 0 ? 'text-green-600' : 'text-red-500'}`}>
+                                                                    {(p.pointsFor - p.pointsAgainst) >= 0 ? '+' : ''}{p.pointsFor - p.pointsAgainst}
+                                                                </span>
+                                                            </div>
+                                                        </div>
+                                                    ));
+                                                })()}
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
+
                                 {/* League Info Section */}
                                 <div className="bg-white shadow-sm border border-gray-200 rounded-xl p-4">
                                     <h3 className="text-lg font-bold mb-4 flex items-center gap-2">
