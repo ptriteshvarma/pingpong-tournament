@@ -4714,18 +4714,7 @@ const API_BASE = '/api';
                                             <div className="space-y-2">
                                                 {(() => {
                                                     const sA = Object.entries(season.standings.A || {}).map(([name, s]) => ({ name, ...s }));
-                                                    sA.sort((a, b) => {
-                                                        const netA = (a.wins || 0) - (a.losses || 0);
-                                                        const netB = (b.wins || 0) - (b.losses || 0);
-                                                        if (netB !== netA) return netB - netA;
-                                                        if ((b.wins || 0) !== (a.wins || 0)) return (b.wins || 0) - (a.wins || 0);
-                                                        const h2hA = a.headToHead?.[b.name]?.wins || 0;
-                                                        const h2hB = b.headToHead?.[a.name]?.wins || 0;
-                                                        if (h2hA !== h2hB) return h2hA - h2hB;
-                                                        const diffA = (a.pointsFor || 0) - (a.pointsAgainst || 0);
-                                                        const diffB = (b.pointsFor || 0) - (b.pointsAgainst || 0);
-                                                        return diffB - diffA;
-                                                    });
+                                                    sA.sort((a, b) => (a.rank || 99) - (b.rank || 99));
                                                     return sA.slice(0, 6).map((p, i) => (
                                                         <div key={p.name} className={`flex items-center justify-between px-3 py-2 rounded ${i < 4 ? 'bg-purple-50' : 'bg-gray-50'}`}>
                                                             <div className="flex items-center gap-2 flex-1 min-w-0">
@@ -4754,18 +4743,7 @@ const API_BASE = '/api';
                                             <div className="space-y-2">
                                                 {(() => {
                                                     const sB = Object.entries(season.standings.B || {}).map(([name, s]) => ({ name, ...s }));
-                                                    sB.sort((a, b) => {
-                                                        const netA = (a.wins || 0) - (a.losses || 0);
-                                                        const netB = (b.wins || 0) - (b.losses || 0);
-                                                        if (netB !== netA) return netB - netA;
-                                                        if ((b.wins || 0) !== (a.wins || 0)) return (b.wins || 0) - (a.wins || 0);
-                                                        const h2hA = a.headToHead?.[b.name]?.wins || 0;
-                                                        const h2hB = b.headToHead?.[a.name]?.wins || 0;
-                                                        if (h2hA !== h2hB) return h2hA - h2hB;
-                                                        const diffA = (a.pointsFor || 0) - (a.pointsAgainst || 0);
-                                                        const diffB = (b.pointsFor || 0) - (b.pointsAgainst || 0);
-                                                        return diffB - diffA;
-                                                    });
+                                                    sB.sort((a, b) => (a.rank || 99) - (b.rank || 99));
                                                     return sB.slice(0, 6).map((p, i) => (
                                                         <div key={p.name} className={`flex items-center justify-between px-3 py-2 rounded ${i < 4 ? 'bg-amber-50' : 'bg-gray-50'}`}>
                                                             <div className="flex items-center gap-2 flex-1 min-w-0">
