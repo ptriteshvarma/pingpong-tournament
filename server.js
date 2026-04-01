@@ -1589,16 +1589,21 @@ const generateChampionshipBracket = (standingsA, standingsB, wildcardWinnerA = n
   const playInGames = [];
   let finalA4 = a4, finalB4 = b4;
 
+  // WC candidates: A-side winners could be a5 or a6, B-side could be b5 or b6
+  const wcCandidatesA = [a5?.name, a6?.name].filter(Boolean);
+  const wcCandidatesB = [b5?.name, b6?.name].filter(Boolean);
+
   if (a4.name) {
     playInGames.push({
       id: 'PLAYIN-A', round: 'playin',
       matchName: 'Play-In: Group A',
       player1: a4.name, seed1: 'A#4', player1Group: 'A',
       player2: wildcardWinnerA || null, seed2: 'WC', player2Group: 'A',
+      wcCandidates: wildcardWinnerA ? null : wcCandidatesA,
       group: 'A',
       winner: null, loser: null, score1: null, score2: null, completed: false
     });
-    if (wildcardWinnerA) finalA4 = a4; // QF4 player2 stays TBD until play-in done
+    if (wildcardWinnerA) finalA4 = a4;
   }
 
   if (b4.name) {
@@ -1607,6 +1612,7 @@ const generateChampionshipBracket = (standingsA, standingsB, wildcardWinnerA = n
       matchName: 'Play-In: Group B',
       player1: b4.name, seed1: 'B#4', player1Group: 'B',
       player2: wildcardWinnerB || null, seed2: 'WC', player2Group: 'B',
+      wcCandidates: wildcardWinnerB ? null : wcCandidatesB,
       group: 'B',
       winner: null, loser: null, score1: null, score2: null, completed: false
     });

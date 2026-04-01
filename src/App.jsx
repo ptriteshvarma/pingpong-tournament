@@ -729,6 +729,8 @@ const API_BASE = '/api';
                                     <PlayerAvatar name={name} size="sm" />
                                     <span className={`text-sm truncate flex-1 ${isWinner ? 'text-emerald-700 font-semibold' : 'text-gray-800'}`}>{name}</span>
                                 </>
+                            ) : match.wcCandidates && seed === 'WC' ? (
+                                <span className="text-gray-400 italic text-xs flex-1">{match.wcCandidates.join(' / ')}</span>
                             ) : (
                                 <span className="text-gray-400 italic text-sm flex-1">TBD</span>
                             )}
