@@ -4929,9 +4929,39 @@ const API_BASE = '/api';
                                 {/* Schedule Content */}
                                 {view === 'schedule' && (
                             <div className="space-y-4">
-                                <div className="flex gap-2">
+                                <div className="flex gap-2 items-center">
                                     <button onClick={() => setSelectedGroup('A')} className={`px-4 py-2 rounded-lg ${selectedGroup === 'A' ? 'bg-emerald-600' : 'bg-gray-100'}`}>Group A</button>
                                     <button onClick={() => setSelectedGroup('B')} className={`px-4 py-2 rounded-lg ${selectedGroup === 'B' ? 'bg-amber-600' : 'bg-gray-100'}`}>Group B</button>
+                                    {isAdmin && season?.status === 'regular' && (
+                                        <button
+                                            onClick={async () => {
+                                                const group = selectedGroup;
+                                                if (!confirm(`Forfeit ALL remaining Group ${group} games? This cannot be undone.`)) return;
+                                                try {
+                                                    const res = await fetch(`${API_BASE}/season/forfeit-remaining`, {
+                                                        method: 'POST',
+                                                        headers: {
+                                                            'Content-Type': 'application/json',
+                                                            'X-Admin-Password': localStorage.getItem('adminPassword') || ''
+                                                        },
+                                                        body: JSON.stringify({ group })
+                                                    });
+                                                    const data = await res.json();
+                                                    if (res.ok) {
+                                                        alert(data.message);
+                                                        window.location.reload();
+                                                    } else {
+                                                        alert(`Error: ${data.error}`);
+                                                    }
+                                                } catch (e) {
+                                                    alert(`Failed: ${e.message}`);
+                                                }
+                                            }}
+                                            className="ml-auto px-3 py-2 bg-red-600 hover:bg-red-700 text-white text-xs rounded-lg font-semibold"
+                                        >
+                                            Forfeit Remaining Group {selectedGroup}
+                                        </button>
+                                    )}
                                 </div>
 
                                 {/* Multi-Week Schedule Display */}
