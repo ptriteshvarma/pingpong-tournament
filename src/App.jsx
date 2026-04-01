@@ -815,6 +815,40 @@ const API_BASE = '/api';
                     {/* Vertical Tree Bracket Layout */}
                     <div className="py-8 px-4 bg-gray-50 rounded-lg overflow-auto">
                         <div className="space-y-6 max-w-2xl">
+                            {/* Wildcard Round */}
+                            {hasWildcard && championship.wildcardMatches && championship.wildcardMatches.length > 0 && (
+                                <>
+                                    <div>
+                                        <h4 className="text-sm font-bold text-purple-600 mb-3 uppercase tracking-wider">Wildcard Round</h4>
+                                        <div className="space-y-3">
+                                            {championship.wildcardMatches.map((wc, idx) => (
+                                                <MatchCard key={idx} match={wc} label={`WC${idx + 1}: #${idx + 5 || 5} Seeds`} />
+                                            ))}
+                                        </div>
+                                    </div>
+                                    <div className="flex justify-center py-2">
+                                        <div className="text-gray-400 text-2xl">↓</div>
+                                    </div>
+                                </>
+                            )}
+
+                            {/* Play-In Games */}
+                            {hasPlayIn && championship.playInGames && championship.playInGames.length > 0 && (
+                                <>
+                                    <div>
+                                        <h4 className="text-sm font-bold text-violet-600 mb-3 uppercase tracking-wider">Play-In Games</h4>
+                                        <div className="space-y-3">
+                                            {championship.playInGames.map((pi, idx) => (
+                                                <MatchCard key={idx} match={pi} label={pi.matchName || `Play-In: Group ${pi.group}`} />
+                                            ))}
+                                        </div>
+                                    </div>
+                                    <div className="flex justify-center py-2">
+                                        <div className="text-gray-400 text-2xl">↓</div>
+                                    </div>
+                                </>
+                            )}
+
                             {/* Quarterfinals */}
                             <div>
                                 <h4 className="text-sm font-bold text-gray-600 mb-3 uppercase tracking-wider">Quarterfinals</h4>
