@@ -1537,8 +1537,16 @@ const generateChampionshipBracket = (standingsA, standingsB, wildcardWinnerA = n
   const duplicates = allSeeds.filter((p, i) => allSeeds.indexOf(p) !== i);
   if (duplicates.length > 0) {
     console.error('ERROR: Duplicate players in bracket seeding!', duplicates);
-    console.log('Group A (top 4):', [a1.name, a2.name, a3.name, a4.name]);
-    console.log('Group B (top 4):', [b1.name, b2.name, b3.name, b4.name]);
+    console.log('Group A (sorted, top 4):');
+    sortedA.slice(0, 4).forEach((p, i) => {
+      const diff = (p.pointsFor || 0) - (p.pointsAgainst || 0);
+      console.log(`  A${i+1}: ${p.name} (${p.wins}-${p.losses}, diff: ${diff})`);
+    });
+    console.log('Group B (sorted, top 4):');
+    sortedB.slice(0, 4).forEach((p, i) => {
+      const diff = (p.pointsFor || 0) - (p.pointsAgainst || 0);
+      console.log(`  B${i+1}: ${p.name} (${p.wins}-${p.losses}, diff: ${diff})`);
+    });
   }
 
   // FAIRNESS FIX: Wildcard winners must BEAT #4 seeds in play-in games to earn playoff spots
