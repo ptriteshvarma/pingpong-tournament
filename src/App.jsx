@@ -812,69 +812,56 @@ const API_BASE = '/api';
                         </div>
                     </div>
 
-                    {/* Bracket — simple vertical flow with clear structure */}
+                    {/* Bracket — traditional horizontal layout */}
                     <div className="overflow-x-auto pb-4">
-                        <div className="min-w-max space-y-6">
-                            {/* Wildcard Round */}
+                        <div className="inline-flex gap-6 p-4 min-w-full items-stretch">
+                            {/* Wildcard Column */}
                             {hasWildcard && (
-                                <div>
-                                    <div className="text-xs font-semibold uppercase tracking-wider text-purple-600 mb-2">Wildcard</div>
-                                    <div className="space-y-3">
-                                        {wc1 && <MatchCard match={wc1} label="WC1: #5 Seeds" />}
-                                        {wc2 && <MatchCard match={wc2} label="WC2: #6 Seeds" />}
-                                    </div>
+                                <div className="flex flex-col justify-center gap-40">
+                                    <div className="text-center text-xs font-semibold text-purple-600 uppercase mb-2">Wildcard</div>
+                                    {wc1 && <div className="w-52"><MatchCard match={wc1} label="WC1: #5 Seeds" /></div>}
+                                    {wc2 && <div className="w-52"><MatchCard match={wc2} label="WC2: #6 Seeds" /></div>}
                                 </div>
                             )}
 
-                            {/* Play-In Round */}
+                            {/* Play-In Column */}
                             {hasPlayIn && (
-                                <div>
-                                    <div className="text-xs font-semibold uppercase tracking-wider text-purple-600 mb-2">Play-In</div>
-                                    <div className="space-y-3">
-                                        {playInB && <MatchCard match={playInB} label="Play-In: Group B (#4 vs WC)" />}
-                                        {playInA && <MatchCard match={playInA} label="Play-In: Group A (#4 vs WC)" />}
-                                    </div>
+                                <div className="flex flex-col justify-center gap-40">
+                                    <div className="text-center text-xs font-semibold text-purple-600 uppercase mb-2">Play-In</div>
+                                    {playInB && <div className="w-52"><MatchCard match={playInB} label="Play-In: Group B" /></div>}
+                                    {playInA && <div className="w-52"><MatchCard match={playInA} label="Play-In: Group A" /></div>}
                                 </div>
                             )}
 
-                            {/* Quarterfinals */}
-                            <div>
-                                <div className="text-xs font-semibold uppercase tracking-wider text-purple-600 mb-2">Quarterfinals</div>
-                                <div className="space-y-3">
-                                    <MatchCard match={championship.quarterfinals[0]} label="QF1: A#1 vs B#4" />
-                                    <MatchCard match={championship.quarterfinals[1]} label="QF2: B#2 vs A#3" />
-                                    <MatchCard match={championship.quarterfinals[2]} label="QF3: A#2 vs B#3" />
-                                    <MatchCard match={championship.quarterfinals[3]} label="QF4: B#1 vs A#4" />
-                                </div>
+                            {/* Quarterfinals Column */}
+                            <div className="flex flex-col justify-center gap-8">
+                                <div className="text-center text-xs font-semibold text-purple-600 uppercase mb-2">Quarterfinals</div>
+                                <div className="w-52"><MatchCard match={championship.quarterfinals[0]} label="QF1: A#1 vs B#4" /></div>
+                                <div className="w-52"><MatchCard match={championship.quarterfinals[1]} label="QF2: B#2 vs A#3" /></div>
+                                <div className="h-12"></div>
+                                <div className="w-52"><MatchCard match={championship.quarterfinals[2]} label="QF3: A#2 vs B#3" /></div>
+                                <div className="w-52"><MatchCard match={championship.quarterfinals[3]} label="QF4: B#1 vs A#4" /></div>
                             </div>
 
-                            {/* Semifinals */}
-                            <div>
-                                <div className="text-xs font-semibold uppercase tracking-wider text-purple-600 mb-2">Semifinals</div>
-                                <div className="space-y-3">
-                                    <MatchCard match={championship.semifinals[0]} label="Semifinal 1 (QF1 W vs QF2 W)" showSeeds={false} />
-                                    <MatchCard match={championship.semifinals[1]} label="Semifinal 2 (QF3 W vs QF4 W)" showSeeds={false} />
-                                </div>
+                            {/* Semifinals Column */}
+                            <div className="flex flex-col justify-center gap-16">
+                                <div className="text-center text-xs font-semibold text-purple-600 uppercase mb-2">Semifinals</div>
+                                <div className="w-52"><MatchCard match={championship.semifinals[0]} label="Semifinal 1" showSeeds={false} /></div>
+                                <div className="h-20"></div>
+                                <div className="w-52"><MatchCard match={championship.semifinals[1]} label="Semifinal 2" showSeeds={false} /></div>
                             </div>
 
-                            {/* Final */}
-                            <div>
-                                <div className="text-xs font-semibold uppercase tracking-wider text-amber-600 mb-2">Grand Final</div>
-                                <MatchCard match={championship.final} label="Championship (SF1 W vs SF2 W)" showSeeds={false} />
-                            </div>
-
-                            {/* Champion */}
-                            {championship.champion && (
-                                <div className="text-center px-4 py-3 rounded-lg bg-gradient-to-r from-amber-50 to-violet-50 border border-amber-300">
-                                    <div className="text-[10px] text-gray-500 uppercase tracking-wider mb-1">🏆 Champion 🏆</div>
-                                    <div className="flex items-center justify-center gap-2">
-                                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-5 h-5 text-amber-600">
-                                            <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 18.75h-9m9 0a3 3 0 0 1 3 3h-15a3 3 0 0 1 3-3m9 0v-3.375c0-.621-.503-1.125-1.125-1.125h-.871M7.5 18.75v-3.375c0-.621.504-1.125 1.125-1.125h.872m5.007 0H9.497m5.007 0a7.454 7.454 0 0 1-.982-3.172M9.497 14.25a7.454 7.454 0 0 0 .981-3.172M5.25 4.236c-.982.143-1.954.317-2.916.52A6.003 6.003 0 0 0 7.73 9.728M5.25 4.236V4.5c0 2.108.966 3.99 2.48 5.228M5.25 4.236V2.721C7.456 2.41 9.71 2.25 12 2.25c2.291 0 4.545.16 6.75.47v1.516M7.73 9.728a6.726 6.726 0 0 0 2.748 1.35m8.272-6.842V4.5c0 2.108-.966 3.99-2.48 5.228m2.48-5.492a46.32 46.32 0 0 1 2.916.52 6.003 6.003 0 0 1-5.395 4.972m0 0a6.726 6.726 0 0 1-2.749 1.35m0 0a6.772 6.772 0 0 1-2.992 0" />
-                                        </svg>
-                                        <span className="font-bold text-amber-700 text-lg">{championship.champion}</span>
+                            {/* Final Column */}
+                            <div className="flex flex-col justify-center gap-8">
+                                <div className="text-center text-xs font-semibold text-amber-600 uppercase mb-2">Final</div>
+                                <div className="w-52"><MatchCard match={championship.final} label="Grand Final" showSeeds={false} /></div>
+                                {championship.champion && (
+                                    <div className="w-52 text-center px-3 py-2 rounded-lg bg-gradient-to-r from-amber-50 to-violet-50 border border-amber-300">
+                                        <div className="text-[10px] text-gray-500 uppercase font-semibold">Champion</div>
+                                        <div className="font-bold text-amber-700 mt-1">{championship.champion}</div>
                                     </div>
-                                </div>
-                            )}
+                                )}
+                            </div>
                         </div>
                     </div>
 
