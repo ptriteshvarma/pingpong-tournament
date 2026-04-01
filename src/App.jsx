@@ -4317,10 +4317,26 @@ const API_BASE = '/api';
                         fetch(`${API_BASE}/season/swap-zone`),
                         fetch(`${API_BASE}/league/matches`)
                     ]);
-                    const seasonData = await seasonRes.json();
-                    const playersData = await playersRes.json();
-                    const swapZoneData = await swapZoneRes.json();
-                    const leagueMatchesData = await leagueMatchesRes.json();
+
+                    // Check response status before parsing
+                    if (!seasonRes.ok) {
+                        console.error(`API error: /season returned ${seasonRes.status}`);
+                    }
+                    if (!playersRes.ok) {
+                        console.error(`API error: /players returned ${playersRes.status}`);
+                    }
+                    if (!swapZoneRes.ok) {
+                        console.error(`API error: /season/swap-zone returned ${swapZoneRes.status}`);
+                    }
+                    if (!leagueMatchesRes.ok) {
+                        console.error(`API error: /league/matches returned ${leagueMatchesRes.status}`);
+                    }
+
+                    const seasonData = seasonRes.ok ? await seasonRes.json() : null;
+                    const playersData = playersRes.ok ? await playersRes.json() : [];
+                    const swapZoneData = swapZoneRes.ok ? await swapZoneRes.json() : null;
+                    const leagueMatchesData = leagueMatchesRes.ok ? await leagueMatchesRes.json() : [];
+
                     setSeason(seasonData);
                     setPlayers(playersData || []);
                     setAvatarCache(playersData || []);
@@ -4735,7 +4751,7 @@ const API_BASE = '/api';
                                 })()}
 
                                 {/* Championship Seeding Rankings */}
-                                {season?.standings && (
+                                {season?.standings?.A && season?.standings?.B ? (
                                     <div className="grid md:grid-cols-2 gap-4">
                                         {/* Group A Top 6 */}
                                         <div className="bg-white shadow-sm border border-gray-200 rounded-xl p-4">
@@ -4816,6 +4832,10 @@ const API_BASE = '/api';
                                                 })()}
                                             </div>
                                         </div>
+                                    </div>
+                                ) : (
+                                    <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4 text-yellow-800">
+                                        Loading tournament seeding...
                                     </div>
                                 )}
 
