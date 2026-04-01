@@ -1569,8 +1569,8 @@ const generateChampionshipBracket = (standingsA, standingsB, wildcardWinnerA = n
       builtWildcardMatches.push({
         id: 'WC-1', round: 'wildcard',
         matchName: 'Wildcard 1',
-        player1: a5.name, player1Group: 'A', player1Seed: 'A#5',
-        player2: b5.name, player2Group: 'B', player2Seed: 'B#5',
+        player1: a5.name, player1Group: 'A', seed1: 'A#5',
+        player2: b5.name, player2Group: 'B', seed2: 'B#5',
         winner: null, loser: null, score1: null, score2: null, completed: false
       });
     }
@@ -1578,8 +1578,8 @@ const generateChampionshipBracket = (standingsA, standingsB, wildcardWinnerA = n
       builtWildcardMatches.push({
         id: 'WC-2', round: 'wildcard',
         matchName: 'Wildcard 2',
-        player1: a6.name, player1Group: 'A', player1Seed: 'A#6',
-        player2: b6.name, player2Group: 'B', player2Seed: 'B#6',
+        player1: a6.name, player1Group: 'A', seed1: 'A#6',
+        player2: b6.name, player2Group: 'B', seed2: 'B#6',
         winner: null, loser: null, score1: null, score2: null, completed: false
       });
     }
@@ -1593,8 +1593,8 @@ const generateChampionshipBracket = (standingsA, standingsB, wildcardWinnerA = n
     playInGames.push({
       id: 'PLAYIN-A', round: 'playin',
       matchName: 'Play-In: Group A',
-      player1: a4.name, player1Seed: 'A#4', player1Group: 'A',
-      player2: wildcardWinnerA || null, player2Seed: 'WC', player2Group: 'A',
+      player1: a4.name, seed1: 'A#4', player1Group: 'A',
+      player2: wildcardWinnerA || null, seed2: 'WC', player2Group: 'A',
       group: 'A',
       winner: null, loser: null, score1: null, score2: null, completed: false
     });
@@ -1605,8 +1605,8 @@ const generateChampionshipBracket = (standingsA, standingsB, wildcardWinnerA = n
     playInGames.push({
       id: 'PLAYIN-B', round: 'playin',
       matchName: 'Play-In: Group B',
-      player1: b4.name, player1Seed: 'B#4', player1Group: 'B',
-      player2: wildcardWinnerB || null, player2Seed: 'WC', player2Group: 'B',
+      player1: b4.name, seed1: 'B#4', player1Group: 'B',
+      player2: wildcardWinnerB || null, seed2: 'WC', player2Group: 'B',
       group: 'B',
       winner: null, loser: null, score1: null, score2: null, completed: false
     });
