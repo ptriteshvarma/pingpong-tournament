@@ -900,7 +900,7 @@ const API_BASE = '/api';
                             }
 
                             setLines(lines);
-                        });
+                        }, []);
 
                         return (
                             <div className="overflow-x-auto pb-4" ref={bracketRef}>
