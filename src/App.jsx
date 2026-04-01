@@ -812,38 +812,9 @@ const API_BASE = '/api';
                         </div>
                     </div>
 
-                    {/* Bracket — traditional horizontal layout with connector lines */}
+                    {/* Bracket — traditional horizontal layout */}
                     <div className="overflow-x-auto pb-4">
-                        <div className="relative inline-flex gap-6 p-4 min-w-full items-stretch">
-                            {/* SVG overlay for connector lines */}
-                            <svg className="absolute top-0 left-0 w-full h-full pointer-events-none" style={{ zIndex: 0 }}>
-                                {/* WC→PI lines */}
-                                {hasWildcard && hasPlayIn && (
-                                    <>
-                                        <line x1="220" y1="120" x2="280" y2="120" stroke="#8b5cf6" strokeWidth="2" />
-                                        <line x1="220" y1="340" x2="280" y2="340" stroke="#8b5cf6" strokeWidth="2" />
-                                    </>
-                                )}
-                                {/* PI→QF lines (to top and bottom QF) */}
-                                {hasPlayIn && (
-                                    <>
-                                        <line x1="472" y1="120" x2="532" y2="120" stroke="#8b5cf6" strokeWidth="2" />
-                                        <line x1="472" y1="340" x2="532" y2="340" stroke="#8b5cf6" strokeWidth="2" />
-                                    </>
-                                )}
-                                {/* QF→SF connector paths */}
-                                {/* QF1+QF2 → SF1 */}
-                                <path d="M 724 120 Q 760 120 760 200 Q 760 200 820 200" stroke="#8b5cf6" strokeWidth="2" fill="none" />
-                                <path d="M 724 200 Q 760 200 760 200 Q 760 200 820 200" stroke="#8b5cf6" strokeWidth="2" fill="none" />
-                                {/* QF3+QF4 → SF2 */}
-                                <path d="M 724 380 Q 760 380 760 420 Q 760 420 820 420" stroke="#8b5cf6" strokeWidth="2" fill="none" />
-                                <path d="M 724 460 Q 760 460 760 420 Q 760 420 820 420" stroke="#8b5cf6" strokeWidth="2" fill="none" />
-                                {/* SF1+SF2 → Final */}
-                                <path d="M 916 200 Q 952 200 952 310 Q 952 310 1012 310" stroke="#8b5cf6" strokeWidth="2" fill="none" />
-                                <path d="M 916 420 Q 952 420 952 310 Q 952 310 1012 310" stroke="#8b5cf6" strokeWidth="2" fill="none" />
-                            </svg>
-
-                            <div className="relative flex gap-6 items-stretch" style={{ zIndex: 1 }}>
+                        <div className="inline-flex gap-6 p-4 min-w-full items-stretch">
                                 {/* Wildcard Column */}
                                 {hasWildcard && (
                                     <div className="flex flex-col justify-center gap-40">
@@ -891,7 +862,6 @@ const API_BASE = '/api';
                                         </div>
                                     )}
                                 </div>
-                            </div>
                         </div>
                     </div>
 
