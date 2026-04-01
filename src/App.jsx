@@ -812,83 +812,81 @@ const API_BASE = '/api';
                         </div>
                     </div>
 
-                    {/* Vertical Tree Bracket Layout */}
-                    <div className="py-8 px-4 bg-gray-50 rounded-lg overflow-auto">
-                        <div className="space-y-6 max-w-2xl">
-                            {/* Wildcard Round */}
+                    {/* Horizontal Bracket Layout with Vertical Separators */}
+                    <div className="py-8 px-4 bg-gray-50 rounded-lg overflow-x-auto">
+                        <div className="flex gap-0 min-w-full">
+                            {/* Wildcard Column */}
                             {hasWildcard && championship.wildcardMatches && championship.wildcardMatches.length > 0 && (
                                 <>
-                                    <div>
-                                        <h4 className="text-sm font-bold text-purple-600 mb-3 uppercase tracking-wider">Wildcard Round</h4>
-                                        <div className="space-y-3">
+                                    <div className="flex-shrink-0 px-4 py-6 min-w-max">
+                                        <h4 className="text-xs font-bold text-purple-600 mb-4 uppercase tracking-wider text-center">Wildcard</h4>
+                                        <div className="space-y-2">
                                             {championship.wildcardMatches.map((wc, idx) => (
-                                                <MatchCard key={idx} match={wc} label={`WC${idx + 1}: #${idx + 5 || 5} Seeds`} />
+                                                <div key={idx} className="w-48">
+                                                    <MatchCard match={wc} label={`WC${idx + 1}`} />
+                                                </div>
                                             ))}
                                         </div>
                                     </div>
-                                    <div className="flex justify-center py-2">
-                                        <div className="text-gray-400 text-2xl">↓</div>
-                                    </div>
+                                    <div className="flex-shrink-0 border-r-2 border-gray-300"></div>
                                 </>
                             )}
 
-                            {/* Play-In Games */}
+                            {/* Play-In Column */}
                             {hasPlayIn && championship.playInGames && championship.playInGames.length > 0 && (
                                 <>
-                                    <div>
-                                        <h4 className="text-sm font-bold text-violet-600 mb-3 uppercase tracking-wider">Play-In Games</h4>
-                                        <div className="space-y-3">
+                                    <div className="flex-shrink-0 px-4 py-6 min-w-max">
+                                        <h4 className="text-xs font-bold text-violet-600 mb-4 uppercase tracking-wider text-center">Play-In</h4>
+                                        <div className="space-y-2">
                                             {championship.playInGames.map((pi, idx) => (
-                                                <MatchCard key={idx} match={pi} label={pi.matchName || `Play-In: Group ${pi.group}`} />
+                                                <div key={idx} className="w-48">
+                                                    <MatchCard match={pi} label={pi.matchName?.split(': ')[1] || `Group ${pi.group}`} />
+                                                </div>
                                             ))}
                                         </div>
                                     </div>
-                                    <div className="flex justify-center py-2">
-                                        <div className="text-gray-400 text-2xl">↓</div>
-                                    </div>
+                                    <div className="flex-shrink-0 border-r-2 border-gray-300"></div>
                                 </>
                             )}
 
-                            {/* Quarterfinals */}
-                            <div>
-                                <h4 className="text-sm font-bold text-gray-600 mb-3 uppercase tracking-wider">Quarterfinals</h4>
-                                <div className="space-y-3">
-                                    <MatchCard match={championship.quarterfinals[0]} label="QF1: A#1 vs B#4" />
-                                    <MatchCard match={championship.quarterfinals[1]} label="QF2: B#2 vs A#3" />
-                                    <MatchCard match={championship.quarterfinals[2]} label="QF3: A#2 vs B#3" />
-                                    <MatchCard match={championship.quarterfinals[3]} label="QF4: B#1 vs A#4" />
+                            {/* Quarterfinals Column */}
+                            <div className="flex-shrink-0 px-4 py-6 min-w-max">
+                                <h4 className="text-xs font-bold text-gray-700 mb-4 uppercase tracking-wider text-center">Quarterfinals</h4>
+                                <div className="space-y-2">
+                                    <div className="w-48"><MatchCard match={championship.quarterfinals[0]} label="QF1" /></div>
+                                    <div className="w-48"><MatchCard match={championship.quarterfinals[1]} label="QF2" /></div>
+                                    <div className="h-2"></div>
+                                    <div className="w-48"><MatchCard match={championship.quarterfinals[2]} label="QF3" /></div>
+                                    <div className="w-48"><MatchCard match={championship.quarterfinals[3]} label="QF4" /></div>
                                 </div>
                             </div>
+                            <div className="flex-shrink-0 border-r-2 border-gray-300"></div>
 
-                            {/* Arrow Divider */}
-                            <div className="flex justify-center py-2">
-                                <div className="text-gray-400 text-2xl">↓</div>
-                            </div>
-
-                            {/* Semifinals */}
-                            <div>
-                                <h4 className="text-sm font-bold text-gray-600 mb-3 uppercase tracking-wider">Semifinals</h4>
-                                <div className="space-y-3">
-                                    <MatchCard match={championship.semifinals[0]} label="Semifinal 1 (QF1 vs QF2)" showSeeds={false} />
-                                    <MatchCard match={championship.semifinals[1]} label="Semifinal 2 (QF3 vs QF4)" showSeeds={false} />
+                            {/* Semifinals Column */}
+                            <div className="flex-shrink-0 px-4 py-6 min-w-max">
+                                <h4 className="text-xs font-bold text-gray-700 mb-4 uppercase tracking-wider text-center">Semifinals</h4>
+                                <div className="space-y-2 flex flex-col justify-center">
+                                    <div className="h-16"></div>
+                                    <div className="w-48"><MatchCard match={championship.semifinals[0]} label="SF1" showSeeds={false} /></div>
+                                    <div className="h-20"></div>
+                                    <div className="w-48"><MatchCard match={championship.semifinals[1]} label="SF2" showSeeds={false} /></div>
                                 </div>
                             </div>
+                            <div className="flex-shrink-0 border-r-2 border-gray-300"></div>
 
-                            {/* Arrow Divider */}
-                            <div className="flex justify-center py-2">
-                                <div className="text-gray-400 text-2xl">↓</div>
-                            </div>
-
-                            {/* Final */}
-                            <div>
-                                <h4 className="text-sm font-bold text-gray-600 mb-3 uppercase tracking-wider">Grand Final</h4>
-                                <MatchCard match={championship.final} label="Championship Final" showSeeds={false} />
-                                {championship.champion && (
-                                    <div className="mt-4 p-4 text-center rounded-lg bg-gradient-to-r from-amber-50 to-violet-50 border-2 border-amber-300">
-                                        <div className="text-xs text-gray-600 uppercase font-semibold tracking-wider mb-2">🏆 Champion</div>
-                                        <div className="font-bold text-lg text-amber-700">{championship.champion}</div>
-                                    </div>
-                                )}
+                            {/* Final Column */}
+                            <div className="flex-shrink-0 px-4 py-6 min-w-max">
+                                <h4 className="text-xs font-bold text-amber-700 mb-4 uppercase tracking-wider text-center">Final</h4>
+                                <div className="space-y-4 flex flex-col justify-center h-full">
+                                    <div className="h-32"></div>
+                                    <div className="w-48"><MatchCard match={championship.final} label="Grand Final" showSeeds={false} /></div>
+                                    {championship.champion && (
+                                        <div className="w-48 mt-4 p-3 text-center rounded-lg bg-gradient-to-r from-amber-50 to-violet-50 border-2 border-amber-300">
+                                            <div className="text-xs text-gray-600 uppercase font-semibold tracking-wider mb-1">🏆 Champion</div>
+                                            <div className="font-bold text-sm text-amber-700">{championship.champion}</div>
+                                        </div>
+                                    )}
+                                </div>
                             </div>
                         </div>
                     </div>
