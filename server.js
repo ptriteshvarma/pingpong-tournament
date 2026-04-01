@@ -2802,7 +2802,7 @@ app.get('/api/standings/debug', async (req, res) => {
 });
 
 // Get current season
-app.get('/api/season', cacheResponse(30), async (req, res) => {
+app.get('/api/season', async (req, res) => {
   try {
     const result = await pool.query('SELECT data FROM season WHERE id = 1');
     if (result.rows.length === 0) {
