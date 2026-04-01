@@ -61,7 +61,21 @@
       "Bash(then grep ADMIN .env)",
       "Bash(else echo \"No .env file found\")",
       "Bash(fi)",
-      "Bash(git checkout:*)"
+      "Bash(git checkout:*)",
+      "WebFetch(domain:pingpong-tournament.vercel.app)",
+      "Bash(npm run dev:*)",
+      "Bash(ls:*)",
+      "Bash(del nul)",
+      "Bash(echo:*)",
+      "Bash(ping:*)",
+      "WebFetch(domain:pingpong-tournament-azsv6qi54-ritesh-varmas-projects.vercel.app)",
+      "Bash(dir:*)",
+      "Bash(git -C \"d:\\\\pingpong-tournament\" log --oneline -20)",
+      "Bash(xargs rm -f)",
+      "Bash(jq '.standings.A | to_entries | map\\({name: .key, wins: .value.wins, losses: .value.losses, pointsFor: .value.pointsFor, pointsAgainst: .value.pointsAgainst, diff: \\(.value.pointsFor - .value.pointsAgainst\\)}\\) | sort_by\\([.wins, .pointsFor - .pointsAgainst] | map\\(-1 * .\\)\\) | .[0:6] | .[] | \"\"\\\\\\(.name | ascii_upcase\\): \\\\\\(.wins\\)W-\\\\\\(.losses\\)L PF:\\\\\\(.pointsFor\\) PA:\\\\\\(.pointsAgainst\\) Diff:\\\\\\(.diff\\)\"\"')",
+      "Bash(node -e \":*)",
+      "Bash(grep -E \"^require$\")",
+      "Bash(tr ';' '\\\\n')"
     ]
   }
 }
