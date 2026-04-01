@@ -3193,12 +3193,20 @@ app.post('/api/season/match', async (req, res) => {
         }
 
         // Generate combined championship bracket (top 4 from each group)
+        // Only include wildcard matches if they have winners
+        let wildcardMatchesToPass = null;
+        if (season.wildcard?.wc1?.winner || season.wildcard?.wc2?.winner) {
+          wildcardMatchesToPass = [];
+          if (season.wildcard.wc1?.winner) wildcardMatchesToPass.push(season.wildcard.wc1);
+          if (season.wildcard.wc2?.winner) wildcardMatchesToPass.push(season.wildcard.wc2);
+        }
+
         season.championship = generateChampionshipBracket(
           season.standings.A,
           season.standings.B,
           wildcardWinnerForA,
           wildcardWinnerForB,
-          season.wildcard?.matches || null
+          wildcardMatchesToPass
         );
         // If play-in games exist, set status to 'playin', otherwise 'playoffs'
         season.status = season.championship.playInGames ? 'playin' : 'playoffs';
@@ -4788,12 +4796,20 @@ app.post('/api/season/playoffs', requireAdmin, async (req, res) => {
     }
 
     // Generate combined championship bracket (top 4 from each group)
+    // Only include wildcard matches if they have winners
+    let wildcardMatchesToPass = null;
+    if (season.wildcard?.wc1?.winner || season.wildcard?.wc2?.winner) {
+      wildcardMatchesToPass = [];
+      if (season.wildcard.wc1?.winner) wildcardMatchesToPass.push(season.wildcard.wc1);
+      if (season.wildcard.wc2?.winner) wildcardMatchesToPass.push(season.wildcard.wc2);
+    }
+
     season.championship = generateChampionshipBracket(
       season.standings.A,
       season.standings.B,
       wildcardWinnerForA,
       wildcardWinnerForB,
-      season.wildcard?.matches || null
+      wildcardMatchesToPass
     );
     season.status = 'playoffs';
 
