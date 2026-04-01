@@ -1249,14 +1249,21 @@ const sortStandings = (standings) => {
 
         const h2hDiffA = h2hWinsA - h2hLossesA;
         const h2hDiffB = h2hWinsB - h2hLossesB;
-        if (h2hDiffB !== h2hDiffA) return h2hDiffB - h2hDiffA;
+        if (h2hDiffB !== h2hDiffA) {
+          console.log(`[TIEBREAK] ${a.name} h2h diff: ${h2hDiffA}, ${b.name} h2h diff: ${h2hDiffB}`);
+          return h2hDiffB - h2hDiffA;
+        }
 
         const diffA = (a.pointsFor || 0) - (a.pointsAgainst || 0);
         const diffB = (b.pointsFor || 0) - (b.pointsAgainst || 0);
-        if (diffB !== diffA) return diffB - diffA;
+        if (diffB !== diffA) {
+          console.log(`[TIEBREAK] ${a.name} point diff: ${diffA}, ${b.name} point diff: ${diffB}`);
+          return diffB - diffA;
+        }
 
         const seedA = a.initialSeed || 9999;
         const seedB = b.initialSeed || 9999;
+        console.log(`[TIEBREAK] ${a.name} seed: ${seedA}, ${b.name} seed: ${seedB}`);
         return seedA - seedB;
       });
       sortedPlayers.push(...group);
