@@ -1589,9 +1589,9 @@ const generateChampionshipBracket = (standingsA, standingsB, wildcardWinnerA = n
   const playInGames = [];
   let finalA4 = a4, finalB4 = b4;
 
-  // WC candidates: A-side winners could be a5 or a6, B-side could be b5 or b6
-  const wcCandidatesA = [a5?.name, a6?.name].filter(Boolean);
-  const wcCandidatesB = [b5?.name, b6?.name].filter(Boolean);
+  // Fixed assignment: WC2 winner → Group A play-in (faces A#4), WC1 winner → Group B play-in (faces B#4)
+  const wcCandidatesA = [a6?.name, b6?.name].filter(Boolean); // WC2 participants
+  const wcCandidatesB = [a5?.name, b5?.name].filter(Boolean); // WC1 participants
 
   if (a4.name) {
     playInGames.push({
@@ -2843,18 +2843,15 @@ app.get('/api/season', cacheResponse(30), async (req, res) => {
         let wildcardWinnerA = null;
         let wildcardWinnerB = null;
 
+        // Fixed: WC1 winner → Group B play-in, WC2 winner → Group A play-in
         let wildcardMatches = [];
         if (season.wildcard) {
           if (season.wildcard.wc1?.winner) {
-            const wc1Player = season.standings.A[season.wildcard.wc1.winner] ? 'A' : 'B';
-            if (wc1Player === 'A') wildcardWinnerA = season.wildcard.wc1.winner;
-            else wildcardWinnerB = season.wildcard.wc1.winner;
+            wildcardWinnerB = season.wildcard.wc1.winner;
             wildcardMatches.push(season.wildcard.wc1);
           }
           if (season.wildcard.wc2?.winner) {
-            const wc2Player = season.standings.A[season.wildcard.wc2.winner] ? 'A' : 'B';
-            if (wc2Player === 'A') wildcardWinnerA = season.wildcard.wc2.winner;
-            else wildcardWinnerB = season.wildcard.wc2.winner;
+            wildcardWinnerA = season.wildcard.wc2.winner;
             wildcardMatches.push(season.wildcard.wc2);
           }
         }
@@ -3189,27 +3186,13 @@ app.post('/api/season/match', async (req, res) => {
         let wildcardWinnerForA = null;
         let wildcardWinnerForB = null;
 
+        // Fixed: WC1 winner → Group B play-in, WC2 winner → Group A play-in
         season.wildcard.matches.forEach(wcMatch => {
           if (wcMatch.completed && wcMatch.winner) {
-            if (wcMatch.winner === wcMatch.player1) {
-              if (wcMatch.player1Group === 'A') wildcardWinnerForA = wcMatch.winner;
-              else wildcardWinnerForB = wcMatch.winner;
-            } else {
-              if (wcMatch.player2Group === 'A') wildcardWinnerForA = wcMatch.winner;
-              else wildcardWinnerForB = wcMatch.winner;
-            }
+            if (wcMatch.id === 'WC-1' || wcMatch.id === 'WC1') wildcardWinnerForB = wcMatch.winner;
+            else if (wcMatch.id === 'WC-2' || wcMatch.id === 'WC2') wildcardWinnerForA = wcMatch.winner;
           }
         });
-
-        // VALIDATION: Ensure wildcard winners are actually from their assigned groups
-        if (wildcardWinnerForA && !season.standings.A[wildcardWinnerForA]) {
-          console.error(`⚠️  Wildcard validation failed: ${wildcardWinnerForA} not in Group A standings`);
-          wildcardWinnerForA = null; // Invalidate
-        }
-        if (wildcardWinnerForB && !season.standings.B[wildcardWinnerForB]) {
-          console.error(`⚠️  Wildcard validation failed: ${wildcardWinnerForB} not in Group B standings`);
-          wildcardWinnerForB = null; // Invalidate
-        }
 
         // Generate combined championship bracket (top 4 from each group)
         // Only include wildcard matches if they have winners
@@ -4683,17 +4666,14 @@ app.post('/api/championship/regenerate', requireAdmin, async (req, res) => {
     let wildcardWinnerB = null;
     let wildcardMatches = [];
 
+    // Fixed: WC1 winner → Group B play-in, WC2 winner → Group A play-in
     if (season.wildcard) {
       if (season.wildcard.wc1?.winner) {
-        const wc1Player = season.standings.A[season.wildcard.wc1.winner] ? 'A' : 'B';
-        if (wc1Player === 'A') wildcardWinnerA = season.wildcard.wc1.winner;
-        else wildcardWinnerB = season.wildcard.wc1.winner;
+        wildcardWinnerB = season.wildcard.wc1.winner;
         wildcardMatches.push(season.wildcard.wc1);
       }
       if (season.wildcard.wc2?.winner) {
-        const wc2Player = season.standings.A[season.wildcard.wc2.winner] ? 'A' : 'B';
-        if (wc2Player === 'A') wildcardWinnerA = season.wildcard.wc2.winner;
-        else wildcardWinnerB = season.wildcard.wc2.winner;
+        wildcardWinnerA = season.wildcard.wc2.winner;
         wildcardMatches.push(season.wildcard.wc2);
       }
     }
@@ -4783,35 +4763,17 @@ app.post('/api/season/playoffs', requireAdmin, async (req, res) => {
     // Create snapshot before starting playoffs
     await createSeasonSnapshot(season, 'Before starting championship playoffs', 'admin');
 
-    // Check if wildcard round exists and determine winners
-    // New logic: Winners go to their OWN group playoffs
+    // Fixed: WC1 winner → Group B play-in, WC2 winner → Group A play-in
     let wildcardWinnerForA = null;
     let wildcardWinnerForB = null;
 
     if (season.wildcard) {
-      // Process WC matches in order (WC1 = #5 seeds first, WC2 = #6 seeds second)
-      // Each group can only have ONE wildcard challenger (higher seed takes priority)
       season.wildcard.matches.forEach(match => {
         if (match.completed && match.winner) {
-          const winnerGroup = match.winner === match.player1 ? match.player1Group : match.player2Group;
-          if (winnerGroup === 'A' && !wildcardWinnerForA) {
-            wildcardWinnerForA = match.winner;
-          } else if (winnerGroup === 'B' && !wildcardWinnerForB) {
-            wildcardWinnerForB = match.winner;
-          }
-          // If slot already taken (two winners from same group), second winner is eliminated
+          if (match.id === 'WC-1' || match.id === 'WC1') wildcardWinnerForB = match.winner;
+          else if (match.id === 'WC-2' || match.id === 'WC2') wildcardWinnerForA = match.winner;
         }
       });
-    }
-
-    // VALIDATION: Ensure wildcard winners are actually from their assigned groups
-    if (wildcardWinnerForA && !season.standings.A[wildcardWinnerForA]) {
-      console.error(`⚠️  Wildcard validation failed: ${wildcardWinnerForA} not in Group A standings`);
-      wildcardWinnerForA = null; // Invalidate
-    }
-    if (wildcardWinnerForB && !season.standings.B[wildcardWinnerForB]) {
-      console.error(`⚠️  Wildcard validation failed: ${wildcardWinnerForB} not in Group B standings`);
-      wildcardWinnerForB = null; // Invalidate
     }
 
     // Generate combined championship bracket (top 4 from each group)
