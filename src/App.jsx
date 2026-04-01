@@ -2318,6 +2318,36 @@ const API_BASE = '/api';
                                                 </button>
                                             </div>
                                         </div>
+
+                                        {/* Regenerate Championship Bracket */}
+                                        <div className="bg-gray-100 rounded-lg p-4">
+                                            <h3 className="font-bold mb-3">🔄 Regenerate Championship Bracket</h3>
+                                            <p className="text-sm text-gray-500 mb-4">
+                                                Force regenerate the championship bracket from current standings. Use this if seeding appears incorrect.
+                                            </p>
+                                            <button
+                                                onClick={async () => {
+                                                    try {
+                                                        const res = await fetch(`${API_BASE}/championship/regenerate`, {
+                                                            method: 'POST',
+                                                            headers: { 'X-Admin-Password': localStorage.getItem('adminPassword') || '' }
+                                                        });
+                                                        const data = await res.json();
+                                                        if (res.ok) {
+                                                            alert('✅ Championship bracket regenerated!\n\nThe bracket has been updated with current standings.');
+                                                            await loadData(true);
+                                                        } else {
+                                                            alert(`❌ Error: ${data.error}\n\n${data.message || ''}`);
+                                                        }
+                                                    } catch (e) {
+                                                        alert(`❌ Failed to regenerate bracket: ${e.message}`);
+                                                    }
+                                                }}
+                                                className="w-full bg-violet-600 hover:bg-violet-500 px-4 py-3 rounded-lg font-semibold text-white transition"
+                                            >
+                                                Regenerate from Current Standings
+                                            </button>
+                                        </div>
                                     </div>
                                 )}
                             </div>
