@@ -5504,6 +5504,81 @@ app.post('/api/season/force-next-week', requireAdmin, async (req, res) => {
   }
 });
 
+// Forfeit all remaining games for a group and lock championship bracket
+app.post('/api/season/forfeit-remaining', requireAdmin, async (req, res) => {
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+
+    const result = await client.query('SELECT data FROM season WHERE id = 1 FOR UPDATE');
+    if (result.rows.length === 0) {
+      await client.query('ROLLBACK');
+      return res.status(400).json({ error: 'No active season' });
+    }
+
+    const season = result.rows[0].data;
+    const { group } = req.body; // 'A', 'B', or 'both'
+    const groups = group === 'both' ? ['A', 'B'] : [group];
+
+    if (!groups.every(g => ['A', 'B'].includes(g))) {
+      await client.query('ROLLBACK');
+      return res.status(400).json({ error: 'group must be "A", "B", or "both"' });
+    }
+
+    await createSeasonSnapshot(season, `Before forfeiting remaining ${group} games`, 'admin');
+
+    let totalForfeited = 0;
+    groups.forEach(g => {
+      if (season.schedule[g]) {
+        season.schedule[g].forEach(weekMatches => {
+          weekMatches.forEach(match => {
+            if (!match.completed && !match.cancelled) {
+              match.completed = true;
+              match.winner = null;
+              match.loser = null;
+              match.forfeit = true;
+              match.cancelReason = `Admin forfeited remaining ${g} games`;
+              totalForfeited++;
+            }
+          });
+        });
+      }
+    });
+
+    // Check if all regular season games are now complete
+    const allComplete = ['A', 'B'].every(g =>
+      season.schedule[g]?.every(week =>
+        week.every(m => m.completed || m.cancelled)
+      )
+    );
+
+    if (allComplete && season.status === 'regular') {
+      season.status = 'wildcard';
+      // Auto-generate wildcard round
+      season.wildcard = generateWildcardRound(season.standings.A, season.standings.B);
+      console.log('All regular season games complete. Auto-started wildcard round.');
+    }
+
+    await client.query(`
+      UPDATE season SET data = $1, updated_at = CURRENT_TIMESTAMP WHERE id = 1
+    `, [JSON.stringify(season)]);
+
+    await client.query('COMMIT');
+
+    res.json({
+      success: true,
+      totalForfeited,
+      seasonStatus: season.status,
+      message: `Forfeited ${totalForfeited} remaining ${group} games.${allComplete ? ' All regular season games complete - wildcard round started.' : ''}`
+    });
+  } catch (error) {
+    await client.query('ROLLBACK');
+    res.status(500).json({ error: error.message });
+  } finally {
+    client.release();
+  }
+});
+
 // Delete season (admin only) - use with caution
 app.delete('/api/season', requireAdmin, async (req, res) => {
   try {
