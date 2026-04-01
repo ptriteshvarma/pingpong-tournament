@@ -814,9 +814,11 @@ const API_BASE = '/api';
 
                     {/* Bracket — traditional horizontal layout with measured connector lines */}
                     {(() => {
-                        const bracketRef = useRef(null);
-                        const cardRefs = useRef({});
-                        const [lines, setLines] = useState([]);
+                        // Component to render bracket with measured lines
+                        function BracketWithLines() {
+                            const bracketRef = useRef(null);
+                            const cardRefs = useRef({});
+                            const [lines, setLines] = useState([]);
 
                         // Measure card positions and draw lines
                         useEffect(() => {
@@ -958,6 +960,8 @@ const API_BASE = '/api';
                                 </div>
                             </div>
                         );
+                        }
+                        return <BracketWithLines />;
                     })()}
 
                     {/* Seed Legend */}
