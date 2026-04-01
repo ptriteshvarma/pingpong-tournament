@@ -1516,7 +1516,7 @@ const generateWildcardRound = (standingsA, standingsB) => {
 // QF1: A#1 vs B#4, QF2: B#2 vs A#3, QF3: A#2 vs B#3, QF4: B#1 vs A#4
 // SF1: QF1 winner vs QF2 winner, SF2: QF3 winner vs QF4 winner
 // Final: SF1 winner vs SF2 winner
-const generateChampionshipBracket = (standingsA, standingsB, wildcardWinnerA = null, wildcardWinnerB = null) => {
+const generateChampionshipBracket = (standingsA, standingsB, wildcardWinnerA = null, wildcardWinnerB = null, wildcardMatches = null) => {
   const sortedA = sortStandings(standingsA);
   const sortedB = sortStandings(standingsB);
 
@@ -1603,6 +1603,7 @@ const generateChampionshipBracket = (standingsA, standingsB, wildcardWinnerA = n
     format: 'combined',
     description: 'Top 4 from each group compete for championship (with play-in games if wildcard winners exist)',
     seeds: { a1, a2, a3, a4: finalA4, b1, b2, b3, b4: finalB4 },
+    wildcardMatches: wildcardMatches && wildcardMatches.length > 0 ? wildcardMatches : null,
     playInGames: playInGames.length > 0 ? playInGames : null,
     // Quarterfinals: Cross-group matchups with traditional seeding
     // #1 seeds face #4 from other group, #2 seeds face #3 from other group
@@ -2823,16 +2824,19 @@ app.get('/api/season', cacheResponse(30), async (req, res) => {
         let wildcardWinnerA = null;
         let wildcardWinnerB = null;
 
+        let wildcardMatches = [];
         if (season.wildcard) {
           if (season.wildcard.wc1?.winner) {
             const wc1Player = season.standings.A[season.wildcard.wc1.winner] ? 'A' : 'B';
             if (wc1Player === 'A') wildcardWinnerA = season.wildcard.wc1.winner;
             else wildcardWinnerB = season.wildcard.wc1.winner;
+            wildcardMatches.push(season.wildcard.wc1);
           }
           if (season.wildcard.wc2?.winner) {
             const wc2Player = season.standings.A[season.wildcard.wc2.winner] ? 'A' : 'B';
             if (wc2Player === 'A') wildcardWinnerA = season.wildcard.wc2.winner;
             else wildcardWinnerB = season.wildcard.wc2.winner;
+            wildcardMatches.push(season.wildcard.wc2);
           }
         }
 
@@ -2840,7 +2844,8 @@ app.get('/api/season', cacheResponse(30), async (req, res) => {
           season.standings.A,
           season.standings.B,
           wildcardWinnerA,
-          wildcardWinnerB
+          wildcardWinnerB,
+          wildcardMatches.length > 0 ? wildcardMatches : null
         );
       }
       // If matches have been played, leave the bracket as-is (results + advancement are preserved in DB)
@@ -3192,7 +3197,8 @@ app.post('/api/season/match', async (req, res) => {
           season.standings.A,
           season.standings.B,
           wildcardWinnerForA,
-          wildcardWinnerForB
+          wildcardWinnerForB,
+          season.wildcard?.matches || null
         );
         // If play-in games exist, set status to 'playin', otherwise 'playoffs'
         season.status = season.championship.playInGames ? 'playin' : 'playoffs';
@@ -4648,17 +4654,20 @@ app.post('/api/championship/regenerate', requireAdmin, async (req, res) => {
     // Extract wildcard winners if they exist
     let wildcardWinnerA = null;
     let wildcardWinnerB = null;
+    let wildcardMatches = [];
 
     if (season.wildcard) {
       if (season.wildcard.wc1?.winner) {
         const wc1Player = season.standings.A[season.wildcard.wc1.winner] ? 'A' : 'B';
         if (wc1Player === 'A') wildcardWinnerA = season.wildcard.wc1.winner;
         else wildcardWinnerB = season.wildcard.wc1.winner;
+        wildcardMatches.push(season.wildcard.wc1);
       }
       if (season.wildcard.wc2?.winner) {
         const wc2Player = season.standings.A[season.wildcard.wc2.winner] ? 'A' : 'B';
         if (wc2Player === 'A') wildcardWinnerA = season.wildcard.wc2.winner;
         else wildcardWinnerB = season.wildcard.wc2.winner;
+        wildcardMatches.push(season.wildcard.wc2);
       }
     }
 
@@ -4667,7 +4676,8 @@ app.post('/api/championship/regenerate', requireAdmin, async (req, res) => {
       season.standings.A,
       season.standings.B,
       wildcardWinnerA,
-      wildcardWinnerB
+      wildcardWinnerB,
+      wildcardMatches.length > 0 ? wildcardMatches : null
     );
 
     // Save to database
@@ -4782,7 +4792,8 @@ app.post('/api/season/playoffs', requireAdmin, async (req, res) => {
       season.standings.A,
       season.standings.B,
       wildcardWinnerForA,
-      wildcardWinnerForB
+      wildcardWinnerForB,
+      season.wildcard?.matches || null
     );
     season.status = 'playoffs';
 

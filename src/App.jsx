@@ -789,6 +789,7 @@ const API_BASE = '/api';
             };
 
 
+            const hasWildcard = championship.wildcardMatches && championship.wildcardMatches.length > 0;
             const hasPlayIn = championship.playInGames && championship.playInGames.length > 0;
 
             return (
@@ -808,6 +809,23 @@ const API_BASE = '/api';
                     {/* Horizontal Bracket Layout with Vertical Separators */}
                     <div className="py-8 px-4 bg-gray-50 rounded-lg overflow-x-auto">
                         <div className="flex gap-0 min-w-full">
+                            {/* Wildcard Column */}
+                            {hasWildcard && championship.wildcardMatches && championship.wildcardMatches.length > 0 && (
+                                <>
+                                    <div className="flex-shrink-0 px-4 py-6 min-w-max">
+                                        <h4 className="text-xs font-bold text-purple-600 mb-4 uppercase tracking-wider text-center">Wildcard</h4>
+                                        <div className="space-y-2">
+                                            {championship.wildcardMatches.map((wc, idx) => (
+                                                <div key={idx} className="w-48">
+                                                    <MatchCard match={wc} label={`WC${idx + 1}`} />
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                    <div className="flex-shrink-0 border-r-2 border-gray-300"></div>
+                                </>
+                            )}
+
                             {/* Play-In Column */}
                             {hasPlayIn && championship.playInGames && championship.playInGames.length > 0 && (
                                 <>
@@ -872,6 +890,7 @@ const API_BASE = '/api';
                         <div className="flex flex-wrap gap-4 text-xs text-gray-500">
                             <span><span className="text-emerald-600 font-semibold">A#1-6</span> = Group A seeds</span>
                             <span><span className="text-amber-600 font-semibold">B#1-6</span> = Group B seeds</span>
+                            <span><span className="text-purple-600 font-semibold">WC</span> = Wildcard</span>
                             <span><span className="text-violet-600 font-semibold">PI</span> = Play-In (WC winner vs #4 seed)</span>
                         </div>
                     </div>
