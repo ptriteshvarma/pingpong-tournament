@@ -812,58 +812,153 @@ const API_BASE = '/api';
                         </div>
                     </div>
 
-                    {/* Bracket — traditional horizontal layout */}
-                    <div className="overflow-x-auto pb-4">
-                        <div className="inline-flex gap-6 p-4 min-w-full items-stretch">
-                                {/* Wildcard Column */}
-                                {hasWildcard && (
-                                    <div className="flex flex-col justify-center gap-40">
-                                        <div className="text-center text-xs font-semibold text-purple-600 uppercase mb-2">Wildcard</div>
-                                        {wc1 && <div className="w-52"><MatchCard match={wc1} label="WC1: #5 Seeds" /></div>}
-                                        {wc2 && <div className="w-52"><MatchCard match={wc2} label="WC2: #6 Seeds" /></div>}
-                                    </div>
-                                )}
+                    {/* Bracket — traditional horizontal layout with measured connector lines */}
+                    {(() => {
+                        const bracketRef = useRef(null);
+                        const cardRefs = useRef({});
+                        const [lines, setLines] = useState([]);
 
-                                {/* Play-In Column */}
-                                {hasPlayIn && (
-                                    <div className="flex flex-col justify-center gap-40">
-                                        <div className="text-center text-xs font-semibold text-purple-600 uppercase mb-2">Play-In</div>
-                                        {playInB && <div className="w-52"><MatchCard match={playInB} label="Play-In: Group B" /></div>}
-                                        {playInA && <div className="w-52"><MatchCard match={playInA} label="Play-In: Group A" /></div>}
-                                    </div>
-                                )}
+                        // Measure card positions and draw lines
+                        useEffect(() => {
+                            if (!bracketRef.current) return;
+                            const container = bracketRef.current;
+                            const lines = [];
 
-                                {/* Quarterfinals Column */}
-                                <div className="flex flex-col justify-center gap-8">
-                                    <div className="text-center text-xs font-semibold text-purple-600 uppercase mb-2">Quarterfinals</div>
-                                    <div className="w-52"><MatchCard match={championship.quarterfinals[0]} label="QF1: A#1 vs B#4" /></div>
-                                    <div className="w-52"><MatchCard match={championship.quarterfinals[1]} label="QF2: B#2 vs A#3" /></div>
-                                    <div className="h-12"></div>
-                                    <div className="w-52"><MatchCard match={championship.quarterfinals[2]} label="QF3: A#2 vs B#3" /></div>
-                                    <div className="w-52"><MatchCard match={championship.quarterfinals[3]} label="QF4: B#1 vs A#4" /></div>
-                                </div>
+                            // Get all card positions
+                            const getCardCenter = (id) => {
+                                const card = cardRefs.current[id];
+                                if (!card) return null;
+                                const rect = card.getBoundingClientRect();
+                                const containerRect = container.getBoundingClientRect();
+                                return {
+                                    x: rect.left - containerRect.left + rect.width / 2,
+                                    y: rect.top - containerRect.top + rect.height / 2
+                                };
+                            };
 
-                                {/* Semifinals Column */}
-                                <div className="flex flex-col justify-center gap-16">
-                                    <div className="text-center text-xs font-semibold text-purple-600 uppercase mb-2">Semifinals</div>
-                                    <div className="w-52"><MatchCard match={championship.semifinals[0]} label="Semifinal 1" showSeeds={false} /></div>
-                                    <div className="h-20"></div>
-                                    <div className="w-52"><MatchCard match={championship.semifinals[1]} label="Semifinal 2" showSeeds={false} /></div>
-                                </div>
+                            // WC→PI lines
+                            if (wc1) {
+                                const wc1c = getCardCenter('wc1');
+                                const pib = getCardCenter('pi-b');
+                                if (wc1c && pib) lines.push({ x1: wc1c.x, y1: wc1c.y, x2: pib.x, y2: pib.y, type: 'line' });
+                            }
+                            if (wc2) {
+                                const wc2c = getCardCenter('wc2');
+                                const pia = getCardCenter('pi-a');
+                                if (wc2c && pia) lines.push({ x1: wc2c.x, y1: wc2c.y, x2: pia.x, y2: pia.y, type: 'line' });
+                            }
 
-                                {/* Final Column */}
-                                <div className="flex flex-col justify-center gap-8">
-                                    <div className="text-center text-xs font-semibold text-amber-600 uppercase mb-2">Final</div>
-                                    <div className="w-52"><MatchCard match={championship.final} label="Grand Final" showSeeds={false} /></div>
-                                    {championship.champion && (
-                                        <div className="w-52 text-center px-3 py-2 rounded-lg bg-gradient-to-r from-amber-50 to-violet-50 border border-amber-300">
-                                            <div className="text-[10px] text-gray-500 uppercase font-semibold">Champion</div>
-                                            <div className="font-bold text-amber-700 mt-1">{championship.champion}</div>
+                            // PI→QF lines
+                            if (playInB) {
+                                const pib = getCardCenter('pi-b');
+                                const qf1 = getCardCenter('qf1');
+                                if (pib && qf1) lines.push({ x1: pib.x, y1: pib.y, x2: qf1.x, y2: qf1.y, type: 'line' });
+                            }
+                            if (playInA) {
+                                const pia = getCardCenter('pi-a');
+                                const qf4 = getCardCenter('qf4');
+                                if (pia && qf4) lines.push({ x1: pia.x, y1: pia.y, x2: qf4.x, y2: qf4.y, type: 'line' });
+                            }
+
+                            // QF→SF bracket curves
+                            const qf1 = getCardCenter('qf1');
+                            const qf2 = getCardCenter('qf2');
+                            const qf3 = getCardCenter('qf3');
+                            const qf4 = getCardCenter('qf4');
+                            const sf1 = getCardCenter('sf1');
+                            const sf2 = getCardCenter('sf2');
+                            const final = getCardCenter('final');
+
+                            if (qf1 && qf2 && sf1) {
+                                const mx = (qf1.x + sf1.x) / 2;
+                                lines.push({ x1: qf1.x, y1: qf1.y, x2: mx, y2: qf1.y, type: 'path' });
+                                lines.push({ x1: mx, y1: qf1.y, x2: mx, y2: sf1.y, type: 'path' });
+                                lines.push({ x1: mx, y1: sf1.y, x2: sf1.x, y2: sf1.y, type: 'path' });
+                                lines.push({ x1: qf2.x, y1: qf2.y, x2: mx, y2: qf2.y, type: 'path' });
+                                lines.push({ x1: mx, y1: qf2.y, x2: mx, y2: sf1.y, type: 'path' });
+                            }
+
+                            if (qf3 && qf4 && sf2) {
+                                const mx = (qf3.x + sf2.x) / 2;
+                                lines.push({ x1: qf3.x, y1: qf3.y, x2: mx, y2: qf3.y, type: 'path' });
+                                lines.push({ x1: mx, y1: qf3.y, x2: mx, y2: sf2.y, type: 'path' });
+                                lines.push({ x1: mx, y1: sf2.y, x2: sf2.x, y2: sf2.y, type: 'path' });
+                                lines.push({ x1: qf4.x, y1: qf4.y, x2: mx, y2: qf4.y, type: 'path' });
+                                lines.push({ x1: mx, y1: qf4.y, x2: mx, y2: sf2.y, type: 'path' });
+                            }
+
+                            // SF→Final
+                            if (sf1 && sf2 && final) {
+                                const mx = (sf1.x + final.x) / 2;
+                                lines.push({ x1: sf1.x, y1: sf1.y, x2: mx, y2: sf1.y, type: 'path' });
+                                lines.push({ x1: mx, y1: sf1.y, x2: mx, y2: final.y, type: 'path' });
+                                lines.push({ x1: mx, y1: final.y, x2: final.x, y2: final.y, type: 'path' });
+                                lines.push({ x1: sf2.x, y1: sf2.y, x2: mx, y2: sf2.y, type: 'path' });
+                                lines.push({ x1: mx, y1: sf2.y, x2: mx, y2: final.y, type: 'path' });
+                            }
+
+                            setLines(lines);
+                        });
+
+                        return (
+                            <div className="overflow-x-auto pb-4" ref={bracketRef}>
+                                <svg className="absolute top-0 left-0 w-full pointer-events-none" style={{ height: '600px', zIndex: 0 }}>
+                                    {lines.map((line, i) => (
+                                        <line key={i} x1={line.x1} y1={line.y1} x2={line.x2} y2={line.y2} stroke="#8b5cf6" strokeWidth="2" />
+                                    ))}
+                                </svg>
+                                <div className="relative inline-flex gap-6 p-4 min-w-full items-stretch" style={{ zIndex: 1 }}>
+                                    {/* Wildcard Column */}
+                                    {hasWildcard && (
+                                        <div className="flex flex-col justify-center gap-40">
+                                            <div className="text-center text-xs font-semibold text-purple-600 uppercase mb-2">Wildcard</div>
+                                            {wc1 && <div ref={el => cardRefs.current['wc1'] = el} className="w-52"><MatchCard match={wc1} label="WC1: #5 Seeds" /></div>}
+                                            {wc2 && <div ref={el => cardRefs.current['wc2'] = el} className="w-52"><MatchCard match={wc2} label="WC2: #6 Seeds" /></div>}
                                         </div>
                                     )}
+
+                                    {/* Play-In Column */}
+                                    {hasPlayIn && (
+                                        <div className="flex flex-col justify-center gap-40">
+                                            <div className="text-center text-xs font-semibold text-purple-600 uppercase mb-2">Play-In</div>
+                                            {playInB && <div ref={el => cardRefs.current['pi-b'] = el} className="w-52"><MatchCard match={playInB} label="Play-In: Group B" /></div>}
+                                            {playInA && <div ref={el => cardRefs.current['pi-a'] = el} className="w-52"><MatchCard match={playInA} label="Play-In: Group A" /></div>}
+                                        </div>
+                                    )}
+
+                                    {/* Quarterfinals Column */}
+                                    <div className="flex flex-col justify-center gap-8">
+                                        <div className="text-center text-xs font-semibold text-purple-600 uppercase mb-2">Quarterfinals</div>
+                                        <div ref={el => cardRefs.current['qf1'] = el} className="w-52"><MatchCard match={championship.quarterfinals[0]} label="QF1: A#1 vs B#4" /></div>
+                                        <div ref={el => cardRefs.current['qf2'] = el} className="w-52"><MatchCard match={championship.quarterfinals[1]} label="QF2: B#2 vs A#3" /></div>
+                                        <div className="h-12"></div>
+                                        <div ref={el => cardRefs.current['qf3'] = el} className="w-52"><MatchCard match={championship.quarterfinals[2]} label="QF3: A#2 vs B#3" /></div>
+                                        <div ref={el => cardRefs.current['qf4'] = el} className="w-52"><MatchCard match={championship.quarterfinals[3]} label="QF4: B#1 vs A#4" /></div>
+                                    </div>
+
+                                    {/* Semifinals Column */}
+                                    <div className="flex flex-col justify-center gap-16">
+                                        <div className="text-center text-xs font-semibold text-purple-600 uppercase mb-2">Semifinals</div>
+                                        <div ref={el => cardRefs.current['sf1'] = el} className="w-52"><MatchCard match={championship.semifinals[0]} label="Semifinal 1" showSeeds={false} /></div>
+                                        <div className="h-20"></div>
+                                        <div ref={el => cardRefs.current['sf2'] = el} className="w-52"><MatchCard match={championship.semifinals[1]} label="Semifinal 2" showSeeds={false} /></div>
+                                    </div>
+
+                                    {/* Final Column */}
+                                    <div className="flex flex-col justify-center gap-8">
+                                        <div className="text-center text-xs font-semibold text-amber-600 uppercase mb-2">Final</div>
+                                        <div ref={el => cardRefs.current['final'] = el} className="w-52"><MatchCard match={championship.final} label="Grand Final" showSeeds={false} /></div>
+                                        {championship.champion && (
+                                            <div className="w-52 text-center px-3 py-2 rounded-lg bg-gradient-to-r from-amber-50 to-violet-50 border border-amber-300">
+                                                <div className="text-[10px] text-gray-500 uppercase font-semibold">Champion</div>
+                                                <div className="font-bold text-amber-700 mt-1">{championship.champion}</div>
+                                            </div>
+                                        )}
+                                    </div>
                                 </div>
-                        </div>
-                    </div>
+                            </div>
+                        );
+                    })()}
 
                     {/* Seed Legend */}
                     <div className="mt-4 pt-4 border-t border-gray-200">
