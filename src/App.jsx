@@ -2335,7 +2335,7 @@ const API_BASE = '/api';
                                                         const data = await res.json();
                                                         if (res.ok) {
                                                             alert('✅ Championship bracket regenerated!\n\nThe bracket has been updated with current standings.');
-                                                            await loadData(true);
+                                                            window.location.reload();
                                                         } else {
                                                             alert(`❌ Error: ${data.error}\n\n${data.message || ''}`);
                                                         }
