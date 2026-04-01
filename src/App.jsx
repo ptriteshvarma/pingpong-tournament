@@ -757,9 +757,10 @@ const API_BASE = '/api';
                                     score={match.winner === match.player2 ? match.score1 : match.winner === match.player1 ? match.score2 : undefined}
                                 />
                             </div>
-                            {canPlay && (
-                                <button onClick={() => setShowModal(true)} className="w-full text-xs bg-purple-600 hover:bg-purple-700 text-white py-1.5 font-medium">Record Result</button>
-                            )}
+                            {/* Always reserve space for button to keep card height uniform */}
+                            <button onClick={() => canPlay && setShowModal(true)} disabled={!canPlay} className={`w-full text-xs py-1.5 font-medium ${canPlay ? 'bg-purple-600 hover:bg-purple-700 text-white cursor-pointer' : 'bg-gray-100 text-gray-400 cursor-default'}`}>
+                                {canPlay ? 'Record Result' : ' '}
+                            </button>
                         </div>
 
                         {showModal && (
@@ -4655,7 +4656,18 @@ const API_BASE = '/api';
                                 {season?.standings && (() => {
                                     const sortS = (st) => {
                                         const arr = Object.entries(st).map(([name, s]) => ({ name, ...s }));
-                                        arr.sort((a, b) => (b.wins - b.losses) - (a.wins - a.losses) || b.wins - a.wins);
+                                        arr.sort((a, b) => {
+                                            const netA = (a.wins || 0) - (a.losses || 0);
+                                            const netB = (b.wins || 0) - (b.losses || 0);
+                                            if (netB !== netA) return netB - netA;
+                                            if ((b.wins || 0) !== (a.wins || 0)) return (b.wins || 0) - (a.wins || 0);
+                                            const h2hWinsA = a.headToHead?.[b.name]?.wins || 0;
+                                            const h2hWinsB = b.headToHead?.[a.name]?.wins || 0;
+                                            if (h2hWinsB !== h2hWinsA) return h2hWinsB - h2hWinsA;
+                                            const diffA = (a.pointsFor || 0) - (a.pointsAgainst || 0);
+                                            const diffB = (b.pointsFor || 0) - (b.pointsAgainst || 0);
+                                            return diffB - diffA;
+                                        });
                                         return arr;
                                     };
                                     const sA = sortS(season.standings.A || {});
