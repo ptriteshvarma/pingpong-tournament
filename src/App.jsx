@@ -812,129 +812,71 @@ const API_BASE = '/api';
                         </div>
                     </div>
 
-                    {/* Bracket — absolute positioning with single SVG overlay */}
-                    {(() => {
-                        const cW = 220, cH = 82, pg = 16, bg = 32, kW = 48;
-
-                        // QF y-positions
-                        const qf1Y = 0;
-                        const qf2Y = cH + pg;                   // 98
-                        const qf3Y = 2 * cH + pg + bg;          // 212
-                        const qf4Y = 3 * cH + 2 * pg + bg;      // 310
-                        const totalH = qf4Y + cH;               // 392
-
-                        // Centre y
-                        const qf1c = qf1Y + cH / 2;             // 41
-                        const qf2c = qf2Y + cH / 2;             // 139
-                        const qf3c = qf3Y + cH / 2;             // 253
-                        const qf4c = qf4Y + cH / 2;             // 351
-
-                        // SF y-positions (centred between each QF pair)
-                        const sf1Y = Math.round((qf1c + qf2c) / 2) - Math.floor(cH / 2); // 49
-                        const sf2Y = Math.round((qf3c + qf4c) / 2) - Math.floor(cH / 2); // 261
-                        const sf1c = sf1Y + cH / 2;             // 90
-                        const sf2c = sf2Y + cH / 2;             // 302
-
-                        // Final y-position
-                        const finY = Math.round((sf1c + sf2c) / 2) - Math.floor(cH / 2); // 155
-                        const finC = finY + cH / 2;             // 196
-
-                        // Column x-positions
-                        let wcX = null, piX = null, qfX, sfX, finX;
-                        if (hasWildcard && hasPlayIn) {
-                            wcX = 0; piX = cW + kW;
-                            qfX = piX + cW + kW; sfX = qfX + cW + kW; finX = sfX + cW + kW;
-                        } else if (hasPlayIn) {
-                            piX = 0; qfX = cW + kW; sfX = qfX + cW + kW; finX = sfX + cW + kW;
-                        } else {
-                            qfX = 0; sfX = cW + kW; finX = sfX + cW + kW;
-                        }
-                        const totalW = finX + cW;
-                        const bracketH = totalH + (championship.champion ? 80 : 0);
-
-                        // SVG paths
-                        const paths = [];
-                        const mx1 = qfX + cW + kW / 2;   // mid of QF→SF connector
-                        const mx2 = sfX + cW + kW / 2;   // mid of SF→Final connector
-
-                        if (hasWildcard && hasPlayIn) {
-                            paths.push(`M ${wcX + cW} ${qf1c} H ${piX}`);
-                            paths.push(`M ${wcX + cW} ${qf4c} H ${piX}`);
-                        }
-                        if (hasPlayIn) {
-                            paths.push(`M ${piX + cW} ${qf1c} H ${qfX}`);
-                            paths.push(`M ${piX + cW} ${qf4c} H ${qfX}`);
-                        }
-                        // QF1+QF2 → SF1
-                        paths.push(`M ${qfX + cW} ${qf1c} H ${mx1} V ${qf2c} M ${qfX + cW} ${qf2c} H ${mx1}`);
-                        paths.push(`M ${mx1} ${sf1c} H ${sfX}`);
-                        // QF3+QF4 → SF2
-                        paths.push(`M ${qfX + cW} ${qf3c} H ${mx1} V ${qf4c} M ${qfX + cW} ${qf4c} H ${mx1}`);
-                        paths.push(`M ${mx1} ${sf2c} H ${sfX}`);
-                        // SF1+SF2 → Final
-                        paths.push(`M ${sfX + cW} ${sf1c} H ${mx2} V ${sf2c} M ${sfX + cW} ${sf2c} H ${mx2}`);
-                        paths.push(`M ${mx2} ${finC} H ${finX}`);
-
-                        const hdrH = 24;
-                        const abs = (left, top, w) => ({ position: 'absolute', left, top, width: w });
-
-                        return (
-                            <div className="overflow-x-auto pb-4">
-                                <div style={{ position: 'relative', width: totalW, height: bracketH + hdrH }}>
-                                    {/* Round headers */}
-                                    {hasWildcard && <div style={abs(wcX, 0, cW)} className="text-center text-xs text-purple-600 font-semibold uppercase tracking-wider">Wildcard</div>}
-                                    {hasPlayIn  && <div style={abs(piX, 0, cW)} className="text-center text-xs text-purple-600 font-semibold uppercase tracking-wider">Play-In</div>}
-                                    <div style={abs(qfX, 0, cW)} className="text-center text-xs text-purple-600 font-semibold uppercase tracking-wider">Quarterfinals</div>
-                                    <div style={abs(sfX, 0, cW)} className="text-center text-xs text-purple-600 font-semibold uppercase tracking-wider">Semifinals</div>
-                                    <div style={abs(finX, 0, cW)} className="text-center text-xs text-amber-600 font-semibold uppercase tracking-wider">Final</div>
-
-                                    {/* Bracket area (offset below headers) */}
-                                    <div style={{ position: 'absolute', top: hdrH, left: 0, width: totalW, height: bracketH }}>
-                                        {/* SVG connector overlay */}
-                                        <svg style={{ position: 'absolute', top: 0, left: 0, pointerEvents: 'none' }} width={totalW} height={bracketH}>
-                                            {paths.map((d, i) => <path key={i} d={d} stroke="#8b5cf6" strokeWidth="2" fill="none" />)}
-                                        </svg>
-
-                                        {/* WC cards */}
-                                        {hasWildcard && wc1 && <div style={abs(wcX, qf1Y, cW)}><MatchCard match={wc1} label="WC1: #5 Seeds" /></div>}
-                                        {hasWildcard && wc2 && <div style={abs(wcX, qf4Y, cW)}><MatchCard match={wc2} label="WC2: #6 Seeds" /></div>}
-
-                                        {/* PI cards */}
-                                        {hasPlayIn && playInB && <div style={abs(piX, qf1Y, cW)}><MatchCard match={playInB} label="Play-In: Group B" /></div>}
-                                        {hasPlayIn && playInA && <div style={abs(piX, qf4Y, cW)}><MatchCard match={playInA} label="Play-In: Group A" /></div>}
-
-                                        {/* QF cards */}
-                                        <div style={abs(qfX, qf1Y, cW)}><MatchCard match={championship.quarterfinals[0]} label="QF1: A#1 vs B#4" /></div>
-                                        <div style={abs(qfX, qf2Y, cW)}><MatchCard match={championship.quarterfinals[1]} label="QF2: B#2 vs A#3" /></div>
-                                        <div style={abs(qfX, qf3Y, cW)}><MatchCard match={championship.quarterfinals[2]} label="QF3: A#2 vs B#3" /></div>
-                                        <div style={abs(qfX, qf4Y, cW)}><MatchCard match={championship.quarterfinals[3]} label="QF4: B#1 vs A#4" /></div>
-
-                                        {/* SF cards */}
-                                        <div style={abs(sfX, sf1Y, cW)}><MatchCard match={championship.semifinals[0]} label="Semifinal 1" showSeeds={false} /></div>
-                                        <div style={abs(sfX, sf2Y, cW)}><MatchCard match={championship.semifinals[1]} label="Semifinal 2" showSeeds={false} /></div>
-
-                                        {/* Final card */}
-                                        <div style={abs(finX, finY, cW)}><MatchCard match={championship.final} label="Grand Final" showSeeds={false} /></div>
-
-                                        {/* Champion badge */}
-                                        {championship.champion && (
-                                            <div style={abs(finX, finY + cH + 10, cW)}>
-                                                <div className="text-center px-4 py-2 rounded-lg bg-gradient-to-r from-amber-50 to-violet-50 border border-amber-300">
-                                                    <div className="text-[10px] text-gray-500 uppercase tracking-wider">Champion</div>
-                                                    <div className="flex items-center justify-center gap-2 mt-1">
-                                                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-5 h-5 text-amber-600">
-                                                            <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 18.75h-9m9 0a3 3 0 0 1 3 3h-15a3 3 0 0 1 3-3m9 0v-3.375c0-.621-.503-1.125-1.125-1.125h-.871M7.5 18.75v-3.375c0-.621.504-1.125 1.125-1.125h.872m5.007 0H9.497m5.007 0a7.454 7.454 0 0 1-.982-3.172M9.497 14.25a7.454 7.454 0 0 0 .981-3.172M5.25 4.236c-.982.143-1.954.317-2.916.52A6.003 6.003 0 0 0 7.73 9.728M5.25 4.236V4.5c0 2.108.966 3.99 2.48 5.228M5.25 4.236V2.721C7.456 2.41 9.71 2.25 12 2.25c2.291 0 4.545.16 6.75.47v1.516M7.73 9.728a6.726 6.726 0 0 0 2.748 1.35m8.272-6.842V4.5c0 2.108-.966 3.99-2.48 5.228m2.48-5.492a46.32 46.32 0 0 1 2.916.52 6.003 6.003 0 0 1-5.395 4.972m0 0a6.726 6.726 0 0 1-2.749 1.35m0 0a6.772 6.772 0 0 1-2.992 0" />
-                                                        </svg>
-                                                        <span className="font-bold text-amber-700">{championship.champion}</span>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        )}
+                    {/* Bracket — simple vertical flow with clear structure */}
+                    <div className="overflow-x-auto pb-4">
+                        <div className="min-w-max space-y-6">
+                            {/* Wildcard Round */}
+                            {hasWildcard && (
+                                <div>
+                                    <div className="text-xs font-semibold uppercase tracking-wider text-purple-600 mb-2">Wildcard</div>
+                                    <div className="space-y-3">
+                                        {wc1 && <MatchCard match={wc1} label="WC1: #5 Seeds" />}
+                                        {wc2 && <MatchCard match={wc2} label="WC2: #6 Seeds" />}
                                     </div>
                                 </div>
+                            )}
+
+                            {/* Play-In Round */}
+                            {hasPlayIn && (
+                                <div>
+                                    <div className="text-xs font-semibold uppercase tracking-wider text-purple-600 mb-2">Play-In</div>
+                                    <div className="space-y-3">
+                                        {playInB && <MatchCard match={playInB} label="Play-In: Group B (#4 vs WC)" />}
+                                        {playInA && <MatchCard match={playInA} label="Play-In: Group A (#4 vs WC)" />}
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Quarterfinals */}
+                            <div>
+                                <div className="text-xs font-semibold uppercase tracking-wider text-purple-600 mb-2">Quarterfinals</div>
+                                <div className="space-y-3">
+                                    <MatchCard match={championship.quarterfinals[0]} label="QF1: A#1 vs B#4" />
+                                    <MatchCard match={championship.quarterfinals[1]} label="QF2: B#2 vs A#3" />
+                                    <MatchCard match={championship.quarterfinals[2]} label="QF3: A#2 vs B#3" />
+                                    <MatchCard match={championship.quarterfinals[3]} label="QF4: B#1 vs A#4" />
+                                </div>
                             </div>
-                        );
-                    })()}
+
+                            {/* Semifinals */}
+                            <div>
+                                <div className="text-xs font-semibold uppercase tracking-wider text-purple-600 mb-2">Semifinals</div>
+                                <div className="space-y-3">
+                                    <MatchCard match={championship.semifinals[0]} label="Semifinal 1 (QF1 W vs QF2 W)" showSeeds={false} />
+                                    <MatchCard match={championship.semifinals[1]} label="Semifinal 2 (QF3 W vs QF4 W)" showSeeds={false} />
+                                </div>
+                            </div>
+
+                            {/* Final */}
+                            <div>
+                                <div className="text-xs font-semibold uppercase tracking-wider text-amber-600 mb-2">Grand Final</div>
+                                <MatchCard match={championship.final} label="Championship (SF1 W vs SF2 W)" showSeeds={false} />
+                            </div>
+
+                            {/* Champion */}
+                            {championship.champion && (
+                                <div className="text-center px-4 py-3 rounded-lg bg-gradient-to-r from-amber-50 to-violet-50 border border-amber-300">
+                                    <div className="text-[10px] text-gray-500 uppercase tracking-wider mb-1">🏆 Champion 🏆</div>
+                                    <div className="flex items-center justify-center gap-2">
+                                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-5 h-5 text-amber-600">
+                                            <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 18.75h-9m9 0a3 3 0 0 1 3 3h-15a3 3 0 0 1 3-3m9 0v-3.375c0-.621-.503-1.125-1.125-1.125h-.871M7.5 18.75v-3.375c0-.621.504-1.125 1.125-1.125h.872m5.007 0H9.497m5.007 0a7.454 7.454 0 0 1-.982-3.172M9.497 14.25a7.454 7.454 0 0 0 .981-3.172M5.25 4.236c-.982.143-1.954.317-2.916.52A6.003 6.003 0 0 0 7.73 9.728M5.25 4.236V4.5c0 2.108.966 3.99 2.48 5.228M5.25 4.236V2.721C7.456 2.41 9.71 2.25 12 2.25c2.291 0 4.545.16 6.75.47v1.516M7.73 9.728a6.726 6.726 0 0 0 2.748 1.35m8.272-6.842V4.5c0 2.108-.966 3.99-2.48 5.228m2.48-5.492a46.32 46.32 0 0 1 2.916.52 6.003 6.003 0 0 1-5.395 4.972m0 0a6.726 6.726 0 0 1-2.749 1.35m0 0a6.772 6.772 0 0 1-2.992 0" />
+                                        </svg>
+                                        <span className="font-bold text-amber-700 text-lg">{championship.champion}</span>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    </div>
 
                     {/* Seed Legend */}
                     <div className="mt-4 pt-4 border-t border-gray-200">
@@ -4661,9 +4603,10 @@ const API_BASE = '/api';
                                             const netB = (b.wins || 0) - (b.losses || 0);
                                             if (netB !== netA) return netB - netA;
                                             if ((b.wins || 0) !== (a.wins || 0)) return (b.wins || 0) - (a.wins || 0);
-                                            const h2hWinsA = a.headToHead?.[b.name]?.wins || 0;
-                                            const h2hWinsB = b.headToHead?.[a.name]?.wins || 0;
-                                            if (h2hWinsB !== h2hWinsA) return h2hWinsB - h2hWinsA;
+                                            // h2h: compare A vs B in A's h2h record (A's wins against B)
+                                            const h2hA = a.headToHead?.[b.name]?.wins || 0;
+                                            const h2hB = b.headToHead?.[a.name]?.wins || 0;
+                                            if (h2hA !== h2hB) return h2hB - h2hA;
                                             const diffA = (a.pointsFor || 0) - (a.pointsAgainst || 0);
                                             const diffB = (b.pointsFor || 0) - (b.pointsAgainst || 0);
                                             return diffB - diffA;
