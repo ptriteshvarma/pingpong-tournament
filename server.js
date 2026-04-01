@@ -1532,6 +1532,15 @@ const generateChampionshipBracket = (standingsA, standingsB, wildcardWinnerA = n
   const b3 = { name: sortedB[2]?.name || null, group: 'B', seed: 3 };
   const b4 = { name: sortedB[3]?.name || null, group: 'B', seed: 4 };
 
+  // VALIDATION: Ensure no player appears in both groups
+  const allSeeds = [a1.name, a2.name, a3.name, a4.name, b1.name, b2.name, b3.name, b4.name].filter(Boolean);
+  const duplicates = allSeeds.filter((p, i) => allSeeds.indexOf(p) !== i);
+  if (duplicates.length > 0) {
+    console.error('ERROR: Duplicate players in bracket seeding!', duplicates);
+    console.log('Group A (top 4):', [a1.name, a2.name, a3.name, a4.name]);
+    console.log('Group B (top 4):', [b1.name, b2.name, b3.name, b4.name]);
+  }
+
   // FAIRNESS FIX: Wildcard winners must BEAT #4 seeds in play-in games to earn playoff spots
   // Instead of directly replacing #4, we create play-in matches
   const playInGames = [];
@@ -2738,6 +2747,23 @@ app.post('/api/bookings/:id/complete', async (req, res) => {
 });
 
 // ============== SEASON API ROUTES ==============
+
+// Debug endpoint to see raw standings
+app.get('/api/standings/debug', async (req, res) => {
+  try {
+    const result = await pool.query('SELECT data FROM season WHERE id = 1');
+    if (result.rows.length === 0) {
+      return res.json(null);
+    }
+    const season = result.rows[0].data;
+    const groupA = Object.keys(season.standings?.A || {});
+    const groupB = Object.keys(season.standings?.B || {});
+    const duplicates = groupA.filter(p => groupB.includes(p));
+    res.json({ groupA, groupB, duplicates, totalA: groupA.length, totalB: groupB.length });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
 
 // Get current season
 app.get('/api/season', cacheResponse(30), async (req, res) => {
