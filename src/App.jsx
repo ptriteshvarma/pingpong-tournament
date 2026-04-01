@@ -4620,10 +4620,10 @@ const API_BASE = '/api';
                                             const netB = (b.wins || 0) - (b.losses || 0);
                                             if (netB !== netA) return netB - netA;
                                             if ((b.wins || 0) !== (a.wins || 0)) return (b.wins || 0) - (a.wins || 0);
-                                            // h2h: compare A vs B in A's h2h record (A's wins against B)
+                                            // h2h: A's wins vs B minus B's wins vs A
                                             const h2hA = a.headToHead?.[b.name]?.wins || 0;
                                             const h2hB = b.headToHead?.[a.name]?.wins || 0;
-                                            if (h2hA !== h2hB) return h2hB - h2hA;
+                                            if (h2hA !== h2hB) return h2hA - h2hB;
                                             const diffA = (a.pointsFor || 0) - (a.pointsAgainst || 0);
                                             const diffB = (b.pointsFor || 0) - (b.pointsAgainst || 0);
                                             return diffB - diffA;
