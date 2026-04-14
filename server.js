@@ -2986,6 +2986,18 @@ app.post('/api/season/match', async (req, res) => {
     await client.query('BEGIN');
 
     const { matchId, winner, loser, score1, score2 } = req.body;
+    const legacyMatchIdMap = {
+      'P-PI-A': 'PLAYIN-A',
+      'P-PI-B': 'PLAYIN-B',
+      'P-QF1': 'CHAMP-QF1',
+      'P-QF2': 'CHAMP-QF2',
+      'P-QF3': 'CHAMP-QF3',
+      'P-QF4': 'CHAMP-QF4',
+      'P-SF1': 'CHAMP-SF1',
+      'P-SF2': 'CHAMP-SF2',
+      'P-FINAL': 'CHAMP-FINAL'
+    };
+    const resolvedMatchId = legacyMatchIdMap[matchId] || matchId;
 
     // Use SELECT FOR UPDATE to lock the row and prevent race conditions
     const result = await client.query('SELECT data, updated_at FROM season WHERE id = 1 FOR UPDATE');
@@ -3004,7 +3016,7 @@ app.post('/api/season/match', async (req, res) => {
     for (const g of ['A', 'B']) {
       for (const week of season.schedule[g]) {
         for (const m of week) {
-          if (m.id === matchId) {
+          if (m.id === resolvedMatchId) {
             match = m;
             group = g;
             break;
@@ -3018,7 +3030,7 @@ app.post('/api/season/match', async (req, res) => {
     // Check wildcard matches
     if (!match && season.wildcard) {
       for (const wc of season.wildcard.matches) {
-        if (wc.id === matchId) {
+        if (wc.id === resolvedMatchId) {
           match = wc;
           group = 'wildcard';
           break;
@@ -3031,13 +3043,13 @@ app.post('/api/season/match', async (req, res) => {
       for (const g of ['A', 'B']) {
         if (season.playoffs[g]) {
           for (const sf of season.playoffs[g].semifinals) {
-            if (sf.id === matchId) {
+            if (sf.id === resolvedMatchId) {
               match = sf;
               group = g;
               break;
             }
           }
-          if (season.playoffs[g].final.id === matchId) {
+          if (season.playoffs[g].final.id === resolvedMatchId) {
             match = season.playoffs[g].final;
             group = g;
           }
@@ -3046,16 +3058,52 @@ app.post('/api/season/match', async (req, res) => {
     }
 
     // Check super bowl
-    if (!match && season.superBowl && season.superBowl.id === matchId) {
+    if (!match && season.superBowl && season.superBowl.id === resolvedMatchId) {
       match = season.superBowl;
       group = 'superBowl';
+    }
+
+    // Auto-hydrate championship bracket if it is missing or pre-playin and the match looks like a championship id.
+    if (!match && season.standings?.A && season.standings?.B) {
+      const looksLikeChampionshipMatch = typeof resolvedMatchId === 'string' &&
+        (resolvedMatchId.startsWith('PLAYIN-') || resolvedMatchId.startsWith('CHAMP-'));
+      const canRegenerateChampionship = !season.championship ||
+        (season.championship &&
+          !season.championship.quarterfinals?.some(qf => qf.completed) &&
+          !season.championship.semifinals?.some(sf => sf.completed) &&
+          !season.championship.final?.completed &&
+          !season.championship.playInGames?.some(p => p.completed));
+
+      if (looksLikeChampionshipMatch && canRegenerateChampionship) {
+        let wildcardWinnerA = null;
+        let wildcardWinnerB = null;
+        const wildcardMatches = [];
+
+        if (season.wildcard?.matches) {
+          season.wildcard.matches.forEach(wc => {
+            wildcardMatches.push(wc);
+            if (wc.completed && wc.winner) {
+              if (wc.id === 'WC-1' || wc.id === 'WC1') wildcardWinnerB = wc.winner;
+              else if (wc.id === 'WC-2' || wc.id === 'WC2') wildcardWinnerA = wc.winner;
+            }
+          });
+        }
+
+        season.championship = generateChampionshipBracket(
+          season.standings.A,
+          season.standings.B,
+          wildcardWinnerA,
+          wildcardWinnerB,
+          wildcardMatches.length > 0 ? wildcardMatches : null
+        );
+      }
     }
 
     // Check combined championship bracket matches
     if (!match && season.championship) {
       // Quarterfinals
       for (const qf of season.championship.quarterfinals) {
-        if (qf.id === matchId) {
+        if (qf.id === resolvedMatchId) {
           match = qf;
           group = 'championship';
           break;
@@ -3064,7 +3112,7 @@ app.post('/api/season/match', async (req, res) => {
       // Semifinals
       if (!match) {
         for (const sf of season.championship.semifinals) {
-          if (sf.id === matchId) {
+          if (sf.id === resolvedMatchId) {
             match = sf;
             group = 'championship';
             break;
@@ -3072,14 +3120,14 @@ app.post('/api/season/match', async (req, res) => {
         }
       }
       // Final
-      if (!match && season.championship.final.id === matchId) {
+      if (!match && season.championship.final.id === resolvedMatchId) {
         match = season.championship.final;
         group = 'championship';
       }
       // Play-in games
       if (!match && season.championship.playInGames) {
         for (const playIn of season.championship.playInGames) {
-          if (playIn.id === matchId) {
+          if (playIn.id === resolvedMatchId) {
             match = playIn;
             group = 'championship';
             break;
@@ -3255,10 +3303,10 @@ app.post('/api/season/match', async (req, res) => {
 
     // Handle play-in game completion - advance winner to championship quarterfinals
     if (season.championship?.playInGames && match.round === 'playin') {
-      const playInMatch = season.championship.playInGames.find(p => p.id === matchId);
+      const playInMatch = season.championship.playInGames.find(p => p.id === resolvedMatchId);
       if (playInMatch && playInMatch.completed) {
         // Find the quarterfinal that this play-in feeds into
-        const feedsIntoQF = season.championship.quarterfinals.find(qf => qf.feedsFromPlayIn === matchId);
+        const feedsIntoQF = season.championship.quarterfinals.find(qf => qf.feedsFromPlayIn === resolvedMatchId);
         if (feedsIntoQF) {
           // Insert winner as player2 (the #4 seed position)
           feedsIntoQF.player2 = winner;
@@ -3317,7 +3365,7 @@ app.post('/api/season/match', async (req, res) => {
     if (season.championship && group === 'championship') {
       // Handle quarterfinal completion - advance winners to semifinals
       if (match.round === 'quarterfinal') {
-        const qfMatch = season.championship.quarterfinals.find(qf => qf.id === matchId);
+        const qfMatch = season.championship.quarterfinals.find(qf => qf.id === resolvedMatchId);
         if (qfMatch) {
           // Determine which semifinal this feeds into
           if (qfMatch.matchNum === 1 || qfMatch.matchNum === 2) {
@@ -3336,7 +3384,7 @@ app.post('/api/season/match', async (req, res) => {
 
       // Handle semifinal completion - advance winners to final
       if (match.round === 'semifinal') {
-        const sfMatch = season.championship.semifinals.find(sf => sf.id === matchId);
+        const sfMatch = season.championship.semifinals.find(sf => sf.id === resolvedMatchId);
         if (sfMatch) {
           if (sfMatch.matchNum === 1) season.championship.final.player1 = winner;
           else season.championship.final.player2 = winner;
@@ -3344,7 +3392,7 @@ app.post('/api/season/match', async (req, res) => {
       }
 
       // Handle final completion
-      if (match.round === 'final' && matchId === 'CHAMP-FINAL') {
+      if (match.round === 'final' && resolvedMatchId === 'CHAMP-FINAL') {
         season.championship.champion = winner;
         season.champion = winner;
         season.status = 'complete';
@@ -3419,7 +3467,7 @@ app.post('/api/season/match', async (req, res) => {
     );
 
     // Special notifications for championship matches
-    if (group === 'championship' && match.round === 'final' && matchId === 'CHAMP-FINAL') {
+    if (group === 'championship' && match.round === 'final' && resolvedMatchId === 'CHAMP-FINAL') {
       // Broadcast champion notification to everyone
       await createNotification(
         null, // null = broadcast to all
