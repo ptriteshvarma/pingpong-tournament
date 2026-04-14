@@ -2847,15 +2847,14 @@ app.get('/api/season', async (req, res) => {
 
         // Fixed: WC1 winner → Group B play-in, WC2 winner → Group A play-in
         let wildcardMatches = [];
-        if (season.wildcard) {
-          if (season.wildcard.wc1?.winner) {
-            wildcardWinnerB = season.wildcard.wc1.winner;
-            wildcardMatches.push(season.wildcard.wc1);
-          }
-          if (season.wildcard.wc2?.winner) {
-            wildcardWinnerA = season.wildcard.wc2.winner;
-            wildcardMatches.push(season.wildcard.wc2);
-          }
+        if (season.wildcard?.matches) {
+          season.wildcard.matches.forEach(wc => {
+            wildcardMatches.push(wc);
+            if (wc.completed && wc.winner) {
+              if (wc.id === 'WC-1' || wc.id === 'WC1') wildcardWinnerB = wc.winner;
+              else if (wc.id === 'WC-2' || wc.id === 'WC2') wildcardWinnerA = wc.winner;
+            }
+          });
         }
 
         season.championship = generateChampionshipBracket(
@@ -3196,21 +3195,13 @@ app.post('/api/season/match', async (req, res) => {
           }
         });
 
-        // Generate combined championship bracket (top 4 from each group)
-        // Only include wildcard matches if they have winners
-        let wildcardMatchesToPass = null;
-        if (season.wildcard?.wc1?.winner || season.wildcard?.wc2?.winner) {
-          wildcardMatchesToPass = [];
-          if (season.wildcard.wc1?.winner) wildcardMatchesToPass.push(season.wildcard.wc1);
-          if (season.wildcard.wc2?.winner) wildcardMatchesToPass.push(season.wildcard.wc2);
-        }
-
+        // Pass real wildcard matches from season.wildcard.matches
         season.championship = generateChampionshipBracket(
           season.standings.A,
           season.standings.B,
           wildcardWinnerForA,
           wildcardWinnerForB,
-          wildcardMatchesToPass
+          season.wildcard?.matches || null
         );
         // If play-in games exist, set status to 'playin', otherwise 'playoffs'
         season.status = season.championship.playInGames ? 'playin' : 'playoffs';
@@ -4669,15 +4660,14 @@ app.post('/api/championship/regenerate', requireAdmin, async (req, res) => {
     let wildcardMatches = [];
 
     // Fixed: WC1 winner → Group B play-in, WC2 winner → Group A play-in
-    if (season.wildcard) {
-      if (season.wildcard.wc1?.winner) {
-        wildcardWinnerB = season.wildcard.wc1.winner;
-        wildcardMatches.push(season.wildcard.wc1);
-      }
-      if (season.wildcard.wc2?.winner) {
-        wildcardWinnerA = season.wildcard.wc2.winner;
-        wildcardMatches.push(season.wildcard.wc2);
-      }
+    if (season.wildcard?.matches) {
+      season.wildcard.matches.forEach(wc => {
+        wildcardMatches.push(wc);
+        if (wc.completed && wc.winner) {
+          if (wc.id === 'WC-1' || wc.id === 'WC1') wildcardWinnerB = wc.winner;
+          else if (wc.id === 'WC-2' || wc.id === 'WC2') wildcardWinnerA = wc.winner;
+        }
+      });
     }
 
     // Regenerate the bracket
@@ -4781,18 +4771,12 @@ app.post('/api/season/playoffs', requireAdmin, async (req, res) => {
     // Generate combined championship bracket (top 4 from each group)
     // Only include wildcard matches if they have winners
     let wildcardMatchesToPass = null;
-    if (season.wildcard?.wc1?.winner || season.wildcard?.wc2?.winner) {
-      wildcardMatchesToPass = [];
-      if (season.wildcard.wc1?.winner) wildcardMatchesToPass.push(season.wildcard.wc1);
-      if (season.wildcard.wc2?.winner) wildcardMatchesToPass.push(season.wildcard.wc2);
-    }
-
     season.championship = generateChampionshipBracket(
       season.standings.A,
       season.standings.B,
       wildcardWinnerForA,
       wildcardWinnerForB,
-      wildcardMatchesToPass
+      season.wildcard?.matches || null
     );
     season.status = 'playoffs';
 
