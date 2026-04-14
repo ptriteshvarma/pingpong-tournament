@@ -1571,7 +1571,8 @@ const generateChampionshipBracket = (standingsA, standingsB, wildcardWinnerA = n
         matchName: 'Wildcard 1',
         player1: a5.name, player1Group: 'A', seed1: 'A#5',
         player2: b5.name, player2Group: 'B', seed2: 'B#5',
-        winner: null, loser: null, score1: null, score2: null, completed: false
+        winner: null, loser: null, score1: null, score2: null, completed: false,
+        isPreview: true
       });
     }
     if (a6 && b6) {
@@ -1580,7 +1581,8 @@ const generateChampionshipBracket = (standingsA, standingsB, wildcardWinnerA = n
         matchName: 'Wildcard 2',
         player1: a6.name, player1Group: 'A', seed1: 'A#6',
         player2: b6.name, player2Group: 'B', seed2: 'B#6',
-        winner: null, loser: null, score1: null, score2: null, completed: false
+        winner: null, loser: null, score1: null, score2: null, completed: false,
+        isPreview: true
       });
     }
   }

@@ -712,7 +712,7 @@ const API_BASE = '/api';
                     setShowModal(false);
                 };
 
-                const canPlay = match.player1 && match.player2 && !match.completed;
+                const canPlay = match.player1 && match.player2 && !match.completed && !match.isPreview;
                 const getGroupColor = (group) => group === 'A' ? 'text-green-600' : group === 'B' ? 'text-amber-600' : 'text-gray-500';
 
                 const PlayerRow = ({ name, seed, group, isWinner, score }) => {
@@ -761,7 +761,7 @@ const API_BASE = '/api';
                             </div>
                             {/* Always reserve space for button to keep card height uniform */}
                             <button onClick={() => canPlay && setShowModal(true)} disabled={!canPlay} className={`w-full text-xs py-1.5 font-medium ${canPlay ? 'bg-purple-600 hover:bg-purple-700 text-white cursor-pointer' : 'bg-gray-100 text-gray-400 cursor-default'}`}>
-                                {canPlay ? 'Record Result' : ' '}
+                                {canPlay ? 'Record Result' : match.isPreview ? 'Starts after regular season' : ' '}
                             </button>
                         </div>
 
