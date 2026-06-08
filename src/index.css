@@ -115,8 +115,8 @@
   align-items: center;
   justify-content: center;
   position: relative;
-  padding: 7px 0;
-  min-height: 80px;
+  padding: 10px 0;
+  min-height: 124px;
 }
 /* horizontal stub out of each match (every round except the final) */
 .kbracket-round:not(:last-child) .kbracket-cell::after {
