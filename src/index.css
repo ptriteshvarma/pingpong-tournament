@@ -77,3 +77,72 @@
 .mammotome-gradient {
   background: linear-gradient(135deg, #5a1e7a 0%, #7b2d9a 50%, #9b3dba 100%);
 }
+
+/* ===== Knockout bracket ===== */
+.kbracket {
+  display: flex;
+  overflow-x: auto;
+  padding: 4px 2px 26px;
+  align-items: stretch;
+}
+.kbracket-round {
+  display: flex;
+  flex-direction: column;
+  min-width: 228px;
+  flex: 1 0 228px;
+  padding-right: 28px;
+}
+.kbracket-round:last-child {
+  padding-right: 0;
+}
+.kbracket-round-title {
+  text-align: center;
+  font-weight: 700;
+  font-size: 0.72rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: #7c3aed;
+  padding: 2px 0 10px;
+}
+.kbracket-col {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+}
+.kbracket-cell {
+  flex: 1 1 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  padding: 7px 0;
+  min-height: 80px;
+}
+/* horizontal stub out of each match (every round except the final) */
+.kbracket-round:not(:last-child) .kbracket-cell::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 100%;
+  width: 14px;
+  height: 2px;
+  background: #d8b4fe;
+}
+/* vertical connector joining each pair of matches */
+.kbracket-round:not(:last-child) .kbracket-cell::before {
+  content: "";
+  position: absolute;
+  left: calc(100% + 14px);
+  width: 2px;
+  background: #d8b4fe;
+  height: 50%;
+}
+.kbracket-round:not(:last-child) .kbracket-cell:nth-child(odd)::before {
+  top: 50%;
+}
+.kbracket-round:not(:last-child) .kbracket-cell:nth-child(even)::before {
+  top: 0;
+}
+@media (max-width: 640px) {
+  .kbracket-round { min-width: 200px; flex-basis: 200px; padding-right: 22px; }
+}
