@@ -7161,6 +7161,206 @@ app.post('/api/league/match/result', async (req, res) => {
   }
 });
 
+// Create a single-elimination KNOCKOUT tournament from an explicit roster.
+// Players are seeded by their all-time record (fair seeding: stronger players
+// are spread apart and the top seeds get the byes). Admin only.
+// If a COMPLETED season exists it is archived first (preserving the champion in
+// history) and then cleared, so the knockout bracket becomes the active view.
+app.post('/api/league/create-knockout', requireAdmin, async (req, res) => {
+  try {
+    await ensureRegistrationTables();
+
+    const { name, players: roster } = req.body;
+    const tournamentName = (name && String(name).trim()) || 'Knockout Tournament';
+
+    if (!Array.isArray(roster)) {
+      return res.status(400).json({ error: 'players must be an array of player names' });
+    }
+
+    // Clean + de-duplicate names (preserve given order)
+    const names = [...new Set(roster.map(n => String(n || '').trim()).filter(Boolean))];
+    if (names.length < 4) {
+      return res.status(400).json({ error: 'Need at least 4 distinct players for a knockout bracket' });
+    }
+
+    // --- Handle any existing season -------------------------------------
+    const seasonRes = await pool.query('SELECT data FROM season WHERE id = 1');
+    if (seasonRes.rows.length > 0) {
+      const existing = seasonRes.rows[0].data;
+      if (existing.status !== 'complete') {
+        return res.status(409).json({
+          error: 'An active season is still in progress. Complete it (or delete it from Season Management) before starting a knockout tournament.'
+        });
+      }
+      // Archive the completed season so its champion/history is preserved.
+      await ensureArchiveTable();
+      const countResult = await pool.query('SELECT COUNT(*) as count FROM season_archive');
+      const seasonNumber = parseInt(countResult.rows[0].count) + 1;
+      const totalMatches = ['A', 'B'].reduce((sum, g) =>
+        sum + (existing.schedule?.[g] || []).flat().filter(m => m.completed).length, 0);
+      await pool.query(`
+        INSERT INTO season_archive (season_number, name, champion, runner_up, group_a_champion, group_b_champion, total_matches, data)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+      `, [
+        seasonNumber,
+        existing.name || `Season ${seasonNumber}`,
+        existing.champion,
+        existing.superBowl?.player1 === existing.champion ? existing.superBowl?.player2 : existing.superBowl?.player1,
+        existing.playoffs?.A?.champion,
+        existing.playoffs?.B?.champion,
+        totalMatches,
+        JSON.stringify(existing)
+      ]);
+      await pool.query('DELETE FROM season WHERE id = 1');
+    }
+
+    // --- Ensure every roster player exists (creates new players, e.g. Kelvin) -
+    for (const playerName of names) {
+      await pool.query(
+        'INSERT INTO players (name) VALUES ($1) ON CONFLICT (name) DO NOTHING',
+        [playerName]
+      );
+    }
+
+    // --- Seed by previous wins ------------------------------------------
+    const lbResult = await pool.query(
+      `SELECT player_name, alltime_wins, alltime_losses, alltime_matches_played
+       FROM leaderboard WHERE player_name = ANY($1)`,
+      [names]
+    );
+    const stats = {};
+    lbResult.rows.forEach(r => {
+      stats[r.player_name] = {
+        wins: r.alltime_wins || 0,
+        losses: r.alltime_losses || 0,
+        played: r.alltime_matches_played || 0
+      };
+    });
+
+    // Fair seeding: all-time wins DESC -> win% DESC -> fewer losses -> name.
+    // Players with no record (e.g. brand-new entrants) fall to the bottom.
+    const seeded = names
+      .map(n => {
+        const s = stats[n] || { wins: 0, losses: 0, played: 0 };
+        return { name: n, wins: s.wins, losses: s.losses, winPct: s.played > 0 ? s.wins / s.played : 0 };
+      })
+      .sort((a, b) => {
+        if (b.wins !== a.wins) return b.wins - a.wins;
+        if (b.winPct !== a.winPct) return b.winPct - a.winPct;
+        if (a.losses !== b.losses) return a.losses - b.losses;
+        return a.name.localeCompare(b.name);
+      });
+    seeded.forEach((p, i) => { p.seed = i + 1; });
+    const seedToPlayer = {};
+    seeded.forEach(p => { seedToPlayer[p.seed] = p.name; });
+
+    const n = seeded.length;
+    const bracketSize = Math.pow(2, Math.ceil(Math.log2(n)));
+    const numByes = bracketSize - n;
+    const numRounds = Math.log2(bracketSize);
+
+    // Standard seed placement (1 vs lowest, etc.) so top seeds meet late.
+    const bracketOrder = [];
+    (function fillBracket(low, high) {
+      if (low === high) { bracketOrder.push(low); return; }
+      const mid = Math.floor((low + high) / 2);
+      fillBracket(low, mid);
+      fillBracket(mid + 1, high);
+    })(1, bracketSize);
+
+    // Round 1: pair seeds; slots beyond player count become BYEs for top seeds.
+    const rounds = {};
+    const round1 = [];
+    for (let i = 0; i < bracketSize / 2; i++) {
+      const s1 = bracketOrder[i * 2];
+      const s2 = bracketOrder[i * 2 + 1];
+      const p1 = seedToPlayer[s1] || null;
+      const p2 = seedToPlayer[s2] || null;
+      const isBye = !p1 || !p2;
+      round1.push({
+        matchNumber: i + 1,
+        player1: p1 || 'BYE',
+        player2: p2 || 'BYE',
+        seed1: p1 ? s1 : null,
+        seed2: p2 ? s2 : null,
+        isBye,
+        winner: isBye ? (p1 || p2) : null
+      });
+    }
+    rounds[1] = round1;
+
+    // Later rounds: TBD placeholders, but propagate bye winners forward so the
+    // bracket reflects automatic advances immediately.
+    for (let r = 2; r <= numRounds; r++) {
+      const prev = rounds[r - 1];
+      const matches = [];
+      for (let m = 1; m <= prev.length / 2; m++) {
+        const f1 = prev[(m - 1) * 2];      // odd feeder -> player1
+        const f2 = prev[(m - 1) * 2 + 1];  // even feeder -> player2
+        matches.push({
+          matchNumber: m,
+          player1: f1.isBye ? f1.winner : null,
+          player2: f2.isBye ? f2.winner : null,
+          seed1: null,
+          seed2: null,
+          isBye: false,
+          winner: null
+        });
+      }
+      rounds[r] = matches;
+    }
+
+    // --- Persist: clear old league bracket, batch-insert all matches -----
+    await pool.query('DELETE FROM league_matches');
+
+    const values = [];
+    const placeholders = [];
+    let idx = 1;
+    for (let r = 1; r <= numRounds; r++) {
+      for (const m of rounds[r]) {
+        placeholders.push(`($${idx}, $${idx + 1}, $${idx + 2}, $${idx + 3}, $${idx + 4}, $${idx + 5}, $${idx + 6}, $${idx + 7}, $${idx + 8})`);
+        values.push(
+          r,
+          m.matchNumber,
+          m.player1 === 'BYE' ? 'BYE' : (m.player1 || null),
+          m.player2 === 'BYE' ? 'BYE' : (m.player2 || null),
+          m.seed1,
+          m.seed2,
+          m.winner || null,
+          m.isBye || false,
+          m.isBye || false // completed = true for byes
+        );
+        idx += 9;
+      }
+    }
+    await pool.query(
+      `INSERT INTO league_matches (round, match_number, player1, player2, seed1, seed2, winner, is_bye, completed)
+       VALUES ${placeholders.join(', ')}`,
+      values
+    );
+
+    // --- Set the tournament name + close registration -------------------
+    await pool.query(`
+      INSERT INTO league_config (id, season_name, registration_open)
+      VALUES (1, $1, FALSE)
+      ON CONFLICT (id) DO UPDATE SET season_name = EXCLUDED.season_name, registration_open = FALSE, updated_at = CURRENT_TIMESTAMP
+    `, [tournamentName]);
+
+    res.json({
+      success: true,
+      name: tournamentName,
+      numPlayers: n,
+      bracketSize,
+      numByes,
+      numRounds,
+      seeds: seeded.map(p => ({ seed: p.seed, name: p.name, allTimeWins: p.wins, allTimeLosses: p.losses }))
+    });
+  } catch (error) {
+    console.error('[Create Knockout Error]', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // ============ PLAYER STATS & PROFILE ============
 
 // Get player stats and match history

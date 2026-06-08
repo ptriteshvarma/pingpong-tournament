@@ -2828,6 +2828,12 @@ const API_BASE = '/api';
             const [editingSeed, setEditingSeed] = useState(null);
             const [editSeedValue, setEditSeedValue] = useState('');
             const [deletingPlayer, setDeletingPlayer] = useState(null);
+            // Knockout tournament creation
+            const [knockoutName, setKnockoutName] = useState('Steal the Trophy');
+            const [knockoutPlayers, setKnockoutPlayers] = useState([]); // selected player names
+            const [knockoutExtras, setKnockoutExtras] = useState([]); // new names not yet in DB
+            const [knockoutNewName, setKnockoutNewName] = useState('');
+            const [creatingKnockout, setCreatingKnockout] = useState(false);
 
             const addToGroup = (player, group) => {
                 if (group === 'A') {
@@ -2874,6 +2880,47 @@ const API_BASE = '/api';
                     setBracketPlayers([]);
                 } finally {
                     setCreatingBracket(false);
+                }
+            };
+
+            const toggleKnockoutPlayer = (playerName) => {
+                setKnockoutPlayers(prev =>
+                    prev.includes(playerName) ? prev.filter(n => n !== playerName) : [...prev, playerName]
+                );
+            };
+
+            const addKnockoutNewName = () => {
+                const nm = knockoutNewName.trim();
+                if (!nm) return;
+                const exists = players.some(p => p.name === nm) || knockoutExtras.includes(nm);
+                if (!exists) setKnockoutExtras(prev => [...prev, nm]);
+                if (!knockoutPlayers.includes(nm)) setKnockoutPlayers(prev => [...prev, nm]);
+                setKnockoutNewName('');
+            };
+
+            const handleCreateKnockout = async () => {
+                const list = knockoutPlayers;
+                if (!knockoutName.trim() || list.length < 4) return;
+                if (!confirm(`Create knockout tournament "${knockoutName.trim()}" with ${list.length} players?\n\nPlayers will be seeded by their all-time record. If a completed season exists, it will be archived to history first, then replaced by this bracket.`)) return;
+                setCreatingKnockout(true);
+                try {
+                    const res = await fetch(`${API_BASE}/league/create-knockout`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', 'X-Admin-Password': localStorage.getItem('adminPassword') || '' },
+                        body: JSON.stringify({ name: knockoutName.trim(), players: list })
+                    });
+                    const data = await res.json();
+                    if (res.ok) {
+                        const topSeeds = (data.seeds || []).slice(0, 3).map(s => `#${s.seed} ${s.name}`).join(', ');
+                        alert(`✅ "${data.name}" created!\n\n${data.numPlayers} players • ${data.numByes} byes • ${data.numRounds} rounds\n\nTop seeds: ${topSeeds}`);
+                        window.location.reload();
+                    } else {
+                        alert(data.error || 'Failed to create knockout tournament');
+                    }
+                } catch (e) {
+                    alert('Failed to create knockout tournament');
+                } finally {
+                    setCreatingKnockout(false);
                 }
             };
 
@@ -3171,6 +3218,70 @@ const API_BASE = '/api';
                                 {creatingBracket ? 'Creating...' : 'Create Bracket'}
                             </button>
                         </div>
+                    </div>
+
+                    {/* Create Knockout Tournament */}
+                    <div className="bg-white shadow-sm border border-gray-200 rounded-xl p-4">
+                        <h2 className="text-xl font-bold mb-1">🏆 Create Knockout Tournament</h2>
+                        <p className="text-sm text-gray-500 mb-4">Single-elimination bracket. Players are auto-seeded by their all-time record (most wins = #1 seed; ties broken by win %, then fewer losses). Top seeds get the byes.</p>
+
+                        <label className="block text-sm font-semibold text-gray-600 mb-1">Tournament Name</label>
+                        <input
+                            type="text"
+                            value={knockoutName}
+                            onChange={e => setKnockoutName(e.target.value)}
+                            placeholder="e.g. Steal the Trophy"
+                            className="w-full bg-gray-100 rounded-lg px-4 py-2 mb-4"
+                        />
+
+                        <div className="flex items-center justify-between mb-2">
+                            <h3 className="text-sm font-semibold text-gray-600">Select Players ({knockoutPlayers.length})</h3>
+                            {knockoutPlayers.length > 0 && (
+                                <button onClick={() => setKnockoutPlayers([])} className="text-xs text-red-500 hover:text-red-600">Clear all</button>
+                            )}
+                        </div>
+                        <div className="bg-gray-50 border border-gray-200 rounded-lg p-2 max-h-[280px] overflow-y-auto grid sm:grid-cols-2 gap-1 mb-3">
+                            {[...new Set([...players.map(p => p.name), ...knockoutExtras])].sort((a, b) => a.localeCompare(b)).map(nm => {
+                                const isExtra = knockoutExtras.includes(nm) && !players.some(p => p.name === nm);
+                                return (
+                                    <label key={nm} className={`flex items-center gap-2 px-2 py-1.5 rounded cursor-pointer text-sm ${knockoutPlayers.includes(nm) ? 'bg-purple-100 text-purple-800' : 'hover:bg-gray-100'}`}>
+                                        <input
+                                            type="checkbox"
+                                            checked={knockoutPlayers.includes(nm)}
+                                            onChange={() => toggleKnockoutPlayer(nm)}
+                                            className="rounded"
+                                        />
+                                        <span>{nm}{isExtra && <span className="ml-1 text-[10px] text-emerald-600 font-semibold">NEW</span>}</span>
+                                    </label>
+                                );
+                            })}
+                        </div>
+
+                        <div className="flex gap-2 mb-4">
+                            <input
+                                type="text"
+                                value={knockoutNewName}
+                                onChange={e => setKnockoutNewName(e.target.value)}
+                                onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addKnockoutNewName(); } }}
+                                placeholder="Add a new player (e.g. Kelvin Schmidt)"
+                                className="flex-1 bg-gray-100 rounded-lg px-4 py-2 text-sm"
+                            />
+                            <button onClick={addKnockoutNewName} className="bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-lg text-sm font-semibold">Add</button>
+                        </div>
+
+                        <button
+                            onClick={handleCreateKnockout}
+                            disabled={creatingKnockout || !knockoutName.trim() || knockoutPlayers.length < 4}
+                            className="w-full bg-purple-600 hover:bg-purple-700 disabled:bg-gray-200 disabled:text-gray-500 py-3 rounded-lg font-semibold"
+                        >
+                            {creatingKnockout ? 'Creating…' : `Generate Knockout Bracket${knockoutPlayers.length >= 4 ? ` (${knockoutPlayers.length} players)` : ''}`}
+                        </button>
+                        {knockoutPlayers.length > 0 && knockoutPlayers.length < 4 && (
+                            <p className="text-xs text-orange-600 mt-2">Select at least 4 players.</p>
+                        )}
+                        {season && season.status !== 'complete' && (
+                            <p className="text-xs text-orange-600 mt-2">⚠️ An active season is in progress. Complete or delete it (Season Management above) before creating a knockout.</p>
+                        )}
                     </div>
 
                     {/* Create Season */}
@@ -4226,6 +4337,7 @@ const API_BASE = '/api';
             const [players, setPlayers] = useState([]);
             const [swapZone, setSwapZone] = useState(null);
             const [leagueMatches, setLeagueMatches] = useState([]);
+            const [leagueName, setLeagueName] = useState('');
             const [loading, setLoading] = useState(true);
             const [showLeagueScoreModal, setShowLeagueScoreModal] = useState(false);
             const [selectedLeagueMatch, setSelectedLeagueMatch] = useState(null);
@@ -4264,11 +4376,12 @@ const API_BASE = '/api';
                 if (!forceRefresh && season && players.length > 0) return; // Already loaded
 
                 try {
-                    const [seasonRes, playersRes, swapZoneRes, leagueMatchesRes] = await Promise.all([
+                    const [seasonRes, playersRes, swapZoneRes, leagueMatchesRes, leagueConfigRes] = await Promise.all([
                         fetch(`${API_BASE}/season`),
                         fetch(`${API_BASE}/players`),
                         fetch(`${API_BASE}/season/swap-zone`),
-                        fetch(`${API_BASE}/league/matches`)
+                        fetch(`${API_BASE}/league/matches`),
+                        fetch(`${API_BASE}/registration/config`)
                     ]);
 
                     // Check response status before parsing
@@ -4289,12 +4402,14 @@ const API_BASE = '/api';
                     const playersData = playersRes.ok ? await playersRes.json() : [];
                     const swapZoneData = swapZoneRes.ok ? await swapZoneRes.json() : null;
                     const leagueMatchesData = leagueMatchesRes.ok ? await leagueMatchesRes.json() : [];
+                    const leagueConfigData = leagueConfigRes.ok ? await leagueConfigRes.json() : null;
 
                     setSeason(seasonData);
                     setPlayers(playersData || []);
                     setAvatarCache(playersData || []);
                     setSwapZone(swapZoneData);
                     setLeagueMatches(leagueMatchesData || []);
+                    setLeagueName(leagueConfigData?.season_name || '');
                     if (seasonData?.currentWeek) setSelectedWeek(seasonData.currentWeek);
                 } catch (e) {
                     console.error('Error loading:', e);
@@ -5062,8 +5177,9 @@ const API_BASE = '/api';
                                         <div className="mb-6">
                                             <h2 className="text-3xl font-bold mb-2 flex items-center gap-2">
                                                 <span>🏆</span>
-                                                Single-Elimination Bracket Tournament
+                                                {leagueName || 'Single-Elimination Bracket Tournament'}
                                             </h2>
+                                            <p className="text-sm text-gray-500 mb-2">Single-elimination knockout</p>
                                             <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
                                                 <p className="text-sm text-purple-900 font-semibold mb-1">📋 Tournament Format:</p>
                                                 <ul className="text-xs text-purple-800 space-y-1 ml-4">
