@@ -2814,6 +2814,107 @@ const API_BASE = '/api';
             );
         }
 
+        // Fancy single-elimination bracket visualization (renders league_matches as a tree)
+        function KnockoutBracket({ leagueMatches, currentPlayer, isAdmin, title, onRecord }) {
+            const roundNums = Array.from(new Set(leagueMatches.map(m => m.round))).sort((a, b) => a - b);
+            const roundLabel = (rn, count) => {
+                if (count === 1) return 'Final';
+                if (count === 2) return 'Semifinals';
+                if (count === 4) return 'Quarterfinals';
+                if (count === 8) return 'Round of 16';
+                if (count === 16) return 'Round of 32';
+                return `Round ${rn}`;
+            };
+
+            const finalRound = roundNums[roundNums.length - 1];
+            const finalMatch = leagueMatches.find(m => m.round === finalRound);
+            const champion = finalMatch && finalMatch.completed ? finalMatch.winner : null;
+
+            const PlayerRow = ({ name, seed, isWinner, isLoser, decided }) => {
+                const isBye = name === 'BYE';
+                const isTBD = !name || name === 'TBD';
+                const me = name && name === currentPlayer;
+                return (
+                    <div className={`flex items-center justify-between gap-2 px-2.5 py-1.5 ${isWinner ? 'bg-emerald-50' : ''} ${me && !isBye ? 'bg-blue-50' : ''}`}>
+                        <div className="flex items-center gap-1.5 min-w-0">
+                            {seed ? (
+                                <span className="text-[10px] leading-none font-bold bg-purple-100 text-purple-700 rounded px-1.5 py-1 shrink-0">{seed}</span>
+                            ) : (!isBye && !isTBD ? <span className="text-[10px] text-gray-300 shrink-0 w-[18px] text-center">–</span> : null)}
+                            <span className={`text-[13px] truncate ${isBye ? 'text-gray-300 italic' : isTBD ? 'text-gray-400' : isWinner ? 'font-bold text-gray-900' : (decided && isLoser) ? 'text-gray-400 line-through' : 'text-gray-700'}`}>
+                                {me && !isBye ? '👤 ' : ''}{isTBD ? 'TBD' : name}
+                            </span>
+                        </div>
+                        {isWinner && <span className="text-emerald-500 text-xs shrink-0">✓</span>}
+                    </div>
+                );
+            };
+
+            return (
+                <div className="bg-white shadow-sm border border-gray-200 rounded-xl p-5 mb-6">
+                    <div className="flex items-center justify-between flex-wrap gap-2 mb-1">
+                        <h2 className="text-2xl sm:text-3xl font-bold flex items-center gap-2">
+                            <span>🏆</span>{title || 'Knockout Bracket'}
+                        </h2>
+                        {champion && (
+                            <div className="bg-amber-100 border border-amber-300 text-amber-800 rounded-full px-4 py-1.5 text-sm font-bold flex items-center gap-2">
+                                👑 Champion: {champion}
+                            </div>
+                        )}
+                    </div>
+                    <p className="text-sm text-gray-500 mb-4">Single-elimination knockout · seeded by past record · lose once and you're out</p>
+
+                    <div className="kbracket scrollbar-thin">
+                        {roundNums.map(rn => {
+                            const matches = leagueMatches.filter(m => m.round === rn).sort((a, b) => a.match_number - b.match_number);
+                            const done = matches.filter(m => m.completed).length;
+                            const isFinalRound = matches.length === 1;
+                            return (
+                                <div key={rn} className="kbracket-round">
+                                    <div className="kbracket-round-title">
+                                        <div>{roundLabel(rn, matches.length)}</div>
+                                        <div className="text-[10px] font-normal text-gray-400 normal-case tracking-normal">{done}/{matches.length} complete</div>
+                                    </div>
+                                    <div className="kbracket-col">
+                                        {matches.map(match => {
+                                            const canRecord = !match.completed && !match.is_bye && match.player1 && match.player2 &&
+                                                match.player1 !== 'TBD' && match.player2 !== 'TBD' &&
+                                                (isAdmin || match.player1 === currentPlayer || match.player2 === currentPlayer);
+                                            return (
+                                                <div key={match.id} className="kbracket-cell">
+                                                    <div className={`w-full rounded-lg border overflow-hidden shadow-sm transition ${
+                                                        isFinalRound ? 'border-amber-300 ring-1 ring-amber-200' : match.completed ? 'border-gray-200' : 'border-purple-200 hover:border-purple-400 hover:shadow'
+                                                    } bg-white`}>
+                                                        <div className="divide-y divide-gray-100">
+                                                            <PlayerRow name={match.player1} seed={match.seed1} decided={match.completed} isWinner={match.completed && match.winner === match.player1} isLoser={match.completed && match.winner !== match.player1} />
+                                                            <PlayerRow name={match.player2} seed={match.seed2} decided={match.completed} isWinner={match.completed && match.winner === match.player2} isLoser={match.completed && match.winner !== match.player2} />
+                                                        </div>
+                                                        {(match.score || match.is_bye || canRecord || !match.completed) && (
+                                                            <div className="px-2.5 py-1 bg-gray-50 border-t border-gray-100 flex items-center justify-between gap-2">
+                                                                {match.is_bye ? (
+                                                                    <span className="text-[10px] text-amber-600 font-semibold">BYE · auto-advance</span>
+                                                                ) : match.score ? (
+                                                                    <span className="text-[10px] text-gray-500 font-medium">Score {match.score}</span>
+                                                                ) : (
+                                                                    <span className="text-[10px] text-gray-400">Not played</span>
+                                                                )}
+                                                                {canRecord && (
+                                                                    <button onClick={() => onRecord(match)} className="text-[10px] bg-purple-600 hover:bg-purple-500 text-white px-2 py-1 rounded font-semibold shrink-0">Record</button>
+                                                                )}
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </div>
+                </div>
+            );
+        }
+
         function AdminPanel({ players, onCreateSeason, isAdmin, onLogin, onAddPlayer, onCreateBracket, season, onArchiveSeason, onClearSeason }) {
             const [groupA, setGroupA] = useState([]);
             const [groupB, setGroupB] = useState([]);
@@ -5173,6 +5274,14 @@ const API_BASE = '/api';
                         {(view === 'league' || view === 'standings' || view === 'schedule') && !season && (
                             <div>
                                 {leagueMatches.length > 0 ? (
+                                    <KnockoutBracket
+                                        leagueMatches={leagueMatches}
+                                        currentPlayer={currentPlayer}
+                                        isAdmin={isAdmin}
+                                        title={leagueName}
+                                        onRecord={(m) => { setSelectedLeagueMatch(m); setShowLeagueScoreModal(true); }}
+                                    />
+                                ) : false ? (
                                     <div className="bg-white shadow-sm border border-gray-200 rounded-xl p-6 mb-6">
                                         <div className="mb-6">
                                             <h2 className="text-3xl font-bold mb-2 flex items-center gap-2">

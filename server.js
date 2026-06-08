@@ -7259,14 +7259,17 @@ app.post('/api/league/create-knockout', requireAdmin, async (req, res) => {
     const numByes = bracketSize - n;
     const numRounds = Math.log2(bracketSize);
 
-    // Standard seed placement (1 vs lowest, etc.) so top seeds meet late.
-    const bracketOrder = [];
-    (function fillBracket(low, high) {
-      if (low === high) { bracketOrder.push(low); return; }
-      const mid = Math.floor((low + high) / 2);
-      fillBracket(low, mid);
-      fillBracket(mid + 1, high);
-    })(1, bracketSize);
+    // Standard tournament seed placement: #1 and #2 can only meet in the final,
+    // each top seed is paired against the lowest available, and byes (seeds beyond
+    // the player count) fall to the TOP seeds. Produces e.g. for 16:
+    // [1,16,8,9,5,12,4,13,3,14,6,11,7,10,2,15].
+    let bracketOrder = [1, 2];
+    while (bracketOrder.length < bracketSize) {
+      const sum = bracketOrder.length * 2 + 1;
+      const next = [];
+      for (const s of bracketOrder) { next.push(s); next.push(sum - s); }
+      bracketOrder = next;
+    }
 
     // Round 1: pair seeds; slots beyond player count become BYEs for top seeds.
     const rounds = {};
