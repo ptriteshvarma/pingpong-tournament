@@ -2829,22 +2829,25 @@ const API_BASE = '/api';
             const finalRound = roundNums[roundNums.length - 1];
             const finalMatch = leagueMatches.find(m => m.round === finalRound);
             const champion = finalMatch && finalMatch.completed ? finalMatch.winner : null;
+            const runnerUp = champion ? (finalMatch.winner === finalMatch.player1 ? finalMatch.player2 : finalMatch.player1) : null;
 
-            const PlayerRow = ({ name, seed, isWinner, isLoser, decided }) => {
+            const PlayerRow = ({ name, seed, isWinner, isLoser, decided, top }) => {
                 const isBye = name === 'BYE';
                 const isTBD = !name || name === 'TBD';
                 const me = name && name === currentPlayer;
+                const bg = isWinner ? 'bg-emerald-50' : me && !isBye ? 'bg-blue-50' : top ? 'bg-white' : 'bg-gray-50/60';
                 return (
-                    <div className={`flex items-center justify-between gap-2 px-2.5 py-1.5 ${isWinner ? 'bg-emerald-50' : ''} ${me && !isBye ? 'bg-blue-50' : ''}`}>
-                        <div className="flex items-center gap-1.5 min-w-0">
-                            {seed ? (
-                                <span className="text-[10px] leading-none font-bold bg-purple-100 text-purple-700 rounded px-1.5 py-1 shrink-0">{seed}</span>
-                            ) : (!isBye && !isTBD ? <span className="text-[10px] text-gray-300 shrink-0 w-[18px] text-center">–</span> : null)}
+                    <div className={`flex items-center justify-between gap-2 px-2.5 py-2 ${bg}`}>
+                        <div className="flex items-center gap-2 min-w-0">
+                            <span className={`text-[10px] leading-none font-bold rounded w-6 py-1 text-center shrink-0 ${seed ? 'bg-purple-100 text-purple-700' : 'text-transparent'}`}>{seed || '0'}</span>
+                            {!isBye && !isTBD
+                                ? <PlayerAvatar name={name} size="sm" />
+                                : <div className="w-6 h-6 rounded-full bg-gray-100 border border-dashed border-gray-200 shrink-0" />}
                             <span className={`text-[13px] truncate ${isBye ? 'text-gray-300 italic' : isTBD ? 'text-gray-400' : isWinner ? 'font-bold text-gray-900' : (decided && isLoser) ? 'text-gray-400 line-through' : 'text-gray-700'}`}>
                                 {me && !isBye ? '👤 ' : ''}{isTBD ? 'TBD' : name}
                             </span>
                         </div>
-                        {isWinner && <span className="text-emerald-500 text-xs shrink-0">✓</span>}
+                        {isWinner && <span className="text-emerald-500 text-sm shrink-0">✓</span>}
                     </div>
                 );
             };
@@ -2862,6 +2865,25 @@ const API_BASE = '/api';
                         )}
                     </div>
                     <p className="text-sm text-gray-500 mb-4">Single-elimination knockout · seeded by past record · lose once and you're out</p>
+
+                    {champion && (
+                        <div className="mb-5 rounded-xl bg-gradient-to-r from-amber-50 via-yellow-50 to-amber-50 border border-amber-200 px-4 py-4 flex items-end justify-center gap-8">
+                            {runnerUp && (
+                                <div className="flex flex-col items-center">
+                                    <div className="text-2xl">🥈</div>
+                                    <PlayerAvatar name={runnerUp} size="md" />
+                                    <span className="text-sm font-semibold text-gray-600 mt-1 text-center">{runnerUp}</span>
+                                    <span className="text-[10px] text-gray-400">Runner-up</span>
+                                </div>
+                            )}
+                            <div className="flex flex-col items-center">
+                                <div className="text-4xl leading-none">👑</div>
+                                <PlayerAvatar name={champion} size="lg" />
+                                <span className="text-base font-bold text-amber-800 mt-1 text-center">{champion}</span>
+                                <span className="text-[11px] text-amber-600 font-bold uppercase tracking-wide">Champion</span>
+                            </div>
+                        </div>
+                    )}
 
                     <div className="kbracket scrollbar-thin">
                         {roundNums.map(rn => {
@@ -2884,9 +2906,11 @@ const API_BASE = '/api';
                                                     <div className={`w-full rounded-lg border overflow-hidden shadow-sm transition ${
                                                         isFinalRound ? 'border-amber-300 ring-1 ring-amber-200' : match.completed ? 'border-gray-200' : 'border-purple-200 hover:border-purple-400 hover:shadow'
                                                     } bg-white`}>
-                                                        <div className="divide-y divide-gray-100">
-                                                            <PlayerRow name={match.player1} seed={match.seed1} decided={match.completed} isWinner={match.completed && match.winner === match.player1} isLoser={match.completed && match.winner !== match.player1} />
+                                                        <div className="relative">
+                                                            <PlayerRow top name={match.player1} seed={match.seed1} decided={match.completed} isWinner={match.completed && match.winner === match.player1} isLoser={match.completed && match.winner !== match.player1} />
+                                                            <div className="h-px bg-gray-200" />
                                                             <PlayerRow name={match.player2} seed={match.seed2} decided={match.completed} isWinner={match.completed && match.winner === match.player2} isLoser={match.completed && match.winner !== match.player2} />
+                                                            <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[8px] font-bold text-gray-400 bg-white border border-gray-200 rounded-full w-4 h-4 flex items-center justify-center shadow-sm">v</span>
                                                         </div>
                                                         {(match.score || match.is_bye || canRecord || !match.completed) && (
                                                             <div className="px-2.5 py-1 bg-gray-50 border-t border-gray-100 flex items-center justify-between gap-2">

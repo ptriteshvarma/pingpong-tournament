@@ -115,8 +115,14 @@
   align-items: center;
   justify-content: center;
   position: relative;
-  padding: 7px 0;
-  min-height: 80px;
+  padding: 11px 0;
+  min-height: 142px;
+}
+.kbracket-card {
+  width: 100%;
+  border-radius: 10px;
+  overflow: hidden;
+  background: #fff;
 }
 /* horizontal stub out of each match (every round except the final) */
 .kbracket-round:not(:last-child) .kbracket-cell::after {
@@ -144,5 +150,7 @@
   top: 0;
 }
 @media (max-width: 640px) {
-  .kbracket-round { min-width: 200px; flex-basis: 200px; padding-right: 22px; }
+  .kbracket-round { min-width: 184px; flex-basis: 184px; padding-right: 20px; }
+  .kbracket-round-title { font-size: 0.66rem; }
+  .kbracket-cell { min-height: 132px; padding: 8px 0; }
 }
